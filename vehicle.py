@@ -1,11 +1,7 @@
 #!/usr/bin/python3 
 import glob
-import os
-import signal 
+import os 
 import sys
-import time
-import random 
-import math  
 
 try:
     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
@@ -18,34 +14,25 @@ except IndexError:
 import carla  
 
 actor_list = []
+
 class EgoVehicle(object):
 
-    def __init__(self):
-        self.client = None
-        self.start_point = None
-        self.world = None
-        self.map = None
-        self.blueprint_library = None    
+    def __init__(self):    
         self.vehicle_model = None
         self.vehicle = None
         self.start_point = None 
 
-    def connect(self):  
-        self.client = carla.Client('localhost', 2000)                # create a client 
-        self.client.set_timeout(10.0)                                # sets in seconds the maximum time a network call is allowed before blocking it     
-        self.world = self.client.get_world()                         # returns the world object currently active in the simulation 
-        self.map = self.world.get_map()                              # returns the map that we are working on. The object returned is of type carla.Map 
-        self.blueprint_library = self.world.get_blueprint_library()  # returns a list of actor blueprints available to ease the spawn of these into the world
-
-         
-    def choose_model(self,model):
-        # set vehicle 
+    def choose_model(self, model, bp, world):
+        # set vehicle
+        self.blueprint_library = bp
+        self.world = world  
         self.vehicle_model = self.blueprint_library.filter(model)[0]                 # get vehicle (tesla model3 from library)
         self.vehicle = self.world.spawn_actor(self.vehicle_model, self.start_point)  # spawn the vehicle to the first point    
         actor_list.append(self.vehicle)
     
-    def spawn(self):
+    def spawn(self, map):
         # get possible points for vehicle creation 
+        self.map = map
         points = self.map.get_spawn_points()                                    # returns a list of recommendations 
         self.start_point = points[0]                                            # choose the first possible point 
         
@@ -61,4 +48,9 @@ class EgoVehicle(object):
 
             except KeyboardInterrupt:
                 break
+    
+    def get_vehicle_actor(self):
+        return self.vehicle
 
+    def add_sensor(self, sensor):
+        pass 
