@@ -2,6 +2,7 @@
 import glob
 import os 
 import sys 
+import time 
 
 try:
     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
@@ -23,6 +24,8 @@ class Sensor(object):
         self.rotationRoll= 0
         self.rotationPitch= 0
         self.rotationYaw = 0
+        self.sensor = None
+
 
     def set_location(self, X, Y, Z):
         self.locationX = X
@@ -51,18 +54,61 @@ class Sensor(object):
         self.blueprint = blueprint
         self.map = map
 
-    def set_sensor(self, name):
-        blueprint_sensor = self.blueprint.find(name)
+    def set_sensor(self, **kwargs):
+        blueprint_sensor = self.blueprint.find(self.name)
         self.sensor = self.world.spawn_actor(blueprint_sensor, self.get_transform(), attach_to = self.get_vehicle())
-        
+        for key, value in kwargs.items():
+            blueprint_sensor.set_attribute(str(key), str(value))
+
     def get_sensor(self):
         return self.sensor
-        
-class Lidar(Sensor):
 
-    def __init__(self, name, X, Y, Z, roll, pitch, yaw):
+
+
+class Lidar(Sensor):
+    def __init__(self, name):
         super().__init__(name)
-        super().set_location(X, Y, Z)
-        super().set_rotation(pitch, yaw, roll)
-        super().set_sensor(name)
-        #lidar.listen(lambda point_cloud: point_cloud.save_to_disk('/home/stefanos/Desktop/data/%.6d.ply' % point_cloud.frame))
+    
+    def lidar_callback(self,point_cloud):
+        print("Lidar measure:\n"+str(point_cloud)+'\n')
+ 
+    def read(self):
+        self.lidar = super().get_sensor()
+        self.lidar.listen(lambda point_cloud: self.lidar_callback(point_cloud))
+
+
+
+class CameraRGB(Sensor):
+    def __init__(self, name):
+        super().__init__(name)
+    
+    def image_callback(self, image):
+        print("Camera measure:\n"+str(image)+'\n')
+        
+        
+    def read(self):
+        self.camera = super().get_sensor()
+        self.camera.listen(lambda image: self.image_callback(image))
+
+
+class GNSS(Sensor):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def gnss_callback(self, gnss):
+        print("GNSS measure:\n"+str(gnss)+'\n')
+        
+    def read(self):
+        self.gnss = super().get_sensor()
+        self.gnss.listen(lambda gnss: self.gnss_callback(gnss))
+
+class IMU(Sensor):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def imu_callback(self, imu):
+        print("IMU measure:\n"+str(imu)+'\n')
+        
+    def read(self):
+        self.imu = super().get_sensor()
+        self.imu.listen(lambda imu: self.imu_callback(imu))

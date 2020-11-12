@@ -25,6 +25,9 @@ class Client(object):
         self.world = self.client.get_world()                         # returns the world object currently active in the simulation 
         self.map = self.world.get_map()                              # returns the map that we are working on. The object returned is of type carla.Map 
         self.blueprint_library = self.world.get_blueprint_library()  # returns a list of actor blueprints available to ease the spawn of these into the world
-
+        self.settings = self.world.get_settings()
+        self.settings.synchronous_mode = True
+        self.world.apply_settings(self.settings)
+    
     def get_simulation(self):
         return [self.blueprint_library, self.world, self.map]
