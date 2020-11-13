@@ -27,6 +27,7 @@ class Client(object):
         self.blueprint_library = self.world.get_blueprint_library()  # returns a list of actor blueprints available to ease the spawn of these into the world
         self.settings = self.world.get_settings()
         self.settings.synchronous_mode = True
+	self.settings.fixed_delta_seconds = 0.05 
         self.world.apply_settings(self.settings)
     
     def get_simulation(self):

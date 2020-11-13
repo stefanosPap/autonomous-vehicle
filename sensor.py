@@ -12,9 +12,11 @@ try:
 except IndexError:
     pass
 
-import carla 
+import carla
 
-class Sensor(object):
+
+
+class Sensor(object):               # general sensor class 
 
     def __init__(self,name):
         self.name = name
@@ -63,52 +65,108 @@ class Sensor(object):
     def get_sensor(self):
         return self.sensor
 
-
+###########################################
+#----------------Sensors----------------###
+###########################################
 
 class Lidar(Sensor):
-    def __init__(self, name):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('sensor.lidar.ray_cast')
     
     def lidar_callback(self,point_cloud):
-        print("Lidar measure:\n"+str(point_cloud)+'\n')
- 
+        #print("Lidar measure:\n"+str(point_cloud)+'\n')
+        pass
     def read(self):
         self.lidar = super().get_sensor()
         self.lidar.listen(lambda point_cloud: self.lidar_callback(point_cloud))
 
+class Radar(Sensor):
+    def __init__(self):
+        super().__init__('sensor.other.radar')
 
+    def radar_callback(self, radar):
+        #print("Radar measure:\n"+str(radar)+'\n')
+        pass 
+    def read(self):
+        self.radar = super().get_sensor()
+        self.radar.listen(lambda radar: self.radar_callback(radar))
+
+###########################################
+#----------------Cameras----------------###
+###########################################
 
 class CameraRGB(Sensor):
-    def __init__(self, name):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('sensor.camera.rgb')
     
     def image_callback(self, image):
-        print("Camera measure:\n"+str(image)+'\n')
-        
+        #print("Camera measure:\n"+str(image)+'\n')
+        pass
         
     def read(self):
         self.camera = super().get_sensor()
         self.camera.listen(lambda image: self.image_callback(image))
 
+###########################################
+#-----------------Position--------------###
+###########################################
 
 class GNSS(Sensor):
-    def __init__(self, name):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('sensor.other.gnss')
 
     def gnss_callback(self, gnss):
-        print("GNSS measure:\n"+str(gnss)+'\n')
-        
+        #print("GNSS measure:\n"+str(gnss)+'\n')
+        pass
     def read(self):
         self.gnss = super().get_sensor()
         self.gnss.listen(lambda gnss: self.gnss_callback(gnss))
 
 class IMU(Sensor):
-    def __init__(self, name):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('sensor.other.imu')
 
     def imu_callback(self, imu):
-        print("IMU measure:\n"+str(imu)+'\n')
-        
+        #print("IMU measure:\n"+str(imu)+'\n')
+        pass
     def read(self):
         self.imu = super().get_sensor()
         self.imu.listen(lambda imu: self.imu_callback(imu))
+
+###########################################
+#---------------Detectors---------------###
+###########################################
+
+class ObstacleDetector(Sensor):
+    def __init__(self):
+        super().__init__('sensor.other.obstacle')
+
+    def obstacle_callback(self, obs):
+        #print("Obstacle Detector measure:\n"+str(obs)+'\n')
+        pass
+    def read(self):
+        self.obstacle_detector = super().get_sensor()
+        self.obstacle_detector.listen(lambda obs: self.obstacle_callback(obs))
+
+class LaneInvasionDetector(Sensor):
+    def __init__(self):
+        super().__init__('sensor.other.lane_invasion')
+
+    def lane_callback(self, lane):
+        #print("Lane Invasion Detector measure:\n"+str(lane)+'\n')
+        pass 
+    def read(self):
+        self.lane_detector = super().get_sensor()
+        self.lane_detector.listen(lambda lane: self.lane_callback(lane))
+
+class CollisionDetector(Sensor):
+    def __init__(self):
+        super().__init__('sensor.other.collision')
+
+    def collision_callback(self, lane):
+        #print("Collision Detector measure:\n"+str(lane)+'\n')
+        pass 
+    def read(self):
+        self.collision_detector = super().get_sensor()
+        self.collision_detector.listen(lambda collision: self.collision_callback(collision))
+
