@@ -2,7 +2,10 @@
 import glob
 import os 
 import sys 
-import time 
+import time
+import cv2
+import numpy as np   
+#from imageai.Detection import ObjectDetection
 
 try:
     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
@@ -13,7 +16,7 @@ except IndexError:
     pass
 
 import carla
-
+execution_path = os.getcwd()
 
 
 class Sensor(object):               # general sensor class 
@@ -27,7 +30,7 @@ class Sensor(object):               # general sensor class
         self.rotationPitch= 0
         self.rotationYaw = 0
         self.sensor = None
-
+        self.vehicle = None
 
     def set_location(self, X, Y, Z):
         self.locationX = X
@@ -57,10 +60,10 @@ class Sensor(object):               # general sensor class
         self.map = map
 
     def set_sensor(self, **kwargs):
-        blueprint_sensor = self.blueprint.find(self.name)
-        self.sensor = self.world.spawn_actor(blueprint_sensor, self.get_transform(), attach_to = self.get_vehicle())
+        self.blueprint_sensor = self.blueprint.find(self.name)
+        self.sensor = self.world.spawn_actor(self.blueprint_sensor, self.get_transform(), attach_to = self.get_vehicle())
         for key, value in kwargs.items():
-            blueprint_sensor.set_attribute(str(key), str(value))
+            self.blueprint_sensor.set_attribute(str(key), str(value))
 
     def get_sensor(self):
         return self.sensor
@@ -73,9 +76,14 @@ class Lidar(Sensor):
     def __init__(self):
         super().__init__('sensor.lidar.ray_cast')
     
-    def lidar_callback(self,point_cloud):
-        #print("Lidar measure:\n"+str(point_cloud)+'\n')
-        pass
+    def lidar_callback(self,point_cloud):    
+        print("range: ", self.blueprint_sensor.get_attribute('range'))
+        print("points per second: ", self.blueprint_sensor.get_attribute('points_per_second'))
+        print("rotation frequency: ", self.blueprint_sensor.get_attribute('rotation_frequency'))
+        print("lower_fov: ", self.blueprint_sensor.get_attribute('lower_fov'))
+        print("upper_fov: ", self.blueprint_sensor.get_attribute('upper_fov'))
+        print("timestamp: ", point_cloud.timestamp)
+
     def read(self):
         self.lidar = super().get_sensor()
         self.lidar.listen(lambda point_cloud: self.lidar_callback(point_cloud))
@@ -85,7 +93,8 @@ class Radar(Sensor):
         super().__init__('sensor.other.radar')
 
     def radar_callback(self, radar):
-        #print("Radar measure:\n"+str(radar)+'\n')
+        print("Radar: ", radar.raw_data)
+        print("timestamp: ", radar.timestamp)
         pass 
     def read(self):
         self.radar = super().get_sensor()
@@ -98,9 +107,35 @@ class Radar(Sensor):
 class CameraRGB(Sensor):
     def __init__(self):
         super().__init__('sensor.camera.rgb')
-    
+        #self.detector = ObjectDetection()
+        #self.detector.setModelTypeAsYOLOv3()
+        #self.detector.setModelPath( os.path.join(execution_path , "yolo.h5"))
+        #self.detector.loadModel()
+
     def image_callback(self, image):
-        #print("Camera measure:\n"+str(image)+'\n')
+        #image.save_to_disk('/home/stefanos/Desktop/dataCameraRGB/%.6d.jpg' % image.frame)
+           #detections = self.detector.detectObjectsFromImage(input_image='/home/stefanos/Desktop/dataCameraRGB/%.6d.jpg' % image.frame, output_image_path=os.path.join(execution_path , '%.6d.jpg' % image.frame))
+        pass
+
+    def process_img(self, image):
+        i = np.array(image.raw_data)
+        i2 = i.reshape((800, 600, 4))
+        i3 = i2[:, :, :3]
+        cv2.imshow("", i3)
+        cv2.waitKey(0)
+        
+
+    def read(self):
+        self.camera = super().get_sensor()
+        self.camera.listen(lambda image: self.image_callback(image))
+
+
+class CameraSemantic(Sensor):
+    def __init__(self):
+        super().__init__('sensor.camera.semantic_segmentation')
+
+    def image_callback(self, image):
+        #image.save_to_disk('/home/stefanos/Desktop/dataCameraSemanticSegmentation/%.6d.jpg' % image.frame, carla.ColorConverter.CityScapesPalette)
         pass
         
     def read(self):
@@ -116,7 +151,7 @@ class GNSS(Sensor):
         super().__init__('sensor.other.gnss')
 
     def gnss_callback(self, gnss):
-        #print("GNSS measure:\n"+str(gnss)+'\n')
+        print("GNSS measure:\n"+str(gnss)+'\n')
         pass
     def read(self):
         self.gnss = super().get_sensor()
@@ -127,7 +162,7 @@ class IMU(Sensor):
         super().__init__('sensor.other.imu')
 
     def imu_callback(self, imu):
-        #print("IMU measure:\n"+str(imu)+'\n')
+        print("IMU measure:\n"+str(imu)+'\n')
         pass
     def read(self):
         self.imu = super().get_sensor()
