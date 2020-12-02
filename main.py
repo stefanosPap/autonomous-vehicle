@@ -4,10 +4,10 @@ from sensor import Sensor, Lidar, CameraRGB, GNSS, IMU, ObstacleDetector, LaneIn
 from client import Client
 from utilities import plot_axis
 from trajectory import generate_random_trajectory
+from behavior import follow_random_trajectory
 #from agents.navigation.roaming_agent import RoamingAgent
 #from agents.navigation.behavior_agent import BehaviorAgent
 #from agents.navigation.basic_agent import BasicAgent 
-from agents.navigation.controller import VehiclePIDController
 import numpy as np 
 import carla
 import time  
@@ -21,7 +21,7 @@ def main():
     [blueprint, world, map]= client.get_simulation()        
 
     points = map.get_spawn_points()                         # returns a list of recommendations 
-    start_waypoint = map.get_waypoint(points[0].location)         # return the waypoint of the spawn point 
+    start_waypoint = map.get_waypoint(points[0].location)   # return the waypoint of the spawn point 
     start_point = points[0]                                 # choose first point as spawn point
     
     #----create new ego vehicle----# 
@@ -55,41 +55,18 @@ def main():
     #        world.debug.draw_string(waypoint.transform.location, '{}'.format(waypoint.lane_change), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=150, persistent_lines=True)
     #        world.debug.draw_string(waypoint[1].transform.location, 'O', draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=150, persistent_lines=True)
     
-    custom_controller = VehiclePIDController(vehicle_actor, args_lateral = {'K_P': 1, 'K_D': 0, 'K_I': 0}, args_longitudinal = {'K_P': 1, 'K_D': 0, 'K_I': 0})
-    
-    waypoints = generate_random_trajectory(world, start_waypoint)
-    
-    i = 0
-    while True:
-        try:
-            control_signal = custom_controller.run_step(15, waypoints[i])
-            p1 = [waypoints[i].transform.location.x, waypoints[i].transform.location.y, waypoints[i].transform.location.z]
-            p2 = [vehicle_actor.get_location().x, vehicle_actor.get_location().y, vehicle_actor.get_location().z]
-            dist = np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2 + (p2[2] - p1[2])**2)
-            print('Distance from waypoint {}'.format(i), dist)
-            
-            if dist < 2:
-                i += 1
-            
-            if i == len(waypoints):
-                control_signal = custom_controller.run_step(0, waypoints[i - 1])
-                break
-
-            vehicle_actor.apply_control(control_signal)
-            world.tick()      
-        except KeyboardInterrupt:
-            break    
-    
+    waypoints = generate_random_trajectory(world, start_waypoint, number_of_waypoints = 5)
+    follow_random_trajectory(world, vehicle_actor, waypoints)
     '''
-    lidar = Lidar()                  # create a sensor 
+    lidar = Lidar()                                         # create a sensor 
     lidar.set_vehicle(vehicle_actor)                        # give the vehicle that the sensor will be attached to  
     lidar.set_rotation(0,0,0)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
     lidar.set_location(0,0,2)
     lidar.set_simulation(blueprint, world, map)
     lidar.set_sensor()
     
-    camera_rgb = CameraRGB()                 # create a sensor 
-    camera_rgb.set_vehicle(vehicle_actor)                        # give the vehicle that the sensor will be attached to  
+    camera_rgb = CameraRGB()                                 # create a sensor 
+    camera_rgb.set_vehicle(vehicle_actor)                    # give the vehicle that the sensor will be attached to  
     camera_rgb.set_rotation(0,0,0)
     camera_rgb.set_location(0,0,2)
     camera_rgb.set_simulation(blueprint, world, map)
