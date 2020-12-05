@@ -14,7 +14,7 @@ except IndexError:
 
 import carla  
 
-class EgoVehicle(object):
+class Vehicle(object):
     
     def __init__(self):    
         self.vehicle_model = None
@@ -26,30 +26,12 @@ class EgoVehicle(object):
         # set vehicle
         self.blueprint_library = bp
         self.world = world  
-        self.vehicle_model = self.blueprint_library.filter(model)[0]                 # get vehicle (tesla model3 from library)
-        self.vehicle_actor = self.world.spawn_actor(self.vehicle_model, self.start_point)  # spawn the vehicle to the first point    
+        self.vehicle_model = self.blueprint_library.filter(model)[0]                        # get vehicle (tesla model3 from library)
+        self.vehicle_actor = self.world.spawn_actor(self.vehicle_model, self.start_point)   # spawn the vehicle to the first point    
     
     def choose_spawn_point(self, point):
         # set the spawn point 
         self.start_point = point
-        '''
-        waypoints = self.map.generate_waypoints(1.0)
-        filtered_waypoints = []
-        for waypoint in waypoints:
-            if(waypoint.road_id == 1):
-                self.world.debug.draw_string(waypoint.transform.location, 'O', draw_shadow=False,
-                                   color=carla.Color(r=0, g=255, b=0), life_time=50,
-                                   persistent_lines=True)
-                filtered_waypoints.append(waypoint)
-        
-        self.start_point = filtered_waypoints[0].transform
-        self.start_point.location.z += 2
-
-        self.target_waypoint = filtered_waypoints[40]
-        self.world.debug.draw_string(self.target_waypoint.transform.location, 'O', draw_shadow=False,
-                           color=carla.Color(r=255, g=0, b=0), life_time=50,
-                           persistent_lines=True)
-        '''
 
     def wander(self):
         while True:

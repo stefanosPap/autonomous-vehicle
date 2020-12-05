@@ -1,1 +1,10 @@
 proxeiro.py
+*.xodr
+converter.py
+*.png
+*.avi
+*.mp4
+*.osm
+plot.py
+*.h5
+data.txt
