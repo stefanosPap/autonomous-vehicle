@@ -18,6 +18,7 @@ class Client(object):
         self.world = None
         self.map = None
         self.blueprint_library = None
+        self.created_actor_list = []
 
     def connect(self):  
         self.client = carla.Client('localhost', 2000)                # create a client 
@@ -30,5 +31,11 @@ class Client(object):
         self.settings.fixed_delta_seconds = 0.05
         self.world.apply_settings(self.settings)
 
+    def add_actor(self, actor):
+        self.created_actor_list.append(actor)
+    
     def get_simulation(self):
         return [self.blueprint_library, self.world, self.map]
+
+    def get_created_actors(self):
+        return self.created_actor_list

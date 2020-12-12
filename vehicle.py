@@ -37,7 +37,7 @@ class Vehicle(object):
         while True:
             try:
                 self.vehicle_actor.set_autopilot(True) 
-                self.set_spectator()
+                #self.set_spectator()
                 self.world.tick()                                          # infinite loop in order not to terminate the programm  
 
             except KeyboardInterrupt:

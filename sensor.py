@@ -89,6 +89,8 @@ class Lidar(Sensor):
         #print("lower_fov: ", self.blueprint_sensor.get_attribute('lower_fov'))
         #print("upper_fov: ", self.blueprint_sensor.get_attribute('upper_fov'))
         #print("timestamp: ", point_cloud.timestamp)
+        #print("channels: ", self.blueprint_sensor.get_attribute('channels'))
+
         pass 
     
     def read(self):
@@ -186,7 +188,7 @@ class ObstacleDetector(Sensor):
         super().__init__('sensor.other.obstacle')
 
     def obstacle_callback(self, obs):
-        #print("Obstacle Detector measure:\n"+str(obs)+'\n')
+        print("Obstacle Detector measure:\n"+str(obs)+'\n')
         pass
     def read(self):
         self.obstacle_detector = super().get_sensor()
