@@ -16,6 +16,7 @@ except IndexError:
     pass
 
 import carla
+import math
 execution_path = os.getcwd()
 
 
@@ -102,13 +103,51 @@ class Radar(Sensor):
         super().__init__('sensor.other.radar')
 
     def radar_callback(self, radar):
-        #print("Radar: ", radar.raw_data)
-        #print("timestamp: ", radar.timestamp)
+        points = np.frombuffer(radar.raw_data, dtype=np.dtype('f4'))
+        points = np.reshape(points, (len(radar), 4))
+
+        for detect in radar:
+            fw_vec = carla.Vector3D(x=detect.depth - 0.25)
+            self.world.debug.draw_point(radar.transform.location + fw_vec, size=0.075, life_time=0.06, persistent_lines=False, color=carla.Color(10, 11, 10))
+        
+        print("Radar: ", points)
+        print("timestamp: ", radar.timestamp)
+        print("Radar measure:\n"+str(radar)+'\n')
+    
+    def rad_callback(self, radar_data):
+        velocity_range = 7.5 # m/s
+        current_rot = radar_data.transform.rotation
+        for detect in radar_data:
+            azi = math.degrees(detect.azimuth)
+            alt = math.degrees(detect.altitude)
+            # The 0.25 adjusts a bit the distance so the dots can
+            # be properly seen
+            fw_vec = carla.Vector3D(x=detect.depth - 0.25)
+            carla.Transform(
+                carla.Location(),
+                carla.Rotation(
+                    pitch=current_rot.pitch + alt,
+                    yaw=current_rot.yaw + azi,
+                    roll=current_rot.roll)).transform(fw_vec)
+
+        def clamp(min_v, max_v, value):
+            return max(min_v, min(value, max_v))
+
+        norm_velocity = detect.velocity / velocity_range # range [-1, 1]
+        r = int(clamp(0.0, 1.0, 1.0 - norm_velocity) * 255.0)
+        g = int(clamp(0.0, 1.0, 1.0 - abs(norm_velocity)) * 255.0)
+        b = int(abs(clamp(- 1.0, 0.0, - 1.0 - norm_velocity)) * 255.0)
+        self.world.debug.draw_point(
+            radar_data.transform.location + fw_vec,
+            size=0.075,
+            life_time=0.06,
+            persistent_lines=False,
+            color=carla.Color(r, g, b))
         pass
 
     def read(self):
         self.radar = super().get_sensor()
-        self.radar.listen(lambda radar: self.radar_callback(radar))
+        self.radar.listen(lambda radar: self.rad_callback(radar))
 
 ###########################################
 #----------------Cameras----------------###
@@ -185,15 +224,26 @@ class IMU(Sensor):
 
 class ObstacleDetector(Sensor):
     def __init__(self):
+        self.front_obstacle = False
         super().__init__('sensor.other.obstacle')
 
     def obstacle_callback(self, obs):
-        print("Obstacle Detector measure:\n"+str(obs)+'\n')
-        pass
+        print("Obstacle Detector measure:\n"+str(obs.distance)+'\n')
+        if obs.distance < 5 and obs.distance != 0.0:
+            self.front_obstacle = True
+        else:
+            self.front_obstacle = False
+
     def read(self):
         self.obstacle_detector = super().get_sensor()
         self.obstacle_detector.listen(lambda obs: self.obstacle_callback(obs))
+    
+    def get_front_obstacle(self):
+        return self.front_obstacle
 
+    def set_front_obstacle(self, state):
+        self.front_obstacle = state
+        
 class LaneInvasionDetector(Sensor):
     def __init__(self):
         super().__init__('sensor.other.lane_invasion')
@@ -210,7 +260,7 @@ class CollisionDetector(Sensor):
         super().__init__('sensor.other.collision')
 
     def collision_callback(self, lane):
-        #print("Collision Detector measure:\n"+str(lane)+'\n')
+        print("Collision Detector measure:\n"+str(lane)+'\n')
         pass 
     def read(self):
         self.collision_detector = super().get_sensor()

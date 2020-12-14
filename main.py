@@ -67,8 +67,11 @@ def main():
     #        world.debug.draw_string(waypoint[1].transform.location, 'O', draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=150, persistent_lines=True)
     '''
     spawn_point = carla.Transform()
-    spawn_point.location = start_point.location + carla.Location(0,4,0)
-    
+    spawn_point.location = start_point.location + carla.Location(0,38,0)
+    spawn_point.rotation = start_point.rotation
+    vehicle2 = Vehicle()                                  
+    vehicle2.choose_spawn_point(spawn_point)                 # spawn the vehicle 
+    vehicle2.choose_model('model3', blueprint, world)
     
     pedestrian_actor = world.get_blueprint_library().filter('walker.pedestrian.0001')
     dist = spawn_point.location.distance(start_point.location)
@@ -79,7 +82,7 @@ def main():
     client.add_actor(vehicle_actor)
     client.add_actor(ped_actor)
     '''
-    waypoints = generate_random_trajectory(world, start_waypoint, map, number_of_waypoints = 30)
+    waypoints = generate_random_trajectory(world, start_waypoint, map, number_of_waypoints = 200)
     
     '''
     lidar = Lidar()                                             # create a lidar sensor 
@@ -117,37 +120,39 @@ def main():
     imu.set_location(0,0,0)
     imu.set_simulation(blueprint, world, map)
     imu.set_sensor()
-    
+    '''
     obs = ObstacleDetector()                                    # create an Obstacle detector sensor 
     obs.set_vehicle(vehicle_actor)                              # give the vehicle that the sensor will be attached to  
     obs.set_rotation(vehicle_transform.rotation.pitch, vehicle_transform.rotation.yaw, vehicle_transform.rotation.roll)
-    obs.set_location(0,0,0)
+    obs.set_location(X=2,Y=0,Z=1)
     obs.set_simulation(blueprint, world, map)
     obs.set_sensor()
 
-    
+    '''
     lane = LaneInvasionDetector()                               # create a Lane Invasion detector sensor 
     lane.set_vehicle(vehicle_actor)                             # give the vehicle that the sensor will be attached to  
     lane.set_rotation(0,0,0)
     lane.set_location(0,0,0)
     lane.set_simulation(blueprint, world, map)
     lane.set_sensor()
-
+    
     radar = Radar()                                             # create a sensor 
     radar.set_vehicle(vehicle_actor)                            # give the vehicle that the sensor will be attached to  
-    radar.set_rotation(0,0,0)
-    radar.set_location(0,0,0)
+    radar.set_rotation(pitch=5,yaw=0,roll=0)
+    radar.set_location(X=2,Y=0,Z=1)
     radar.set_simulation(blueprint, world, map)
-    radar.set_sensor()
-
-    camera_sem.read()                                           # read data  
-    radar.read()
+    radar.set_sensor(horizontal_fov=35, vertical_fov=20)
+    '''
+    
+    #camera_sem.read()                                           # read data  
+    #radar.read()
     obs.read()
-    imu.read()
-    gnss.read()
-    lidar.read()
-    camera_rgb.read()
-
+    #imu.read()
+    #gnss.read()
+    #lidar.read()
+    #camera_rgb.read()
+    
+    '''
     vehicle.add_sensor(lidar)                                   # add sensor to vehicle's configuration
     vehicle.add_sensor(camera_rgb)
     vehicle.add_sensor(camera_sem)
@@ -157,8 +162,8 @@ def main():
     vehicle.add_sensor(radar)
     '''
     #vehicle.wander()                                             # just wander in autopilot mode and collect data                     
-        
-    follow_random_trajectory(world, vehicle_actor, waypoints)
+    
+    follow_random_trajectory(world, vehicle_actor, waypoints, 15, obs.get_front_obstacle, obs.set_front_obstacle)
 
     for actor in client.get_created_actors():
         actor.destroy()
