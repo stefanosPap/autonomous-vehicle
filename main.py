@@ -41,7 +41,8 @@ def main():
     vehicle.choose_model('model3', blueprint, world)        # choose the model 
     vehicle_actor = vehicle.get_vehicle_actor()             # return actor object of the vehicle 
     vehicle_transform = vehicle.get_vehicle_transform()     # get vehicle's transform 
-    
+    client.add_actor(vehicle_actor)
+
     ####------plot axis------####
     origin = carla.Transform()                              # plot map's origin
     plot_axis(world, origin)
@@ -65,23 +66,34 @@ def main():
     #    else:
     #        world.debug.draw_string(waypoint.transform.location, '{}'.format(waypoint.lane_change), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=150, persistent_lines=True)
     #        world.debug.draw_string(waypoint[1].transform.location, 'O', draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=150, persistent_lines=True)
-    '''
+
     spawn_point = carla.Transform()
     spawn_point.location = start_point.location + carla.Location(0,38,0)
     spawn_point.rotation = start_point.rotation
     vehicle2 = Vehicle()                                  
     vehicle2.choose_spawn_point(spawn_point)                 # spawn the vehicle 
     vehicle2.choose_model('model3', blueprint, world)
+    vehicle_actor2 = vehicle2.get_vehicle_actor()
     
+    vc = carla.VehicleControl(throttle=1)
+    '''
+    for i in range(100):
+        print("tick")
+        vehicle_actor2.apply_control(vc)
+        world.tick()
+    vc = carla.VehicleControl(throttle=0, brake=1.0)
+    vehicle_actor2.apply_control(vc)
+
+    bb = vehicle_actor2.bounding_box
+    print(bb)
+    world.debug.draw_box(bb, bb.rotation, 0.1, carla.Color(255,0,0),100)
+    '''
     pedestrian_actor = world.get_blueprint_library().filter('walker.pedestrian.0001')
-    dist = spawn_point.location.distance(start_point.location)
-    print('Distance from waypoint {}'.format(dist))
-    ped_actor = carla.command.SpawnActor(pedestrian_actor[0], spawn_point)
+    #ped_actor = world.spawn_actor(pedestrian_actor[0], spawn_point)
     
     walker_controller_bp = world.get_blueprint_library().find('controller.ai.walker')
-    client.add_actor(vehicle_actor)
-    client.add_actor(ped_actor)
-    '''
+    #client.add_actor(ped_actor)
+    
     waypoints = generate_random_trajectory(world, start_waypoint, map, number_of_waypoints = 200)
     
     '''
@@ -162,7 +174,7 @@ def main():
     vehicle.add_sensor(radar)
     '''
     #vehicle.wander()                                             # just wander in autopilot mode and collect data                     
-    
+
     follow_random_trajectory(world, vehicle_actor, waypoints, 15, obs.get_front_obstacle, obs.set_front_obstacle)
 
     for actor in client.get_created_actors():

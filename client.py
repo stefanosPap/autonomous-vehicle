@@ -39,3 +39,9 @@ class Client(object):
 
     def get_created_actors(self):
         return self.created_actor_list
+
+    def get_maps(self):
+        return self.client.get_available_maps()
+
+    def set_map(self,map):
+        self.client.load_world(map)

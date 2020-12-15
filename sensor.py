@@ -228,7 +228,7 @@ class ObstacleDetector(Sensor):
         super().__init__('sensor.other.obstacle')
 
     def obstacle_callback(self, obs):
-        print("Obstacle Detector measure:\n"+str(obs.distance)+'\n')
+        print("Obstacle Detector measure:\n" + str(obs.distance) + '\n')
         if obs.distance < 5 and obs.distance != 0.0:
             self.front_obstacle = True
         else:
@@ -243,7 +243,7 @@ class ObstacleDetector(Sensor):
 
     def set_front_obstacle(self, state):
         self.front_obstacle = state
-        
+
 class LaneInvasionDetector(Sensor):
     def __init__(self):
         super().__init__('sensor.other.lane_invasion')

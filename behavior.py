@@ -5,7 +5,7 @@ from utilities import check_traffic_lights
 
 def follow_random_trajectory(world, vehicle_actor, waypoints, velocity, front_obstacle, set_front_obstacle):
     custom_controller = VehiclePIDController(vehicle_actor, args_lateral = {'K_P': 1, 'K_D': 0, 'K_I': 0}, args_longitudinal = {'K_P': 1, 'K_D': 0, 'K_I': 0})    
-    
+    print("start")
     i = 0
     while True:
         try:
@@ -19,15 +19,22 @@ def follow_random_trajectory(world, vehicle_actor, waypoints, velocity, front_ob
             p2 = carla.Location(vehicle_actor.get_location().x, vehicle_actor.get_location().y, vehicle_actor.get_location().z)
             dist = p1.distance(p2)
             
-            print('Distance from waypoint {}'.format(i), dist)
-            
+            #print('Distance from waypoint {}'.format(i), dist)
+            land = waypoints[i].get_landmarks(distance=3)
+            if len(land) != 0:
+                for j in range(len(land)):
+                    world.debug.draw_box(carla.BoundingBox(land[j].transform.location, carla.Vector3D(0.5,0.5,2)), land[j].transform.rotation, 0.05, carla.Color(255,0,0,0),100)
+                    print(land[j].name)
+
+
             traffic_light_state = check_traffic_lights(vehicle_actor)
-            print(front_obstacle())
             if traffic_light_state == "RED" or front_obstacle() == True:
                 set_front_obstacle(False)                                               # set False in order to check if obstacle detector has triggered again  
                 control_signal = custom_controller.run_step(0, waypoints[i])
             else:
                 control_signal = custom_controller.run_step(velocity, waypoints[i])
+
+  
             
             if dist < 2:
                 i += 1
