@@ -6,6 +6,7 @@ import carla
 from utilities import draw_vehicle_box
 from vehicle import Vehicle
 from client import Client
+
 client = Client()                                       
 client.connect()                                        # connect the client 
 [blueprint, world, map]= client.get_simulation()
@@ -15,14 +16,14 @@ for k in range(1,10,5):
         spawn_point = carla.Transform()
         spawn_point.location = start_point.location + carla.Location(k,38,0)
         spawn_point.rotation = start_point.rotation
-        vehicle2 = Vehicle()                                  
-        vehicle2.choose_spawn_point(spawn_point)                 # spawn the vehicle 
-        vehicle2.choose_model('model3', blueprint, world)
-        vehicle_actor2 = vehicle2.get_vehicle_actor()
+        vehicle = Vehicle()                                  
+        vehicle.choose_spawn_point(spawn_point)                 # spawn the vehicle 
+        vehicle.choose_model('model3', blueprint, world)
+        vehicle_actor = vehicle.get_vehicle_actor()
         for i in range(20):
             world.tick()
-        vehicle_actor2.set_autopilot(True) 
-        draw_vehicle_box(world, vehicle_actor2, spawn_point.location, spawn_point.rotation, 100)
+        vehicle_actor.set_autopilot(True) 
+        draw_vehicle_box(world, vehicle_actor, spawn_point.location, spawn_point.rotation, 100)
 
 while True:
     world.tick()

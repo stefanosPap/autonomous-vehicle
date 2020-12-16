@@ -2,7 +2,7 @@
 
 from vehicle import Vehicle
 from client import Client
-from utilities import plot_axis, draw_vehicle_box, configure_sensor
+from utilities import plot_axis, draw_vehicle_box, configure_sensor, save_waypoints, load_waypoints
 from trajectory import generate_random_trajectory
 from behavior import follow_random_trajectory
 #from agents.navigation.roaming_agent import RoamingAgent
@@ -22,9 +22,12 @@ try:
         'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
 except IndexError:
     pass
+
 def main():
 
-    ####-----create client----#### 
+    #################
+    # create client #
+    ################# 
     client = Client()                                       
     client.connect()                                        # connect the client 
     [blueprint, world, map]= client.get_simulation()        
@@ -32,8 +35,10 @@ def main():
     points = map.get_spawn_points()                         # returns a list of recommendations 
     start_waypoint = map.get_waypoint(points[0].location)   # return the waypoint of the spawn point 
     start_point = points[0]                                 # choose first point as spawn point
-    print(start_point)
-    ####----create new ego vehicle----####
+    
+    ##########################
+    # create new ego vehicle #
+    ##########################
     vehicle = Vehicle()                                  
     vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
     vehicle.choose_model('model3', blueprint, world)        # choose the model 
@@ -41,7 +46,6 @@ def main():
     vehicle_transform = vehicle.get_vehicle_transform()     # get vehicle's transform 
     client.add_actor(vehicle_actor)
 
-    ####------plot axis------####
     origin = carla.Transform()                              # plot map's origin
     plot_axis(world, origin)
 
@@ -55,24 +59,17 @@ def main():
 
     #waypoints = map.get_topology()
     #waypoints = map.generate_waypoints(3.0)
-    #fileData = open("data.txt", 'w')
-    #for i in waypoints:
-    #    fileData.write(str(i[0].transform.location.x) + "  " + str(i[0].transform.location.y) + "  " + str(i[0].transform.location.z) + "    " + str(i[1].transform.location.x) + "  " + str(i[1].transform.location.y) + "  " + str(i[1].transform.location.z) + "\n")    
-    #for waypoint in waypoints:
-    #    if waypoint.lane_id > 0:
-    #        world.debug.draw_string(waypoint.transform.location, '{}'.format(waypoint.lane_change), draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=150, persistent_lines=True)
-    #    else:
-    #        world.debug.draw_string(waypoint.transform.location, '{}'.format(waypoint.lane_change), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=150, persistent_lines=True)
-    #        world.debug.draw_string(waypoint[1].transform.location, 'O', draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=150, persistent_lines=True)
 
     #pedestrian_actor = world.get_blueprint_library().filter('walker.pedestrian.0001')
     #ped_actor = world.spawn_actor(pedestrian_actor[0], spawn_point)
-    
     #walker_controller_bp = world.get_blueprint_library().find('controller.ai.walker')
     #client.add_actor(ped_actor)
     
     # generate random trajectory for the vehicle 
     waypoints = generate_random_trajectory(world, start_waypoint, map, number_of_waypoints = 200)
+    
+    #save_waypoints(waypoints)
+    #waypoints = load_waypoints(world, map)
     
     # configure sensors 
     sensors = configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, "ObstacleDetector", "Lidar")
@@ -86,6 +83,9 @@ def main():
     # follow the random trajectory and stop to obstacles and traffic lights 
     follow_random_trajectory(world, vehicle_actor, waypoints, 15, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, start_point)
 
+    ###########################
+    # Destroy actors and exit #
+    ###########################
     for actor in client.get_created_actors():
         actor.destroy()
     print('done.')

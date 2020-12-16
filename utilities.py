@@ -1,6 +1,9 @@
 import carla 
 from sensor import Sensor, Lidar, CameraRGB, GNSS, IMU, ObstacleDetector, LaneInvasionDetector, Radar, CameraSemantic
 
+###############################################
+#     Function for ploting axis               #
+###############################################
 def plot_axis(world, origin):
     length = 20
 
@@ -12,33 +15,18 @@ def plot_axis(world, origin):
     world.debug.draw_string(origin.location + carla.Location(0, length + 1, 0), 'Y', draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=100, persistent_lines=True)
     world.debug.draw_string(origin.location + carla.Location(0, 0, length + 1), 'Z', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=100, persistent_lines=True)
 
-
-def check_traffic_lights(vehicle_actor):
-    traffic_state = "GREEN"
-    if vehicle_actor.is_at_traffic_light():
-        traffic_light = vehicle_actor.get_traffic_light()
-        
-        if traffic_light != None:
-            if traffic_light.get_state() == carla.TrafficLightState.Red:
-                print("Red")
-                traffic_state = "RED"
-
-            elif traffic_light.get_state() == carla.TrafficLightState.Yellow:
-                print("Yellow")
-                traffic_state = "YELLOW"
-
-            elif traffic_light.get_state() == carla.TrafficLightState.Green:
-                print("Green")
-                traffic_state = "GREEN"
-    
-    return traffic_state
-
+###################################################
+# Function for drawing bounding boxes to vehicles #
+###################################################
 def draw_vehicle_box(world, vehicle_actor, location, rotation, life_time):
 
     bb = vehicle_actor.bounding_box
     bbox = carla.BoundingBox(location, bb.extent)
     world.debug.draw_box(bbox, rotation, 0.1, carla.Color(255,0,0), life_time)
 
+########################################
+# Function for configuring the sensors #
+########################################
 def configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, *args):
     sensors = {}
     for sensor in args:
@@ -123,3 +111,32 @@ def configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, *a
             sensors['camera_rgb'] = camera_rgb    
 
     return sensors
+
+###############################################
+# Function for saving the waypoints in a file #
+###############################################
+def save_waypoints(waypoints):
+    fileData = open("data.txt", 'w')
+    for waypoint in waypoints:
+        fileData.write(str(waypoint.transform.location.x) + "  " + str(waypoint.transform.location.y) + "  " + str(waypoint.transform.location.z) + "\n")    
+    fileData.close() 
+
+##################################################
+# Function for loadind the waypoints from a file #
+##################################################
+def load_waypoints(world, map): 
+    
+    fileData = open("data.txt", 'r')
+    Lines = fileData.readlines() 
+    waypoints = []
+    i = 0
+    for line in Lines: 
+        coordinates = line.split()
+        location = carla.Location(float(coordinates[0]), float(coordinates[1]), float(coordinates[2]))
+        waypoint = map.get_waypoint(location)
+        waypoints.append(waypoint)
+        world.debug.draw_string(waypoint.transform.location, '{}'.format(i), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+        i += 1
+
+    return waypoints
+
