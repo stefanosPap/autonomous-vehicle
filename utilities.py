@@ -31,3 +31,10 @@ def check_traffic_lights(vehicle_actor):
                 traffic_state = "GREEN"
     
     return traffic_state
+
+def draw_vehicle_box(world, vehicle_actor, location, rotation, life_time):
+
+    bb = vehicle_actor.bounding_box
+    bbox = carla.BoundingBox(location, bb.extent)
+    world.debug.draw_box(bbox, rotation, 0.1, carla.Color(255,0,0), life_time)
+

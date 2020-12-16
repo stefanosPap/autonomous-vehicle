@@ -3,7 +3,7 @@
 from vehicle import Vehicle
 from sensor import Sensor, Lidar, CameraRGB, GNSS, IMU, ObstacleDetector, LaneInvasionDetector, Radar, CameraSemantic
 from client import Client
-from utilities import plot_axis
+from utilities import plot_axis, draw_vehicle_box
 from trajectory import generate_random_trajectory
 from behavior import follow_random_trajectory
 #from agents.navigation.roaming_agent import RoamingAgent
@@ -66,28 +66,17 @@ def main():
     #    else:
     #        world.debug.draw_string(waypoint.transform.location, '{}'.format(waypoint.lane_change), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=150, persistent_lines=True)
     #        world.debug.draw_string(waypoint[1].transform.location, 'O', draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=150, persistent_lines=True)
+    for k in range(1,10,5):
+        spawn_point = carla.Transform()
+        spawn_point.location = start_point.location + carla.Location(k,38,0)
+        spawn_point.rotation = start_point.rotation
+        vehicle2 = Vehicle()                                  
+        vehicle2.choose_spawn_point(spawn_point)                 # spawn the vehicle 
+        vehicle2.choose_model('model3', blueprint, world)
+        vehicle_actor2 = vehicle2.get_vehicle_actor()
 
-    spawn_point = carla.Transform()
-    spawn_point.location = start_point.location + carla.Location(0,38,0)
-    spawn_point.rotation = start_point.rotation
-    vehicle2 = Vehicle()                                  
-    vehicle2.choose_spawn_point(spawn_point)                 # spawn the vehicle 
-    vehicle2.choose_model('model3', blueprint, world)
-    vehicle_actor2 = vehicle2.get_vehicle_actor()
-    
-    vc = carla.VehicleControl(throttle=1)
-    '''
-    for i in range(100):
-        print("tick")
-        vehicle_actor2.apply_control(vc)
-        world.tick()
-    vc = carla.VehicleControl(throttle=0, brake=1.0)
-    vehicle_actor2.apply_control(vc)
+        draw_vehicle_box(world, vehicle_actor, spawn_point.location, spawn_point.rotation, 100)
 
-    bb = vehicle_actor2.bounding_box
-    print(bb)
-    world.debug.draw_box(bb, bb.rotation, 0.1, carla.Color(255,0,0),100)
-    '''
     pedestrian_actor = world.get_blueprint_library().filter('walker.pedestrian.0001')
     #ped_actor = world.spawn_actor(pedestrian_actor[0], spawn_point)
     
@@ -138,7 +127,7 @@ def main():
     obs.set_rotation(vehicle_transform.rotation.pitch, vehicle_transform.rotation.yaw, vehicle_transform.rotation.roll)
     obs.set_location(X=2,Y=0,Z=1)
     obs.set_simulation(blueprint, world, map)
-    obs.set_sensor()
+    obs.set_sensor(hit_radius=10)
 
     '''
     lane = LaneInvasionDetector()                               # create a Lane Invasion detector sensor 
@@ -175,7 +164,7 @@ def main():
     '''
     #vehicle.wander()                                             # just wander in autopilot mode and collect data                     
 
-    follow_random_trajectory(world, vehicle_actor, waypoints, 15, obs.get_front_obstacle, obs.set_front_obstacle)
+    follow_random_trajectory(world, vehicle_actor, waypoints, 15, obs.get_front_obstacle, obs.set_front_obstacle, start_point)
 
     for actor in client.get_created_actors():
         actor.destroy()

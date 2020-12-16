@@ -1,12 +1,15 @@
 import carla
 import numpy as np
 from agents.navigation.controller import VehiclePIDController
-from utilities import check_traffic_lights
+from utilities import check_traffic_lights, draw_vehicle_box
 
-def follow_random_trajectory(world, vehicle_actor, waypoints, velocity, front_obstacle, set_front_obstacle):
+def follow_random_trajectory(world, vehicle_actor, waypoints, velocity, front_obstacle, set_front_obstacle, start_point):
     custom_controller = VehiclePIDController(vehicle_actor, args_lateral = {'K_P': 1, 'K_D': 0, 'K_I': 0}, args_longitudinal = {'K_P': 1, 'K_D': 0, 'K_I': 0})    
     print("start")
     i = 0
+    bb = vehicle_actor.bounding_box
+    bbox = carla.BoundingBox(start_point.location, bb.extent)
+    world.debug.draw_box(bbox, start_point.rotation, 0.1, carla.Color(255,0,0),1)
     while True:
         try:
             
@@ -25,6 +28,8 @@ def follow_random_trajectory(world, vehicle_actor, waypoints, velocity, front_ob
                 for j in range(len(land)):
                     world.debug.draw_box(carla.BoundingBox(land[j].transform.location, carla.Vector3D(0.5,0.5,2)), land[j].transform.rotation, 0.05, carla.Color(255,0,0,0),100)
                     print(land[j].name)
+            
+            draw_vehicle_box(world, vehicle_actor, vehicle_actor.get_transform().location, vehicle_actor.get_transform().rotation, 0.05)
 
 
             traffic_light_state = check_traffic_lights(vehicle_actor)
