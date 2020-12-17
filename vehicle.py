@@ -55,6 +55,8 @@ class Vehicle(object):
     def set_spectator(self): 
         spectator = self.world.get_spectator()                              # set a spectator      
         transform = self.get_vehicle_transform()                            # get the coordinates of the car in order to attach the vehicle  
-        transform.location.z += 2                                           # increase z by 2 in order to place it on top of the car ??? This maybe should change ???
-        transform.location.y -= 6 
-        spectator.set_transform(transform) 
+        transform.location.z += 50                                           # increase z by 2 in order to place it on top of the car ??? This maybe should change ???
+        transform.rotation.roll = 0         
+        transform.rotation.pitch = -90
+        transform.rotation.yaw = 180
+        spectator.set_transform(transform)

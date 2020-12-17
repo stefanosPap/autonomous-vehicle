@@ -15,7 +15,7 @@ def generate_random_trajectory(world, start_waypoint, map, number_of_waypoints):
         w = map.get_waypoint(location)
         world.debug.draw_string(w.transform.location, '{}'.format(i), draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=1000, persistent_lines=True)
         '''
-        world.debug.draw_string(rand.transform.location, '{}'.format(i), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+        #world.debug.draw_string(rand.transform.location, '{}'.format(i), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
         waypoints.append(rand)
         next_w = rand.next(5.0)
     

@@ -3,13 +3,19 @@ import numpy as np
 from agents.navigation.controller import VehiclePIDController
 from utilities import draw_vehicle_box
 from traffic import Traffic
-def follow_random_trajectory(world, vehicle_actor, waypoints, velocity, front_obstacle, set_front_obstacle, start_point):
+
+
+def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, velocity, front_obstacle, set_front_obstacle):
+    
     custom_controller = VehiclePIDController(vehicle_actor, args_lateral = {'K_P': 1, 'K_D': 0, 'K_I': 0}, args_longitudinal = {'K_P': 1, 'K_D': 0, 'K_I': 0})    
+    
     print("Running...")
+    
     i = 0
+    
     while True:
         try:
-            
+            #spectator()
             '''
             p1 = [waypoints[i].transform.location.x, waypoints[i].transform.location.y, waypoints[i].transform.location.z]
             p2 = [vehicle_actor.get_location().x, vehicle_actor.get_location().y, vehicle_actor.get_location().z]
@@ -27,6 +33,13 @@ def follow_random_trajectory(world, vehicle_actor, waypoints, velocity, front_ob
             traffic = Traffic(world)
             traffic_sign = traffic.check_signs(waypoints[i])
             traffic_light_state = traffic.check_traffic_lights(vehicle_actor)
+
+            left = waypoints[i].get_left_lane()
+            right = waypoints[i].get_right_lane()
+            if left != None:
+                world.debug.draw_string(left.transform.location, '{}'.format(0), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+            if right != None:
+                world.debug.draw_string(right.transform.location, '{}'.format(1), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
             
             if traffic_light_state == "RED" or front_obstacle() == True:
                 set_front_obstacle(False)                                               # set False in order to check if obstacle detector has triggered again  

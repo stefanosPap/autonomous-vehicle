@@ -44,6 +44,7 @@ def main():
     vehicle.choose_model('model3', blueprint, world)        # choose the model 
     vehicle_actor = vehicle.get_vehicle_actor()             # return actor object of the vehicle 
     vehicle_transform = vehicle.get_vehicle_transform()     # get vehicle's transform 
+    vehicle.set_spectator()
     client.add_actor(vehicle_actor)
 
     origin = carla.Transform()                              # plot map's origin
@@ -57,8 +58,15 @@ def main():
     #agent.set_destination([-6.446170, -50.055023, 0.275307])
     #world.debug.draw_string( carla.Location(-6.446170, -50.055023, 0.275307), 'O', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=100, persistent_lines=True)
 
-    #waypoints = map.get_topology()
-    #waypoints = map.generate_waypoints(3.0)
+    waypoints = map.get_topology()
+    print(waypoints)
+    #waypoints_map = map.generate_waypoints(3.0)
+    for waypoint in waypoints:
+    #    if waypoint.lane_id > 0:
+        world.debug.draw_string(waypoint[0].transform.location, 's', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+    #    else:
+        world.debug.draw_string(waypoint[1].transform.location, 'e', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
+
 
     #pedestrian_actor = world.get_blueprint_library().filter('walker.pedestrian.0001')
     #ped_actor = world.spawn_actor(pedestrian_actor[0], spawn_point)
@@ -68,7 +76,7 @@ def main():
     # generate random trajectory for the vehicle 
     waypoints = generate_random_trajectory(world, start_waypoint, map, number_of_waypoints = 200)
     
-    #save_waypoints(waypoints)
+    save_waypoints(waypoints)
     #waypoints = load_waypoints(world, map)
     
     # configure sensors 
@@ -81,7 +89,7 @@ def main():
     #vehicle.wander()                                                                  
 
     # follow the random trajectory and stop to obstacles and traffic lights 
-    follow_random_trajectory(world, vehicle_actor, waypoints, 15, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, start_point)
+    follow_random_trajectory(world, vehicle_actor, vehicle.set_spectator, waypoints, 15, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle)
 
     ###########################
     # Destroy actors and exit #
