@@ -5,6 +5,7 @@ from client import Client
 from utilities import plot_axis, draw_vehicle_box, configure_sensor, save_waypoints, load_waypoints
 from trajectory import generate_random_trajectory
 from behavior import follow_random_trajectory
+from comm_vehicle_sub import VehicleSubscriberMQTT
 #from agents.navigation.roaming_agent import RoamingAgent
 #from agents.navigation.behavior_agent import BehaviorAgent
 #from agents.navigation.basic_agent import BasicAgent 
@@ -59,13 +60,13 @@ def main():
     #world.debug.draw_string( carla.Location(-6.446170, -50.055023, 0.275307), 'O', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=100, persistent_lines=True)
 
     waypoints = map.get_topology()
-    print(waypoints)
+    #print(waypoints)
     #waypoints_map = map.generate_waypoints(3.0)
-    for waypoint in waypoints:
+    #for waypoint in waypoints:
     #    if waypoint.lane_id > 0:
-        world.debug.draw_string(waypoint[0].transform.location, 's', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+        #world.debug.draw_string(waypoint[0].transform.location, 's', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
     #    else:
-        world.debug.draw_string(waypoint[1].transform.location, 'e', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
+        #world.debug.draw_string(waypoint[1].transform.location, 'e', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
 
 
     #pedestrian_actor = world.get_blueprint_library().filter('walker.pedestrian.0001')
@@ -87,8 +88,16 @@ def main():
     
     # just wander in autopilot mode and collect data
     #vehicle.wander()                                                                  
+ 
+    # wait until start button is pushed     
+    sub = VehicleSubscriberMQTT(topic='start_stop_topic')
+    while True:
+        world.tick()
+        start = sub.get_start()
+        if start == True:
+            break 
 
-    # follow the random trajectory and stop to obstacles and traffic lights 
+    # follow the random trajectory and stop to obstacles and traffic lights
     follow_random_trajectory(world, vehicle_actor, vehicle.set_spectator, waypoints, 15, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle)
 
     ###########################

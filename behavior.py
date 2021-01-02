@@ -3,6 +3,7 @@ import numpy as np
 from agents.navigation.controller import VehiclePIDController
 from utilities import draw_vehicle_box
 from traffic import Traffic
+from comm_vehicle_sub import VehicleSubscriberMQTT
 
 
 def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, velocity, front_obstacle, set_front_obstacle):
@@ -12,7 +13,9 @@ def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, velocit
     print("Running...")
     
     i = 0
-    
+    sub = VehicleSubscriberMQTT(topic='start_stop_topic')
+    sub.set_start("True")
+
     while True:
         try:
             #spectator()
@@ -54,9 +57,21 @@ def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, velocit
                 control_signal = custom_controller.run_step(0, waypoints[i - 1])
                 break
 
+            # check if stop button have pressed 
+            stop = sub.get_stop()
+            if stop == True: 
+                control_signal = custom_controller.run_step(0, waypoints[i])
+
+            # check if start button have pressed 
+            start = sub.get_start()
+            if start == True:
+                control_signal = custom_controller.run_step(velocity, waypoints[i])
+
             vehicle_actor.apply_control(control_signal)
             world.tick()      
 
+            
+        
         except KeyboardInterrupt:
             break    
     

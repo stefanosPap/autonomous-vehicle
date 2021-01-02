@@ -2,7 +2,6 @@
 import glob
 import os 
 import sys
-from agents.navigation.controller import VehiclePIDController
 
 try:
     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (

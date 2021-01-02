@@ -3,7 +3,6 @@ import glob
 import os 
 import sys 
 import time
-import cv2
 import numpy as np   
 #from imageai.Detection import ObjectDetection
 
