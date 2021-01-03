@@ -5,7 +5,7 @@ from client import Client
 from utilities import plot_axis, draw_vehicle_box, configure_sensor, save_waypoints, load_waypoints
 from trajectory import generate_random_trajectory
 from behavior import follow_random_trajectory
-from comm_vehicle_sub import VehicleSubscriberMQTT
+from comm_vehicle_sub import VehicleSubscriberStartStopMQTT
 #from agents.navigation.roaming_agent import RoamingAgent
 #from agents.navigation.behavior_agent import BehaviorAgent
 #from agents.navigation.basic_agent import BasicAgent 
@@ -90,7 +90,7 @@ def main():
     #vehicle.wander()                                                                  
  
     # wait until start button is pushed     
-    sub = VehicleSubscriberMQTT(topic='start_stop_topic')
+    sub = VehicleSubscriberStartStopMQTT(topic='start_stop_topic')
     while True:
         world.tick()
         start = sub.get_start()
@@ -98,7 +98,7 @@ def main():
             break 
 
     # follow the random trajectory and stop to obstacles and traffic lights
-    follow_random_trajectory(world, vehicle_actor, vehicle.set_spectator, waypoints, 15, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle)
+    follow_random_trajectory(world, vehicle_actor, vehicle.set_spectator, waypoints, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle)
 
     ###########################
     # Destroy actors and exit #

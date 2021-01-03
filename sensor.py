@@ -165,14 +165,6 @@ class CameraRGB(Sensor):
         #detections = self.detector.detectObjectsFromImage(input_image='/home/stefanos/Desktop/dataCameraRGB/%.6d.jpg' % image.frame, output_image_path=os.path.join(execution_path , '%.6d.jpg' % image.frame))
         pass
 
-    def process_img(self, image):
-        i = np.array(image.raw_data)
-        i2 = i.reshape((800, 600, 4))
-        i3 = i2[:, :, :3]
-        cv2.imshow("", i3)
-        cv2.waitKey(0)
-        
-
     def read(self):
         self.camera = super().get_sensor()
         self.camera.listen(lambda image: self.image_callback(image))
