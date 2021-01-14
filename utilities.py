@@ -1,5 +1,23 @@
-import carla 
+import carla
+import numpy as np  
 from sensor import Sensor, Lidar, CameraRGB, GNSS, IMU, ObstacleDetector, LaneInvasionDetector, Radar, CameraSemantic
+
+########################################################
+# Function for rotating through bounding box's center  #
+########################################################
+def rotate(bb, degrees, location):
+    theta = np.radians(degrees)
+    c, s = np.cos(theta), np.sin(theta)
+    R = np.array(((c, -s , 0), (s, c, 0), (0, 0, 1)))
+
+    point = location 
+    point = point - carla.Location(bb.location.x, bb.location.y, bb.location.z)
+
+    point =  np.matmul(R, np.array([point.x, point.y, point.z]))
+
+    point = carla.Location(point[0], point[1], point[2])
+    point = point + carla.Location(bb.location.x, bb.location.y, bb.location.z)
+    return point 
 
 ###############################################
 #     Function for ploting axis               #
@@ -23,7 +41,7 @@ def draw_vehicle_box(world, vehicle_actor, location, rotation, life_time):
     bb = vehicle_actor.bounding_box
     bbox = carla.BoundingBox(location, bb.extent)
     world.debug.draw_box(bbox, rotation, 0.1, carla.Color(255,0,0), life_time)
-
+    return bbox
 ########################################
 # Function for configuring the sensors #
 ########################################
@@ -66,7 +84,7 @@ def configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, *a
             obs.set_rotation(vehicle_transform.rotation.pitch, vehicle_transform.rotation.yaw, vehicle_transform.rotation.roll)
             obs.set_location(X=2,Y=0,Z=1)
             obs.set_simulation(blueprint, world, map)
-            obs.set_sensor(hit_radius=10)
+            obs.set_sensor(distance=5)
             obs.read()
             sensors['obs'] = obs            
 
