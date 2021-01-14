@@ -15,7 +15,6 @@ class VehicleSubscriberStartStopMQTT():
     def __init__(self, topic):
         self.start = False 
         self.stop = False
-        self.general = False 
         self.topic = topic  
         self.subscribe()
 

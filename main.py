@@ -5,7 +5,8 @@ from client import Client
 from utilities import plot_axis, draw_vehicle_box, configure_sensor, save_waypoints, load_waypoints
 from trajectory import generate_random_trajectory
 from behavior import follow_random_trajectory
-from comm_vehicle_sub import VehicleSubscriberStartStopMQTT
+from communicationMQTT import VehicleSubscriberStartStopMQTT
+from vehicle_move import spawn
 #from agents.navigation.roaming_agent import RoamingAgent
 #from agents.navigation.behavior_agent import BehaviorAgent
 #from agents.navigation.basic_agent import BasicAgent 
@@ -58,7 +59,7 @@ def main():
     #agent = BasicAgent(vehicle_actor)
     #agent.set_destination([-6.446170, -50.055023, 0.275307])
     #world.debug.draw_string( carla.Location(-6.446170, -50.055023, 0.275307), 'O', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=100, persistent_lines=True)
-
+    spawn()
     waypoints = map.get_topology()
     #print(waypoints)
     #waypoints_map = map.generate_waypoints(3.0)

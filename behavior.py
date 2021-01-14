@@ -3,7 +3,7 @@ import numpy as np
 from agents.navigation.controller import VehiclePIDController
 from utilities import draw_vehicle_box
 from traffic import Traffic
-from comm_vehicle_sub import VehicleSubscriberStartStopMQTT, VehiclePublisherMQTT, VehicleSubscriberVelocityMQTT
+from communicationMQTT import VehicleSubscriberStartStopMQTT, VehiclePublisherMQTT, VehicleSubscriberVelocityMQTT
 
 
 def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, front_obstacle, set_front_obstacle):
@@ -53,7 +53,7 @@ def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, front_o
                 world.debug.draw_string(left.transform.location, '{}'.format(0), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
             if right != None:
                 world.debug.draw_string(right.transform.location, '{}'.format(1), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
-
+            
             # check for red lights, front obstacles and stop button 
             if traffic_light_state == "RED" or front_obstacle() == True or stop == True:
                 set_front_obstacle(False)                                               # set False in order to check if obstacle detector has triggered again  
