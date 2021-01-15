@@ -19,6 +19,9 @@ def rotate(bb, degrees, location):
     point = point + carla.Location(bb.location.x, bb.location.y, bb.location.z)
     return point 
 
+########################################################
+# Function for scaling through bounding box's center   #
+########################################################
 def scale(bb, valueX, valueY, location):
     point = location 
     point = point - carla.Location(bb.location.x, bb.location.y, bb.location.z)
@@ -26,6 +29,96 @@ def scale(bb, valueX, valueY, location):
     point = carla.Location(point.x * valueX, point.y * valueY, point.z)
     point = point + carla.Location(bb.location.x, bb.location.y, bb.location.z)
     return point
+
+########################################################
+#      Function for finding expanded bounding box     #
+########################################################
+def expanded_bounding(world, bb, pointA, pointB, pointC, pointD):
+    rate = 2
+    a = [pointA.x, pointA.y]
+    b = [pointB.x, pointB.y]
+    points = np.linspace(a,b, num=10)
+    for i in range(len(points)):
+        point = carla.Location(points[i][0],points[i][1],0)
+        point = scale(bb=bb, valueX=rate, valueY=rate, location=point)
+        world.debug.draw_string(point, 'X', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=100, persistent_lines=True)
+        
+    a = [pointA.x, pointA.y]
+    d = [pointD.x, pointD.y]
+    points = np.linspace(a,d, num=10)
+    for i in range(len(points)):
+        point = carla.Location(points[i][0],points[i][1],0)
+        point = scale(bb=bb, valueX=rate, valueY=rate, location=point)
+        world.debug.draw_string(point, 'X', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=100, persistent_lines=True)
+        
+    c = [pointC.x, pointC.y]
+    d = [pointD.x, pointD.y]
+    points = np.linspace(c,d, num=10)
+    for i in range(len(points)):
+        point = carla.Location(points[i][0],points[i][1],0)
+        point = scale(bb=bb, valueX=rate, valueY=rate, location=point)
+        world.debug.draw_string(point, 'X', draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=100, persistent_lines=True)
+        
+    c = [pointC.x, pointC.y]
+    b = [pointB.x, pointB.y]
+    points = np.linspace(c,b, num=10)
+    for i in range(len(points)):
+        point = carla.Location(points[i][0],points[i][1],0)
+        point = scale(bb=bb, valueX=rate, valueY=rate, location=point)
+        world.debug.draw_string(point, 'X', draw_shadow=False, color=carla.Color(r=255, g=255, b=0), life_time=100, persistent_lines=True)
+
+########################################################
+#      Function for finding rectangle bounding box     #
+########################################################
+def rectangle_bounding(world, x_values, y_values):
+        minValueX = min(x_values)
+        minIndexX = x_values.index(minValueX)
+        
+        minValueY = min(y_values)
+        minIndexY = y_values.index(minValueY)
+
+        maxValueX = max(x_values)
+        maxIndexX = x_values.index(maxValueX)
+
+        maxValueY = max(y_values)
+        maxIndexY = y_values.index(maxValueY)
+
+        x = minValueX
+        while x < maxValueX:
+            point = carla.Location(x,minValueY,0)
+            world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=100, persistent_lines=True)
+            x = x + 0.5
+            if x > maxValueX:
+                point = carla.Location(maxValueX,minValueY,0)
+                world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=100, persistent_lines=True)
+
+        x = minValueX
+        while x < maxValueX:
+            point = carla.Location(x,maxValueY,0)
+            world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=100, persistent_lines=True)
+            x = x + 0.5
+            if x > maxValueX:
+                point = carla.Location(maxValueX,maxValueY,0)
+                world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=100, persistent_lines=True)
+
+        y = minValueY
+        while y < maxValueY:
+            point = carla.Location(minValueX,y,0)
+            world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=100, persistent_lines=True)
+            y = y + 0.5
+            if y > maxValueY:
+                point = carla.Location(minValueX,maxValueY,0)
+                world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=100, persistent_lines=True)
+
+        y = minValueY
+        while y < maxValueY:
+            point = carla.Location(maxValueX,y,0)
+            world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=255, g=0, b=255), life_time=100, persistent_lines=True)
+            y = y + 0.5
+            if y > maxValueY:
+                point = carla.Location(maxValueX,maxValueY,0)
+                world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=255, g=0, b=255), life_time=100, persistent_lines=True)
+         
 ###############################################
 #     Function for ploting axis               #
 ###############################################
