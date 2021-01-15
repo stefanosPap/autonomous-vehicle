@@ -9,7 +9,7 @@ def generate_random_trajectory(world, start_waypoint, map, number_of_waypoints):
     
     for i in range(1, number_of_waypoints):
         rand = random.choice(next_w)
-        if i > 5 and i < 12:
+        if i > 5 and i < 10:
             # random custom waypoints 
             location = carla.Location(rand.transform.location.x + 2, rand.transform.location.y, rand.transform.location.z)
             w = map.get_waypoint(location)

@@ -46,7 +46,7 @@ def main():
     vehicle.choose_model('model3', blueprint, world)        # choose the model 
     vehicle_actor = vehicle.get_vehicle_actor()             # return actor object of the vehicle 
     vehicle_transform = vehicle.get_vehicle_transform()     # get vehicle's transform 
-    vehicle.set_spectator()
+    #vehicle.set_spectator()
     client.add_actor(vehicle_actor)
 
     origin = carla.Transform()                              # plot map's origin

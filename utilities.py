@@ -19,6 +19,13 @@ def rotate(bb, degrees, location):
     point = point + carla.Location(bb.location.x, bb.location.y, bb.location.z)
     return point 
 
+def scale(bb, valueX, valueY, location):
+    point = location 
+    point = point - carla.Location(bb.location.x, bb.location.y, bb.location.z)
+
+    point = carla.Location(point.x * valueX, point.y * valueY, point.z)
+    point = point + carla.Location(bb.location.x, bb.location.y, bb.location.z)
+    return point
 ###############################################
 #     Function for ploting axis               #
 ###############################################
