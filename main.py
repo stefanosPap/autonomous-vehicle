@@ -3,7 +3,7 @@
 from vehicle import Vehicle
 from client import Client
 from utilities import plot_axis, draw_vehicle_box, configure_sensor, save_waypoints, load_waypoints
-from trajectory import generate_random_trajectory
+from trajectory import Trajectory
 from behavior import follow_random_trajectory
 from communicationMQTT import VehicleSubscriberStartStopMQTT
 from vehicle_move import spawn
@@ -35,9 +35,9 @@ def main():
     [blueprint, world, map]= client.get_simulation()        
     
     points = map.get_spawn_points()                         # returns a list of recommendations 
-    start_waypoint = map.get_waypoint(points[0].location)   # return the waypoint of the spawn point 
     start_point = points[0]                                 # choose first point as spawn point
-    
+    start_waypoint = map.get_waypoint(start_point.location)   # return the waypoint of the spawn point 
+
     ##########################
     # create new ego vehicle #
     ##########################
@@ -59,7 +59,8 @@ def main():
     #agent = BasicAgent(vehicle_actor)
     #agent.set_destination([-6.446170, -50.055023, 0.275307])
     #world.debug.draw_string( carla.Location(-6.446170, -50.055023, 0.275307), 'O', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=100, persistent_lines=True)
-    spawn()
+    
+    #spawn()
     waypoints = map.get_topology()
     #print(waypoints)
     #waypoints_map = map.generate_waypoints(3.0)
@@ -76,13 +77,14 @@ def main():
     #client.add_actor(ped_actor)
     
     # generate random trajectory for the vehicle 
-    waypoints = generate_random_trajectory(world, start_waypoint, map, number_of_waypoints = 200)
-    
+    trajectory = Trajectory(world, map)
+    waypoints = trajectory.generate_random_trajectory(start_waypoint, number_of_waypoints = 100)
+
     save_waypoints(waypoints)
     #waypoints = load_waypoints(world, map)
     
     # configure sensors 
-    sensors = configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, "ObstacleDetector", "Lidar")
+    sensors = configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, "ObstacleDetector")
     
     # add sensor to vehicle's configuration
     vehicle.add_sensor(sensors['obs'])                            
@@ -98,8 +100,8 @@ def main():
         if start == True:
             break 
 
-    # follow the random trajectory and stop to obstacles and traffic lights
-    follow_random_trajectory(world, vehicle_actor, vehicle.set_spectator, waypoints, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle)
+    # follow random trajectory and stop to obstacles and traffic lights
+    follow_random_trajectory(world, vehicle_actor, vehicle.set_spectator, waypoints, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, trajectory)
 
     ###########################
     # Destroy actors and exit #

@@ -58,4 +58,3 @@ def spawn():
         world.tick()
         world.tick()
         world.tick()
-

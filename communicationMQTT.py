@@ -60,3 +60,21 @@ class VehicleSubscriberVelocityMQTT():
         connection_parameters = ConnectionParameters(host='localhost', port=1883)
         sub = Subscriber(topic=self.topic, on_message=self.data_callback, conn_params=connection_parameters)
         sub.run()
+
+class VehicleSubscriberLeftRightMQTT():
+    def __init__(self, topic):
+        self.turn = None  
+        self.topic = topic  
+        self.subscribe()
+
+    def data_callback(self, msg):
+        if self.topic == 'turn':
+            self.turn = msg['value']
+
+    def get_turn(self):
+        return self.turn 
+
+    def subscribe(self):
+        connection_parameters = ConnectionParameters(host='localhost', port=1883)
+        sub = Subscriber(topic=self.topic, on_message=self.data_callback, conn_params=connection_parameters)
+        sub.run()

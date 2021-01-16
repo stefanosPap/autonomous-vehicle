@@ -33,8 +33,7 @@ def scale(bb, valueX, valueY, location):
 ########################################################
 #      Function for finding expanded bounding box     #
 ########################################################
-def expanded_bounding(world, bb, pointA, pointB, pointC, pointD):
-    rate = 2
+def expanded_bounding(world, bb, pointA, pointB, pointC, pointD, rate=2):
     a = [pointA.x, pointA.y]
     b = [pointB.x, pointB.y]
     points = np.linspace(a,b, num=10)
@@ -142,6 +141,7 @@ def draw_vehicle_box(world, vehicle_actor, location, rotation, life_time):
     bbox = carla.BoundingBox(location, bb.extent)
     world.debug.draw_box(bbox, rotation, 0.1, carla.Color(255,0,0), life_time)
     return bbox
+
 ########################################
 # Function for configuring the sensors #
 ########################################
@@ -240,10 +240,9 @@ def save_waypoints(waypoints):
     fileData.close() 
 
 ##################################################
-# Function for loadind the waypoints from a file #
+#   Function for loading waypoints from a file   #
 ##################################################
 def load_waypoints(world, map): 
-    
     fileData = open("data.txt", 'r')
     Lines = fileData.readlines() 
     waypoints = []
