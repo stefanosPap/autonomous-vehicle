@@ -3,7 +3,7 @@ import numpy as np
 from agents.navigation.controller import VehiclePIDController
 from utilities import draw_vehicle_box
 from traffic import Traffic
-from communicationMQTT import VehicleSubscriberStartStopMQTT, VehiclePublisherMQTT, VehicleSubscriberVelocityMQTT, VehicleSubscriberLeftRightMQTT
+from communicationMQTT import VehicleSubscriberStartStopMQTT, VehiclePublisherMQTT, VehicleSubscriberVelocityMQTT, VehicleSubscriberLeftRightMQTT, VehiclePublisherTurnCancelMQTT
 
 
 def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, front_obstacle, set_front_obstacle, trajectory):
@@ -18,21 +18,18 @@ def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, front_o
     turn_sub = VehicleSubscriberLeftRightMQTT(topic='turn')
 
     pub = VehiclePublisherMQTT(topic='speed_topic')
+    pub_cancel = VehiclePublisherTurnCancelMQTT(topic='turn_cancel')
+    current_state = "INIT"
 
- 
     while True:
         try:
-            #spectator()
+            spectator()
             '''
             p1 = [waypoints[i].transform.location.x, waypoints[i].transform.location.y, waypoints[i].transform.location.z]
             p2 = [vehicle_actor.get_location().x, vehicle_actor.get_location().y, vehicle_actor.get_location().z]
             dist = np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2 + (p2[2] - p1[2])**2)
             '''
-            
-            p1 = carla.Location(waypoints[i].transform.location.x, waypoints[i].transform.location.y, waypoints[i].transform.location.z)
-            p2 = carla.Location(vehicle_actor.get_location().x, vehicle_actor.get_location().y, vehicle_actor.get_location().z)
-            dist = p1.distance(p2)
-            
+
             # velocity's norm in km/h
             velocity_vector = vehicle_actor.get_velocity()
             velocity_array = [velocity_vector.x, velocity_vector.y, velocity_vector.z] 
@@ -42,7 +39,7 @@ def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, front_o
             
 
             #print('Distance from waypoint {}'.format(i), dist)
-            draw_vehicle_box(world, vehicle_actor, vehicle_actor.get_transform().location, vehicle_actor.get_transform().rotation, 0.05)
+            #draw_vehicle_box(world, vehicle_actor, vehicle_actor.get_transform().location, vehicle_actor.get_transform().rotation, 0.05)
 
             traffic = Traffic(world)
             traffic_sign = traffic.check_signs(waypoints[i])
@@ -58,10 +55,97 @@ def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, front_o
                 world.debug.draw_string(right.transform.location, '{}'.format(1), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
             '''
             turn = turn_sub.get_turn()
-            if turn != None and trajectory.change == False:
-                w = trajectory.change_waypoint(waypoint=i+1, direction=turn)
-                if w != None:
+            print("turn:", turn)
+            print("current_state:", current_state)
+            
+            '''
+            if turn != None and trajectory.change == False and i != len(waypoints) - 1:
+            
+                if turn == "LEFT" and (current_state == "INIT" or current_state == "LEFT"):
+                    w = trajectory.change_waypoint(waypoint=i+1, direction=turn)
                     waypoints[i+1] = w
+                    current_state = "LEFT"
+                #elif turn == "LEFT" and current_state == "LEFT":
+                #    pass
+                elif turn == "RIGHT" and current_state == "LEFT":
+                    turn = "INIT"
+                    w = trajectory.change_waypoint(waypoint=i+1, direction=turn)
+                    waypoints[i+1] = w
+                    current_state = "INIT"
+                #elif turn == "RIGHT" and current_state == "RIGHT":
+                #    pass
+                elif turn == "RIGHT" and (current_state == "INIT" or current_state == "RIGHT"):
+                    w = trajectory.change_waypoint(waypoint=i+1, direction=turn)
+                    waypoints[i+1] = w
+                    current_state = "RIGHT"
+                elif turn == "LEFT" and current_state == "RIGHT":
+                    turn = "INIT"
+                    w = trajectory.change_waypoint(waypoint=i+1, direction=turn)
+                    waypoints[i+1] = w
+                    current_state = "INIT"
+                elif turn=="INIT" and current_state=="INIT":
+                    w = trajectory.change_waypoint(waypoint=i+1, direction=turn)
+                    waypoints[i+1] = w
+                #else:
+                #    pub_cancel.publish({'value': None})
+                '''
+ 
+            if current_state == "INIT" and trajectory.change == False:
+                if turn == "LEFT":
+                    w = trajectory.change_waypoint(waypoint=i+1, direction="LEFT")
+                    if w != None:
+                        waypoints[i+1] = w
+                        current_state = "LEFT"
+                    else:
+                        current_state = "INIT"
+                    turn = turn_sub.set_turn(None)
+
+                elif turn == "RIGHT":
+                    w = trajectory.change_waypoint(waypoint=i+1, direction="RIGHT")
+                    if w != None:
+                        waypoints[i+1] = w
+                        current_state = "RIGHT"
+                    else:
+                        current_state = "INIT"
+                    turn = turn_sub.set_turn(None)
+
+                elif turn == None:
+                    current_state = "INIT"
+                    turn = turn_sub.set_turn(None)
+
+            elif current_state == "LEFT" and trajectory.change == False:
+                if turn == "LEFT" or turn == None:
+                    prev = waypoints[i+1]
+                    w = trajectory.change_waypoint(waypoint=i+1, direction="LEFT")
+                    if w != None:
+                        waypoints[i+1] = w
+                        current_state = "LEFT"
+                        if w == prev:
+                            current_state = "INIT"
+                    else:
+                        current_state = "INIT"
+                    turn = turn_sub.set_turn(None)
+                    
+                if turn == "RIGHT":
+                    current_state = "INIT"
+                    turn = turn_sub.set_turn(None)
+
+            elif current_state == "RIGHT" and trajectory.change == False:
+                if turn == "RIGHT" or turn == None:
+                    prev = waypoints[i+1]
+                    w = trajectory.change_waypoint(waypoint=i+1, direction="RIGHT")
+                    if w != None:
+                        waypoints[i+1] = w
+                        current_state = "RIGHT"
+                        if w == prev:
+                            current_state = "INIT"
+                    else:
+                        current_state = "INIT"
+                    turn = turn_sub.set_turn(None)
+
+                if turn == "LEFT":
+                    current_state = "INIT"
+                    turn = turn_sub.set_turn(None)
 
             # check for red lights, front obstacles and stop button 
             if traffic_light_state == "RED" or front_obstacle() == True or stop == True:
@@ -70,9 +154,15 @@ def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, front_o
             else:
                 control_signal = custom_controller.run_step(velocity, waypoints[i])
             
+            p1 = carla.Location(waypoints[i].transform.location.x, waypoints[i].transform.location.y, waypoints[i].transform.location.z)
+            p2 = carla.Location(vehicle_actor.get_location().x, vehicle_actor.get_location().y, vehicle_actor.get_location().z)
+            dist = p1.distance(p2)
+
             if dist < 2:
                 i += 1
                 trajectory.change = False
+            
+
 
             if i == len(waypoints):
                 control_signal = custom_controller.run_step(0, waypoints[i - 1])

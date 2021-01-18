@@ -7,7 +7,6 @@ class Trajectory():
         self.map = map
         self.waypoints = []
         self.change = False 
-
     def generate_random_trajectory(self, start_waypoint, number_of_waypoints):
         
         self.waypoints.append(start_waypoint)
@@ -40,23 +39,21 @@ class Trajectory():
 
     def change_waypoint(self, waypoint, direction):
         prev_waypoint = self.waypoints[waypoint]
+        if prev_waypoint != None:
+            
+            if direction == "LEFT":
+                next_waypoint = prev_waypoint.get_left_lane()
+            elif direction == "RIGHT":
+                next_waypoint = prev_waypoint.get_right_lane()
 
-        if direction == "LEFT" and prev_waypoint != None:
-            left = prev_waypoint.get_left_lane()
-            if left != None:
-                location = carla.Location(left.transform.location.x, left.transform.location.y, left.transform.location.z)
-                w = self.map.get_waypoint(location)
-                self.world.debug.draw_string(w.transform.location, '{}'.format(waypoint), draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=1000, persistent_lines=True)
-                self.waypoints[waypoint] = w
-                self.change = True 
-                return w
-
-        elif direction == "RIGHT" and prev_waypoint != None:
-            right = prev_waypoint.get_right_lane()
-            if right != None:
-                location = carla.Location(right.transform.location.x, right.transform.location.y, right.transform.location.z)
-                w = self.map.get_waypoint(location)
-                self.world.debug.draw_string(w.transform.location, '{}'.format(waypoint), draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=1000, persistent_lines=True)
-                self.waypoints[waypoint] = w
-                self.change = True 
-                return w
+            if next_waypoint != None:
+                location = carla.Location(next_waypoint.transform.location.x, next_waypoint.transform.location.y, next_waypoint.transform.location.z)
+                w = self.map.get_waypoint(location, project_to_road=False)
+                if w != None:
+                    self.waypoints[waypoint] = w
+                    self.change = True 
+                    self.world.debug.draw_string(w.transform.location, '{}'.format(waypoint), draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=1000, persistent_lines=True)
+                    return w
+            else:
+                w = prev_waypoint
+            return w
