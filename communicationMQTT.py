@@ -11,7 +11,7 @@ class VehiclePublisherMQTT():
     def publish(self, msg):
         self.publisher.publish(msg)
 
-class VehiclePublisherTurnCancelMQTT(): 
+class VehiclePublisherTurnNotificationMQTT(): 
     def __init__(self, topic):
         self.topic = topic  
         self.connection_parameters = ConnectionParameters(host='localhost', port=1883)
@@ -78,7 +78,6 @@ class VehicleSubscriberLeftRightMQTT():
 
     def data_callback(self, msg):
         if self.topic == 'turn':
-            print(msg)
             self.turn = msg['value']
 
     def get_turn(self):

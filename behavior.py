@@ -3,7 +3,7 @@ import numpy as np
 from agents.navigation.controller import VehiclePIDController
 from utilities import draw_vehicle_box
 from traffic import Traffic
-from communicationMQTT import VehicleSubscriberStartStopMQTT, VehiclePublisherMQTT, VehicleSubscriberVelocityMQTT, VehicleSubscriberLeftRightMQTT, VehiclePublisherTurnCancelMQTT
+from communicationMQTT import VehicleSubscriberStartStopMQTT, VehiclePublisherMQTT, VehicleSubscriberVelocityMQTT, VehicleSubscriberLeftRightMQTT, VehiclePublisherTurnNotificationMQTT
 
 
 def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, front_obstacle, set_front_obstacle, trajectory):
@@ -18,7 +18,7 @@ def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, front_o
     turn_sub = VehicleSubscriberLeftRightMQTT(topic='turn')
 
     pub = VehiclePublisherMQTT(topic='speed_topic')
-    pub_cancel = VehiclePublisherTurnCancelMQTT(topic='turn_cancel')
+    pub_notify = VehiclePublisherTurnNotificationMQTT(topic='turn notification')
     current_state = "INIT"
 
     while True:
@@ -57,45 +57,14 @@ def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, front_o
             turn = turn_sub.get_turn()
             print("turn:", turn)
             print("current_state:", current_state)
-            
-            '''
-            if turn != None and trajectory.change == False and i != len(waypoints) - 1:
-            
-                if turn == "LEFT" and (current_state == "INIT" or current_state == "LEFT"):
-                    w = trajectory.change_waypoint(waypoint=i+1, direction=turn)
-                    waypoints[i+1] = w
-                    current_state = "LEFT"
-                #elif turn == "LEFT" and current_state == "LEFT":
-                #    pass
-                elif turn == "RIGHT" and current_state == "LEFT":
-                    turn = "INIT"
-                    w = trajectory.change_waypoint(waypoint=i+1, direction=turn)
-                    waypoints[i+1] = w
-                    current_state = "INIT"
-                #elif turn == "RIGHT" and current_state == "RIGHT":
-                #    pass
-                elif turn == "RIGHT" and (current_state == "INIT" or current_state == "RIGHT"):
-                    w = trajectory.change_waypoint(waypoint=i+1, direction=turn)
-                    waypoints[i+1] = w
-                    current_state = "RIGHT"
-                elif turn == "LEFT" and current_state == "RIGHT":
-                    turn = "INIT"
-                    w = trajectory.change_waypoint(waypoint=i+1, direction=turn)
-                    waypoints[i+1] = w
-                    current_state = "INIT"
-                elif turn=="INIT" and current_state=="INIT":
-                    w = trajectory.change_waypoint(waypoint=i+1, direction=turn)
-                    waypoints[i+1] = w
-                #else:
-                #    pub_cancel.publish({'value': None})
-                '''
- 
+
             if current_state == "INIT" and trajectory.change == False:
                 if turn == "LEFT":
                     w = trajectory.change_waypoint(waypoint=i+1, direction="LEFT")
                     if w != None:
                         waypoints[i+1] = w
                         current_state = "LEFT"
+                        pub_notify.publish({'value': current_state})
                     else:
                         current_state = "INIT"
                     turn = turn_sub.set_turn(None)
@@ -105,6 +74,7 @@ def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, front_o
                     if w != None:
                         waypoints[i+1] = w
                         current_state = "RIGHT"
+                        pub_notify.publish({'value': current_state})
                     else:
                         current_state = "INIT"
                     turn = turn_sub.set_turn(None)
@@ -122,12 +92,15 @@ def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, front_o
                         current_state = "LEFT"
                         if w == prev:
                             current_state = "INIT"
+                            pub_notify.publish({'value': current_state})
                     else:
                         current_state = "INIT"
+                        pub_notify.publish({'value': current_state})
                     turn = turn_sub.set_turn(None)
                     
                 if turn == "RIGHT":
                     current_state = "INIT"
+                    pub_notify.publish({'value': current_state})
                     turn = turn_sub.set_turn(None)
 
             elif current_state == "RIGHT" and trajectory.change == False:
@@ -139,12 +112,15 @@ def follow_random_trajectory(world, vehicle_actor, spectator, waypoints, front_o
                         current_state = "RIGHT"
                         if w == prev:
                             current_state = "INIT"
+                            pub_notify.publish({'value': current_state})
                     else:
                         current_state = "INIT"
+                        pub_notify.publish({'value': current_state})
                     turn = turn_sub.set_turn(None)
 
                 if turn == "LEFT":
                     current_state = "INIT"
+                    pub_notify.publish({'value': current_state})
                     turn = turn_sub.set_turn(None)
 
             # check for red lights, front obstacles and stop button 
