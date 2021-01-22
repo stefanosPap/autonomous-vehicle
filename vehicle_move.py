@@ -14,8 +14,8 @@ def spawn():
     client = Client()                                       
     client.connect()                                        # connect the client 
     [blueprint, world, map]= client.get_simulation()
-    yaw = 260
-    start_point = carla.Transform(carla.Location(x=-6.5, y=-80, z=0.275307), carla.Rotation(pitch=0.000000, yaw=yaw, roll=0.000000))
+    yaw = 90
+    start_point = carla.Transform(carla.Location(x=-6.5, y=-90, z=0.275307), carla.Rotation(pitch=0.000000, yaw=yaw, roll=0.000000))
 
     for k in range(1,10,10):
         spawn_point = carla.Transform()

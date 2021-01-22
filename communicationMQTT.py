@@ -60,7 +60,7 @@ class VehicleSubscriberVelocityMQTT():
 
     def data_callback(self, msg):
         if self.topic == 'speed_configure':
-            self.velocity = msg['value']
+            self.velocity = msg['velocity']
 
     def get_velocity(self):
         return self.velocity 

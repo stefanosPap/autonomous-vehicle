@@ -4,19 +4,20 @@ from vehicle import Vehicle
 from client import Client
 from utilities import plot_axis, draw_vehicle_box, configure_sensor, save_waypoints, load_waypoints
 from trajectory import Trajectory
-from behavior import follow_random_trajectory
+from behavior import Behavior
 from communicationMQTT import VehicleSubscriberStartStopMQTT
 from vehicle_move import spawn
 #from agents.navigation.roaming_agent import RoamingAgent
 #from agents.navigation.behavior_agent import BehaviorAgent
 #from agents.navigation.basic_agent import BasicAgent 
-import numpy as np 
+import numpy as np
 import carla
 import time  
 import random 
 import sys
 import glob
 import os  
+
 try:
     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
         sys.version_info.major,
@@ -101,7 +102,8 @@ def main():
             break 
 
     # follow random trajectory and stop to obstacles and traffic lights
-    follow_random_trajectory(world, vehicle_actor, vehicle.set_spectator, waypoints, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, trajectory)
+    behavior = Behavior()
+    behavior.follow_random_trajectory(world, vehicle_actor, vehicle.set_spectator, waypoints, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, trajectory)
 
     ###########################
     # Destroy actors and exit #
