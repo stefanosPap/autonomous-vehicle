@@ -79,11 +79,11 @@ def main():
     
     # generate random trajectory for the vehicle 
     trajectory = Trajectory(world, map)
-    waypoints = trajectory.generate_random_trajectory(start_waypoint, number_of_waypoints = 100)
+    #waypoints = trajectory.generate_random_trajectory(start_waypoint, number_of_waypoints = 100)
 
-    save_waypoints(waypoints)
-    #waypoints = load_waypoints(world, map)
-    
+    #save_waypoints(waypoints)
+    waypoints = load_waypoints(world, map)
+    waypoints = trajectory.load_trajectory(waypoints)
     # configure sensors 
     sensors = configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, "ObstacleDetector")
     

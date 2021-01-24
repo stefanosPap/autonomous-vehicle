@@ -6,7 +6,12 @@ class Trajectory():
         self.world = world
         self.map = map
         self.waypoints = []
-        self.change = False 
+        self.change = False
+
+    def load_trajectory(self, waypoints):
+        self.waypoints = waypoints
+        return self.waypoints
+
     def generate_random_trajectory(self, start_waypoint, number_of_waypoints):
         
         self.waypoints.append(start_waypoint)
@@ -40,7 +45,6 @@ class Trajectory():
     def change_waypoint(self, waypoint, direction):
         prev_waypoint = self.waypoints[waypoint]
         if prev_waypoint != None:
-            
             if direction == "LEFT":
                 next_waypoint = prev_waypoint.get_left_lane()
             elif direction == "RIGHT":
