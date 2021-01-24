@@ -7,7 +7,15 @@ from communicationMQTT import VehicleSubscriberStartStopMQTT, VehiclePublisherMQ
 
 class Behavior(object):
     def __init__(self):
-        pass 
+        self.pub_vel = VehiclePublisherMQTT(topic='speed_configure')
+ 
+
+    def slow_down(self, current_velocity, desired_velocity, limit):
+        if current_velocity > limit:
+            current_velocity = desired_velocity
+            vel = {'velocity': current_velocity}  
+            self.pub_vel.publish(vel)
+            return current_velocity
 
     def follow_random_trajectory(self, world, vehicle_actor, spectator, waypoints, front_obstacle, set_front_obstacle, trajectory):
     
@@ -20,13 +28,12 @@ class Behavior(object):
         speed_sub = VehicleSubscriberVelocityMQTT(topic='speed_configure')
         turn_sub = VehicleSubscriberLeftRightMQTT(topic='turn')
 
-        pub_vel = VehiclePublisherMQTT(topic='speed_configure')
         pub = VehiclePublisherMQTT(topic='speed_topic')
         pub_notify = VehiclePublisherTurnNotificationMQTT(topic='turn notification')
         current_state = "INIT"
 
         vel = {'velocity': 0}  
-        pub_vel.publish(vel)
+        self.pub_vel.publish(vel)
  
         while True:
             try:
@@ -66,18 +73,18 @@ class Behavior(object):
                 #print("current_state:", current_state)
 
                 # check for lane change
-                '''
                 if current_state == "INIT" and trajectory.change == False and i != len(waypoints):
                     if turn != None:
+                        prev = waypoints[i+1]
                         w = trajectory.change_waypoint(waypoint=i+1, direction=turn)
                         if w != None:
                             waypoints[i+1] = w
-                            current_state = turn
-                            pub_notify.publish({'value': current_state})
-                            if velocity > 10:
-                                velocity = 10
-                                vel = {'velocity': velocity}  
-                                pub_vel.publish(vel)
+                            if w == prev:
+                                current_state = "INIT"
+                            else:
+                                current_state = turn
+                                pub_notify.publish({'value': current_state})
+                                velocity = self.slow_down(current_velocity=velocity, desired_velocity=10, limit=10)
                         else:
                             current_state = "INIT"
                         turn = turn_sub.set_turn(None)
@@ -99,132 +106,19 @@ class Behavior(object):
                             if w == prev:
                                 current_state = "INIT"
                                 pub_notify.publish({'value': current_state})
-                                if velocity > 10:
-                                    velocity = 10
-                                    vel = {'velocity': velocity}  
-                                    pub_vel.publish(vel)
+                                velocity = self.slow_down(current_velocity=velocity, desired_velocity=10, limit=10)
                         else:
                             current_state = "INIT"
                             pub_notify.publish({'value': current_state})
-                            if velocity > 10:
-                                velocity = 10
-                                vel = {'velocity': velocity}  
-                                pub_vel.publish(vel)
+                            velocity = self.slow_down(current_velocity=velocity, desired_velocity=10, limit=10)
                         turn = turn_sub.set_turn(None)
                         
                     elif turn != current_state:
                         current_state = "INIT"
                         pub_notify.publish({'value': current_state})
                         turn = turn_sub.set_turn(None)
-                        if velocity > 10:
-                            velocity = 10
-                            vel = {'velocity': velocity}  
-                            pub_vel.publish(vel)
-                '''
-                if current_state == "INIT" and trajectory.change == False:
-                    if turn == "LEFT":
-                        w = trajectory.change_waypoint(waypoint=i+1, direction="LEFT")
-                        prev = waypoints[i+1]
-                        if w != None:
-                            waypoints[i+1] = w
-                            if w == prev:
-                                current_state = "INIT"
-                            else:
-                                current_state = "LEFT"
-                                pub_notify.publish({'value': current_state})
-                                if velocity > 10:
-                                    velocity = 10
-                                    vel = {'velocity': velocity}  
-                                    pub_vel.publish(vel)
-                        else:
-                            current_state = "INIT"
-                        turn = turn_sub.set_turn(None)
+                        velocity = self.slow_down(current_velocity=velocity, desired_velocity=10, limit=10)
 
-                    elif turn == "RIGHT":
-                        w = trajectory.change_waypoint(waypoint=i+1, direction="RIGHT")
-                        prev = waypoints[i+1]
-                        if w != None:
-                            waypoints[i+1] = w
-                            if w == prev:
-                                current_state = "INIT"
-                            else:
-                                current_state = "RIGHT"
-                                pub_notify.publish({'value': current_state})
-                                if velocity > 10:
-                                    velocity = 10
-                                    vel = {'velocity': velocity}  
-                                    pub_vel.publish(vel)
-                        else:
-                            current_state = "INIT"
-                        turn = turn_sub.set_turn(None)
-
-                    elif turn == None:
-                        current_state = "INIT"
-                        turn = turn_sub.set_turn(None)
-
-                elif current_state == "LEFT" and trajectory.change == False:
-                    if turn == "LEFT" or turn == None:
-                        prev = waypoints[i+1]
-                        w = trajectory.change_waypoint(waypoint=i+1, direction="LEFT")
-                        if w != None:
-                            waypoints[i+1] = w
-                            current_state = "LEFT"
-                            if w == prev:
-                                current_state = "INIT"
-                                pub_notify.publish({'value': current_state})
-                                if velocity > 10:
-                                    velocity = 10
-                                    vel = {'velocity': velocity}  
-                                    pub_vel.publish(vel)
-                        else:
-                            current_state = "INIT"
-                            pub_notify.publish({'value': current_state})
-                            if velocity > 10:
-                                velocity = 10
-                                vel = {'velocity': velocity}  
-                                pub_vel.publish(vel)
-                        turn = turn_sub.set_turn(None)
-                        
-                    if turn == "RIGHT":
-                        current_state = "INIT"
-                        pub_notify.publish({'value': current_state})
-                        turn = turn_sub.set_turn(None)
-                        if velocity > 10:
-                            velocity = 10
-                            vel = {'velocity': velocity}  
-                            pub_vel.publish(vel)
-
-                elif current_state == "RIGHT" and trajectory.change == False:
-                    if turn == "RIGHT" or turn == None:
-                        prev = waypoints[i+1]
-                        w = trajectory.change_waypoint(waypoint=i+1, direction="RIGHT")
-                        if w != None:
-                            waypoints[i+1] = w
-                            current_state = "RIGHT"
-                            if w == prev:
-                                current_state = "INIT"
-                                pub_notify.publish({'value': current_state})
-                                if velocity > 10:
-                                    velocity = 10
-                                    vel = {'velocity': velocity}  
-                                    pub_vel.publish(vel)
-                        else:
-                            current_state = "INIT"
-                            pub_notify.publish({'value': current_state})
-                            if velocity > 10:
-                                velocity = 10
-                                vel = {'velocity': velocity}  
-                                pub_vel.publish(vel)
-                        turn = turn_sub.set_turn(None)
-
-                    if turn == "LEFT":
-                        current_state = "INIT"
-                        pub_notify.publish({'value': current_state})
-                        turn = turn_sub.set_turn(None)
-                        if velocity > 10:
-                            velocity = 10
-                            vel = {'velocity': velocity}  
-                            pub_vel.publish(vel)
                 # check for red lights, front obstacles and stop button 
                 if traffic_light_state == "RED" or front_obstacle() == True or stop == True:
                     set_front_obstacle(False)                                               # set False in order to check if obstacle detector has triggered again  
