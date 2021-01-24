@@ -53,14 +53,14 @@ class Behavior(object):
                 traffic_light_state = traffic.check_traffic_lights(vehicle_actor)
                 stop = sub.get_stop()
                 velocity = speed_sub.get_velocity()
-                
+                '''
                 left = waypoints[i].get_left_lane()
                 right = waypoints[i].get_right_lane()
                 if left != None:
                     world.debug.draw_string(left.transform.location, '{}'.format(0), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
                 if right != None:
                     world.debug.draw_string(right.transform.location, '{}'.format(1), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
-                
+                '''
                 turn = turn_sub.get_turn()
                 #print("turn:", turn)
                 #print("current_state:", current_state)
