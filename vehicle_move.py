@@ -9,13 +9,15 @@ from utilities import draw_vehicle_box
 from vehicle import Vehicle
 from client import Client
 from utilities import plot_axis, rotate, scale, expanded_bounding, rectangle_bounding
-#from scipy.spatial.transform import Rotation as R
+from communicationMQTT import VehiclePublisherMQTT
+
 def spawn():
     client = Client()                                       
     client.connect()                                        # connect the client 
     [blueprint, world, map]= client.get_simulation()
     yaw = 90
     start_point = carla.Transform(carla.Location(x=-6.5, y=-90, z=0.275307), carla.Rotation(pitch=0.000000, yaw=yaw, roll=0.000000))
+    pub = VehiclePublisherMQTT(topic='position')
 
     for k in range(1,10,10):
         spawn_point = carla.Transform()
@@ -31,7 +33,9 @@ def spawn():
         bb = draw_vehicle_box(world, vehicle_actor, spawn_point.location, spawn_point.rotation, 100)
         plot_axis(world, carla.Transform(bb.location, bb.rotation))
         world.debug.draw_string(bb.location, 'C', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=100, persistent_lines=True)
-
+        
+        pub.publish({'position': [bb.location.x, bb.location.y, bb.location.z]})
+        
         locationA = bb.location + carla.Location(bb.extent.x, bb.extent.y, 0)
         pointA = rotate(bb=bb, degrees=yaw, location=locationA)
 
@@ -58,3 +62,9 @@ def spawn():
         world.tick()
         world.tick()
         world.tick()
+
+if __name__ == "__main__":
+    try:
+        spawn()
+    except KeyboardInterrupt:
+        pass

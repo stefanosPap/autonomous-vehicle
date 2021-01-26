@@ -1,4 +1,5 @@
 import time
+import carla 
 from commlib.msg import PubSubMessage, DataClass
 from commlib.transports.mqtt import Subscriber, ConnectionParameters, Publisher
 
@@ -11,21 +12,33 @@ class VehiclePublisherMQTT():
     def publish(self, msg):
         self.publisher.publish(msg)
 
-class VehiclePublisherTurnNotificationMQTT(): 
-    def __init__(self, topic):
-        self.topic = topic  
-        self.connection_parameters = ConnectionParameters(host='localhost', port=1883)
-        self.publisher = Publisher(topic=self.topic, conn_params=self.connection_parameters)
-    
-    def publish(self, msg):
-        self.publisher.publish(msg)
+class VehicleSubscriberMQTT():
+    def __init__(self, topic):  
+        self.topic = topic 
+        self.subscribe()
 
-class VehicleSubscriberStartStopMQTT():
+    def subscribe(self):
+        connection_parameters = ConnectionParameters(host='localhost', port=1883)
+        sub = Subscriber(topic=self.topic, on_message=self.data_callback, conn_params=connection_parameters)
+        sub.run()
+
+class VehicleSubscriberPositionMQTT(VehicleSubscriberMQTT):
+    def __init__(self, topic):  
+        super().__init__(topic)
+        self.pos = None 
+
+    def data_callback(self, msg):
+        if self.topic == 'position':
+            self.pos = msg['position']
+    
+    def get_pos(self):
+        return self.pos 
+
+class VehicleSubscriberStartStopMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):
+        super().__init__(topic)
         self.start = False 
         self.stop = False
-        self.topic = topic  
-        self.subscribe()
 
     def data_callback(self, msg):
         if msg['trigger'] == "start":
@@ -47,16 +60,10 @@ class VehicleSubscriberStartStopMQTT():
     def set_stop(self, stop):
         self.stop = stop 
     
-    def subscribe(self):
-        connection_parameters = ConnectionParameters(host='localhost', port=1883)
-        sub = Subscriber(topic=self.topic, on_message=self.data_callback, conn_params=connection_parameters)
-        sub.run()
-
-class VehicleSubscriberVelocityMQTT():
+class VehicleSubscriberVelocityMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):
+        super().__init__(topic)
         self.velocity = 0 
-        self.topic = topic  
-        self.subscribe()
 
     def data_callback(self, msg):
         if self.topic == 'speed_configure':
@@ -65,16 +72,11 @@ class VehicleSubscriberVelocityMQTT():
     def get_velocity(self):
         return self.velocity 
 
-    def subscribe(self):
-        connection_parameters = ConnectionParameters(host='localhost', port=1883)
-        sub = Subscriber(topic=self.topic, on_message=self.data_callback, conn_params=connection_parameters)
-        sub.run()
 
-class VehicleSubscriberLeftRightMQTT():
+class VehicleSubscriberLeftRightMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):
+        super().__init__(topic)
         self.turn = None  
-        self.topic = topic  
-        self.subscribe()
 
     def data_callback(self, msg):
         if self.topic == 'turn':
@@ -85,8 +87,3 @@ class VehicleSubscriberLeftRightMQTT():
     
     def set_turn(self, value):
         self.turn = value 
-
-    def subscribe(self):
-        connection_parameters = ConnectionParameters(host='localhost', port=1883)
-        sub = Subscriber(topic=self.topic, on_message=self.data_callback, conn_params=connection_parameters)
-        sub.run()

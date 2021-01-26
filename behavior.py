@@ -3,7 +3,12 @@ import numpy as np
 from agents.navigation.controller import VehiclePIDController
 from utilities import draw_vehicle_box
 from traffic import Traffic
-from communicationMQTT import VehicleSubscriberStartStopMQTT, VehiclePublisherMQTT, VehicleSubscriberVelocityMQTT, VehicleSubscriberLeftRightMQTT, VehiclePublisherTurnNotificationMQTT
+from vehicle_move import spawn
+from communicationMQTT import   VehiclePublisherMQTT, \
+                                VehicleSubscriberStartStopMQTT, \
+                                VehicleSubscriberVelocityMQTT, \
+                                VehicleSubscriberLeftRightMQTT, \
+                                VehicleSubscriberPositionMQTT
 
 class Behavior(object):
     def __init__(self):
@@ -20,7 +25,6 @@ class Behavior(object):
     def follow_random_trajectory(self, world, vehicle_actor, spectator, waypoints, front_obstacle, set_front_obstacle, trajectory):
     
         custom_controller = VehiclePIDController(vehicle_actor, args_lateral = {'K_P': 1, 'K_D': 0, 'K_I': 0}, args_longitudinal = {'K_P': 1, 'K_D': 0, 'K_I': 0})    
-    
         print("Running...")
     
         i = 0
@@ -28,9 +32,12 @@ class Behavior(object):
         speed_sub = VehicleSubscriberVelocityMQTT(topic='speed_configure')
         turn_sub = VehicleSubscriberLeftRightMQTT(topic='turn')
 
+        sub_pos = VehicleSubscriberPositionMQTT(topic='position')
+
         pub = VehiclePublisherMQTT(topic='speed_topic')
-        pub_notify = VehiclePublisherTurnNotificationMQTT(topic='turn notification')
+        pub_notify = VehiclePublisherMQTT(topic='turn notification')
         current_state = "INIT"
+        #spawn()
 
         vel = {'velocity': 0}  
         self.pub_vel.publish(vel)
@@ -38,6 +45,7 @@ class Behavior(object):
         while True:
             try:
                 spectator()
+                print(sub_pos.get_pos())
                 '''
                 p1 = [waypoints[i].transform.location.x, waypoints[i].transform.location.y, waypoints[i].transform.location.z]
                 p2 = [vehicle_actor.get_location().x, vehicle_actor.get_location().y, vehicle_actor.get_location().z]
@@ -73,56 +81,58 @@ class Behavior(object):
                 #print("current_state:", current_state)
 
                 # check for lane change
-                if current_state == "INIT" and trajectory.change == False and i != len(waypoints):
-                    if turn != None:
-                        prev = waypoints[i+1]
-                        w = trajectory.change_waypoint(waypoint=i+1, direction=turn)
-                        if w != None:
-                            waypoints[i+1] = w
-                            if w == prev:
-                                current_state = "INIT"
+                if trajectory.change == False and i != len(waypoints):
+                    if current_state == "INIT":
+                        if turn != None:
+                            prev = waypoints[i+1]
+                            w = trajectory.change_waypoint(waypoint=i+1, direction=turn)
+                            if w != None:
+                                waypoints[i+1] = w
+                                if w == prev:
+                                    current_state = "INIT"
+                                else:
+                                    current_state = turn
+                                    pub_notify.publish({'value': current_state})
+                                    velocity = self.slow_down(current_velocity=velocity, desired_velocity=10, limit=10)
                             else:
-                                current_state = turn
-                                pub_notify.publish({'value': current_state})
-                                velocity = self.slow_down(current_velocity=velocity, desired_velocity=10, limit=10)
+                                current_state = "INIT"
+                            turn = turn_sub.set_turn(None)
+                        
                         else:
                             current_state = "INIT"
-                        turn = turn_sub.set_turn(None)
-                    
-                    else:
-                        current_state = "INIT"
-                        turn = turn_sub.set_turn(None)
+                            turn = turn_sub.set_turn(None)
 
-                elif (current_state == "LEFT" or current_state == "RIGHT") and trajectory.change == False and i != len(waypoints):
-                    if turn == current_state or turn == None:
-                        prev = waypoints[i+1]
-                        if current_state == "LEFT":
-                            w = trajectory.change_waypoint(waypoint=i+1, direction="LEFT")
-                        elif current_state == "RIGHT":
-                            w = trajectory.change_waypoint(waypoint=i+1, direction="RIGHT")
+                    elif current_state == "LEFT" or current_state == "RIGHT":
+                        if turn == current_state or turn == None:
+                            prev = waypoints[i+1]
+                            if current_state == "LEFT":
+                                w = trajectory.change_waypoint(waypoint=i+1, direction="LEFT")
+                            elif current_state == "RIGHT":
+                                w = trajectory.change_waypoint(waypoint=i+1, direction="RIGHT")
 
-                        if w != None:
-                            waypoints[i+1] = w
-                            if w == prev:
+                            if w != None:
+                                waypoints[i+1] = w
+                                if w == prev:
+                                    current_state = "INIT"
+                                    pub_notify.publish({'value': current_state})
+                                    velocity = self.slow_down(current_velocity=velocity, desired_velocity=10, limit=10)
+                            else:
                                 current_state = "INIT"
                                 pub_notify.publish({'value': current_state})
                                 velocity = self.slow_down(current_velocity=velocity, desired_velocity=10, limit=10)
-                        else:
+                            turn = turn_sub.set_turn(None)
+                            
+                        elif turn != current_state:
                             current_state = "INIT"
                             pub_notify.publish({'value': current_state})
+                            turn = turn_sub.set_turn(None)
                             velocity = self.slow_down(current_velocity=velocity, desired_velocity=10, limit=10)
-                        turn = turn_sub.set_turn(None)
-                        
-                    elif turn != current_state:
-                        current_state = "INIT"
-                        pub_notify.publish({'value': current_state})
-                        turn = turn_sub.set_turn(None)
-                        velocity = self.slow_down(current_velocity=velocity, desired_velocity=10, limit=10)
 
                 # check for red lights, front obstacles and stop button 
                 if traffic_light_state == "RED" or front_obstacle() == True or stop == True:
                     set_front_obstacle(False)                                               # set False in order to check if obstacle detector has triggered again  
                     control_signal = custom_controller.run_step(0, waypoints[i])
+
                 else:
                     control_signal = custom_controller.run_step(velocity, waypoints[i])
                 
@@ -139,7 +149,7 @@ class Behavior(object):
                 if i == len(waypoints):
                     control_signal = custom_controller.run_step(0, waypoints[i - 1])
                     break
-
+                #print(control_signal.steer)                
                 vehicle_actor.apply_control(control_signal)
                 world.tick()      
 
