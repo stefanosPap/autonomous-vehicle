@@ -31,7 +31,7 @@ def scale(bb, valueX, valueY, location):
     return point
 
 ########################################################
-#      Function for finding expanded bounding box     #
+#      Function for finding expanded bounding box      #
 ########################################################
 def expanded_bounding(world, bb, pointA, pointB, pointC, pointD, rate=2):
     a = [pointA.x, pointA.y]
@@ -257,3 +257,66 @@ def load_waypoints(world, map):
 
     return waypoints
 
+###########################################################################################################
+# Function for eliminating double waypoints adn filling gaps between distant waypoints in waypoints' list #
+###########################################################################################################
+def pruning(map, waypoints):
+    
+    # throw double waypoints
+    waypoints_initial = waypoints
+    waypoints = []
+    i = 0
+    while True: 
+
+        p1 = carla.Location(waypoints_initial[i].transform.location.x, waypoints_initial[i].transform.location.y, waypoints_initial[i].transform.location.z)
+        p2 = carla.Location(waypoints_initial[i + 1].transform.location.x, waypoints_initial[i + 1].transform.location.y, waypoints_initial[i + 1].transform.location.z)
+        dist = p1.distance(p2)
+
+        if dist < 0.6:
+            i += 1 
+        else:
+            waypoints.append(waypoints_initial[i])
+            i += 1
+
+        if i == len(waypoints_initial) - 1:
+            break
+    
+    # fill gaps between distant waypoints
+    waypoints_initial = waypoints
+    waypoints = []
+    i = 0
+    while True: 
+
+        p1 = carla.Location(waypoints_initial[i].transform.location.x, waypoints_initial[i].transform.location.y, waypoints_initial[i].transform.location.z)
+        p2 = carla.Location(waypoints_initial[i + 1].transform.location.x, waypoints_initial[i + 1].transform.location.y, waypoints_initial[i + 1].transform.location.z)
+        dist = p1.distance(p2)
+
+        if dist > 4:
+            a = [waypoints_initial[i].transform.location.x, waypoints_initial[i].transform.location.y]
+            b = [waypoints_initial[i + 1].transform.location.x, waypoints_initial[i + 1].transform.location.y]
+            points = np.linspace(a,b, num=round(dist / 2))
+            for j in range(len(points) - 1):
+                point = carla.Location(points[j][0],points[j][1],0)
+                w = map.get_waypoint(point, project_to_road=False, lane_type=carla.LaneType.Any)
+                if w != None:
+                    waypoints.append(w)            
+            i += 1 
+            print(i)
+        
+        else:
+            waypoints.append(waypoints_initial[i])
+            i += 1            
+         
+        if i == len(waypoints_initial) - 1:
+            break
+    
+    return waypoints
+
+####################################
+#   Function for drawing waypoints #
+####################################
+def draw_waypoints(world, waypoints):
+    m = 0
+    for waypoint in waypoints:
+        world.debug.draw_string(waypoint.transform.location, '{}'.format(m), draw_shadow=False, color=carla.Color(r=255, g=0, b=255), life_time=1000, persistent_lines=True)
+        m += 1 

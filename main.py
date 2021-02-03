@@ -2,14 +2,17 @@
 
 from vehicle import Vehicle
 from client import Client
-from utilities import plot_axis, draw_vehicle_box, configure_sensor, save_waypoints, load_waypoints
+from utilities import plot_axis, draw_vehicle_box, configure_sensor, save_waypoints, load_waypoints, pruning, draw_waypoints
 from trajectory import Trajectory
 from behavior import Behavior
 from communicationMQTT import VehicleSubscriberStartStopMQTT
 from vehicle_move import spawn
 #from agents.navigation.roaming_agent import RoamingAgent
 #from agents.navigation.behavior_agent import BehaviorAgent
-#from agents.navigation.basic_agent import BasicAgent 
+from agents.navigation.basic_agent import BasicAgent 
+from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO  
+from agents.navigation.global_route_planner import GlobalRoutePlanner  
+
 import numpy as np
 import carla
 import time  
@@ -17,7 +20,7 @@ import random
 import sys
 import glob
 import os  
-
+import copy 
 try:
     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
         sys.version_info.major,
@@ -36,8 +39,8 @@ def main():
     [blueprint, world, map]= client.get_simulation()        
     
     points = map.get_spawn_points()                         # returns a list of recommendations 
-    start_point = points[0]                                 # choose first point as spawn point
-    start_waypoint = map.get_waypoint(start_point.location)   # return the waypoint of the spawn point 
+    start_point = random.choice(points)                                              # choose first point as spawn point
+    start_waypoint = map.get_waypoint(start_point.location, project_to_road=False)   # return the waypoint of the spawn point 
 
     ##########################
     # create new ego vehicle #
@@ -60,17 +63,19 @@ def main():
     #agent = BasicAgent(vehicle_actor)
     #agent.set_destination([-6.446170, -50.055023, 0.275307])
     #world.debug.draw_string( carla.Location(-6.446170, -50.055023, 0.275307), 'O', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=100, persistent_lines=True)
-    
+    ba = BasicAgent(vehicle_actor)
+
+    #gp_dao = GlobalRoutePlannerDAO(map, 4)
+    #gp = GlobalRoutePlanner(gp_dao)
+    #top = gp.get_topology()
     #spawn()
-    waypoints = map.get_topology()
-    #print(waypoints)
+    #waypoints = map.get_topology()
     #waypoints_map = map.generate_waypoints(3.0)
     #for waypoint in waypoints:
-    #    if waypoint.lane_id > 0:
-        #world.debug.draw_string(waypoint[0].transform.location, 's', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
-    #    else:
-        #world.debug.draw_string(waypoint[1].transform.location, 'e', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
-
+    #    for waypoint in top[i]['path']:
+    #        world.debug.draw_string(waypoint[0].transform.location, 's', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+    #        world.debug.draw_string(waypoint[1].transform.location, 'e', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
+    #print(top)
 
     #pedestrian_actor = world.get_blueprint_library().filter('walker.pedestrian.0001')
     #ped_actor = world.spawn_actor(pedestrian_actor[0], spawn_point)
@@ -78,12 +83,30 @@ def main():
     #client.add_actor(ped_actor)
     
     # generate random trajectory for the vehicle 
+    
     trajectory = Trajectory(world, map)
-    #waypoints = trajectory.generate_random_trajectory(start_waypoint, number_of_waypoints = 100)
+    #waypoints = trajectory.generate_random_trajectory(start_waypoint, number_of_waypoints = 200)
+    
+    end_point = random.choice(points)
+    end_waypoint = map.get_waypoint(end_point.location)
+    
+    #index = len(waypoints) - 1
+    #location = [stop_point.location.x, stop_point.location.y, stop_point.location.z]
+    #location = [waypoints[index].transform.location.x, waypoints[index].transform.location.y, waypoints[index].transform.location.z]
+    
+    route = ba._trace_route(start_waypoint, end_waypoint)
+    waypoints = []
+    for waypoint in route:
+        waypoints.append(waypoint[0])  
 
     #save_waypoints(waypoints)
-    waypoints = load_waypoints(world, map)
+    #waypoints = load_waypoints(world, map)
+    
+    waypoints = pruning(map, waypoints)
     waypoints = trajectory.load_trajectory(waypoints)
+    draw_waypoints(world, waypoints)
+
+
     # configure sensors 
     sensors = configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, "ObstacleDetector")
     
@@ -102,8 +125,8 @@ def main():
             break 
 
     # follow random trajectory and stop to obstacles and traffic lights
-    behavior = Behavior()
-    behavior.follow_random_trajectory(world, vehicle_actor, vehicle.set_spectator, waypoints, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, trajectory)
+    behavior = Behavior(vehicle_actor, waypoints, trajectory)
+    behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle)
 
     ###########################
     # Destroy actors and exit #
