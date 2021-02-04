@@ -318,5 +318,8 @@ def pruning(map, waypoints):
 def draw_waypoints(world, waypoints):
     m = 0
     for waypoint in waypoints:
-        world.debug.draw_string(waypoint.transform.location, '{}'.format(m), draw_shadow=False, color=carla.Color(r=255, g=0, b=255), life_time=1000, persistent_lines=True)
+        if isinstance(waypoint, carla.libcarla.Waypoint):
+            world.debug.draw_string(waypoint.transform.location, '{}'.format(m), draw_shadow=False, color=carla.Color(r=255, g=0, b=255), life_time=1000, persistent_lines=True)
+        elif isinstance(waypoint, carla.libcarla.Transform):
+            world.debug.draw_string(waypoint.location, '{}'.format(m), draw_shadow=False, color=carla.Color(r=255, g=0, b=255), life_time=1000, persistent_lines=True)
         m += 1 

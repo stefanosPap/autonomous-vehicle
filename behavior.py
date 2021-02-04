@@ -11,7 +11,7 @@ from communicationMQTT import   VehiclePublisherMQTT, \
                                 VehicleSubscriberPositionMQTT
 
 class Behavior(object):
-    def __init__(self, vehicle_actor, waypoints, trajectory):
+    def __init__(self, vehicle_actor, waypoints, trajectory, map):
         # controller 
         self.custom_controller = VehiclePIDController(vehicle_actor, args_lateral = {'K_P': 1, 'K_D': 0, 'K_I': 0}, args_longitudinal = {'K_P': 1, 'K_D': 0, 'K_I': 0})    
 
@@ -27,6 +27,7 @@ class Behavior(object):
         self.waypoints = waypoints
         self.velocity = 0
         self.trajectory = trajectory
+        self.map = map
 
     def slow_down(self, current_velocity, desired_velocity, limit):
         if current_velocity > limit:
@@ -125,7 +126,7 @@ class Behavior(object):
                 #print('Distance from waypoint {}'.format(i), dist)
                 #draw_vehicle_box(world, vehicle_actor, vehicle_actor.get_transform().location, vehicle_actor.get_transform().rotation, 0.05)
 
-                traffic = Traffic(world)
+                traffic = Traffic(world, self.map)
                 traffic_sign = traffic.check_signs(self.waypoints[i])
                 traffic_light_state = traffic.check_traffic_lights(vehicle_actor)
                 stop = self.sub.get_stop()
@@ -154,7 +155,12 @@ class Behavior(object):
                         self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=10, limit=10)
                         control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
 
-                p1 = carla.Location(self.waypoints[i].transform.location.x, self.waypoints[i].transform.location.y, self.waypoints[i].transform.location.z)
+                if isinstance(self.waypoints[i], carla.libcarla.Waypoint):
+                    p1 = carla.Location(self.waypoints[i].transform.location.x, self.waypoints[i].transform.location.y, self.waypoints[i].transform.location.z)
+               
+                elif isinstance(self.waypoints[i], carla.libcarla.Transform):
+                    p1 = carla.Location(self.waypoints[i].location.x, self.waypoints[i].location.y, self.waypoints[i].location.z)
+
                 p2 = carla.Location(vehicle_actor.get_location().x, vehicle_actor.get_location().y, vehicle_actor.get_location().z)
                 dist = p1.distance(p2)
 

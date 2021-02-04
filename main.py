@@ -40,8 +40,14 @@ def main():
     
     points = map.get_spawn_points()                         # returns a list of recommendations 
     start_point = random.choice(points)                                              # choose first point as spawn point
+    #while True:
+    start_point = carla.Transform(carla.Location(x=-95.793716, y=-3.109917, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
     start_waypoint = map.get_waypoint(start_point.location, project_to_road=False)   # return the waypoint of the spawn point 
+    #if start_waypoint.get_junction() != None:
+    #        break 
 
+    print(start_point)
+    print(start_waypoint)
     ##########################
     # create new ego vehicle #
     ##########################
@@ -70,10 +76,10 @@ def main():
     #top = gp.get_topology()
     #spawn()
     #waypoints = map.get_topology()
-    #waypoints_map = map.generate_waypoints(3.0)
+    #waypoints = map.generate_waypoints(3.0)
     #for waypoint in waypoints:
     #    for waypoint in top[i]['path']:
-    #        world.debug.draw_string(waypoint[0].transform.location, 's', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+    #        world.debug.draw_string(waypoint.transform.location, 's', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
     #        world.debug.draw_string(waypoint[1].transform.location, 'e', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
     #print(top)
 
@@ -87,8 +93,12 @@ def main():
     trajectory = Trajectory(world, map)
     #waypoints = trajectory.generate_random_trajectory(start_waypoint, number_of_waypoints = 200)
     
-    end_point = random.choice(points)
-    end_waypoint = map.get_waypoint(end_point.location)
+    #end_point = random.choice(points)
+    custom_point = carla.Transform(carla.Location(x=-125.793716, y=-4 , z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
+    custom_waypoint = map.get_waypoint(custom_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
+
+    end_point = carla.Transform(carla.Location(x=-137.793716, y=-1.8, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
+    end_waypoint = map.get_waypoint(end_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
     
     #index = len(waypoints) - 1
     #location = [stop_point.location.x, stop_point.location.y, stop_point.location.z]
@@ -96,13 +106,16 @@ def main():
     
     route = ba._trace_route(start_waypoint, end_waypoint)
     waypoints = []
-    for waypoint in route:
-        waypoints.append(waypoint[0])  
+    waypoints.append(start_point)
+    waypoints.append(custom_point)
+    waypoints.append(end_point)
+    #for waypoint in route:
+    #    waypoints.append(waypoint[0])  
 
     #save_waypoints(waypoints)
     #waypoints = load_waypoints(world, map)
     
-    waypoints = pruning(map, waypoints)
+    #waypoints = pruning(map, waypoints)
     waypoints = trajectory.load_trajectory(waypoints)
     draw_waypoints(world, waypoints)
 
@@ -125,7 +138,7 @@ def main():
             break 
 
     # follow random trajectory and stop to obstacles and traffic lights
-    behavior = Behavior(vehicle_actor, waypoints, trajectory)
+    behavior = Behavior(vehicle_actor, waypoints, trajectory, map)
     behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle)
 
     ###########################

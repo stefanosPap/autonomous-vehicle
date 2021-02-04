@@ -5,11 +5,11 @@ class Traffic(object):
     ###############
     # Constructor #
     ###############
-    def __init__(self, world):
+    def __init__(self, world, map):
         self.traffic_state = "GREEN"
         self.world = world
         self.lane_info = {}
-        
+        self.map = map
     ######################################
     # Method for checking traffic lights #
     ######################################
@@ -36,6 +36,12 @@ class Traffic(object):
     # Method for checking traffic lights #
     ######################################
     def check_signs(self, waypoint):
+        
+        if isinstance(waypoint, carla.libcarla.Transform):
+            loc = waypoint.location
+            del waypoint
+            waypoint = self.map.get_waypoint(loc)
+
         landmarks = waypoint.get_landmarks(distance=3)
         landmark_names = []
         if len(landmarks) != 0:
