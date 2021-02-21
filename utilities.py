@@ -272,7 +272,7 @@ def pruning(map, waypoints):
         p2 = carla.Location(waypoints_initial[i + 1].transform.location.x, waypoints_initial[i + 1].transform.location.y, waypoints_initial[i + 1].transform.location.z)
         dist = p1.distance(p2)
 
-        if dist < 0.6:
+        if dist < 0.5:
             i += 1 
         else:
             waypoints.append(waypoints_initial[i])

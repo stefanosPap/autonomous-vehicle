@@ -2,6 +2,7 @@
 
 from vehicle import Vehicle
 from client import Client
+
 from utilities import plot_axis, draw_vehicle_box, configure_sensor, save_waypoints, load_waypoints, pruning, draw_waypoints
 from trajectory import Trajectory
 from behavior import Behavior
@@ -38,16 +39,19 @@ def main():
     client.connect()                                        # connect the client 
     [blueprint, world, map]= client.get_simulation()        
     
+    #world = client.get_client().load_world('/Game/Carla/Maps/Town02')
+    #world = client.get_client().reload_world()
+    #print(client.get_client().get_available_maps())
     points = map.get_spawn_points()                         # returns a list of recommendations 
-    start_point = random.choice(points)                                              # choose first point as spawn point
-    #while True:
-    start_point = carla.Transform(carla.Location(x=-95.793716, y=-3.109917, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
-    start_waypoint = map.get_waypoint(start_point.location, project_to_road=False)   # return the waypoint of the spawn point 
-    #if start_waypoint.get_junction() != None:
-    #        break 
+    #start_point = carla.Transform(carla.Location(x=-95.793716, y=-3.109917, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
+    while True:
+        start_point = random.choice(points)                                              # choose first point as spawn point
+        start_waypoint = map.get_waypoint(start_point.location, project_to_road=False)   # return the waypoint of the spawn point 
+        if start_waypoint.get_junction() == None:                                        # spawn vehicles only on roads, not junctions
+            break 
 
-    print(start_point)
-    print(start_waypoint)
+    #print(start_point)
+    #print(start_waypoint)
     ##########################
     # create new ego vehicle #
     ##########################
@@ -92,30 +96,36 @@ def main():
     
     trajectory = Trajectory(world, map)
     #waypoints = trajectory.generate_random_trajectory(start_waypoint, number_of_waypoints = 200)
-    
-    #end_point = random.choice(points)
-    custom_point = carla.Transform(carla.Location(x=-125.793716, y=-4 , z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
-    custom_waypoint = map.get_waypoint(custom_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
-
-    end_point = carla.Transform(carla.Location(x=-137.793716, y=-1.8, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
-    end_waypoint = map.get_waypoint(end_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
-    
+    #custom_point = carla.Transform(carla.Location(x=-125.793716, y=-4 , z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
+    #custom_waypoint = map.get_waypoint(custom_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
+    #end_point = carla.Transform(carla.Location(x=-137.793716, y=-1.8, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
     #index = len(waypoints) - 1
     #location = [stop_point.location.x, stop_point.location.y, stop_point.location.z]
     #location = [waypoints[index].transform.location.x, waypoints[index].transform.location.y, waypoints[index].transform.location.z]
+    #waypoints.append(start_point)
+    #waypoints.append(custom_point)
+    #waypoints.append(end_waypoint)
     
+    while True:
+        end_point = random.choice(points)
+        end_waypoint = map.get_waypoint(end_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
+        #if end_waypoint == None:
+        #        continue
+        #distance = end_waypoint.transform.location.distance(start_waypoint.transform.location)
+        if end_waypoint.get_junction() == None: 
+        #and distance < 20 and end_waypoint != start_waypoint:
+            break 
+        
+
     route = ba._trace_route(start_waypoint, end_waypoint)
     waypoints = []
-    waypoints.append(start_point)
-    waypoints.append(custom_point)
-    waypoints.append(end_point)
-    #for waypoint in route:
-    #    waypoints.append(waypoint[0])  
+    for waypoint in route:
+        waypoints.append(waypoint[0])  
 
     #save_waypoints(waypoints)
     #waypoints = load_waypoints(world, map)
     
-    #waypoints = pruning(map, waypoints)
+    waypoints = pruning(map, waypoints)
     waypoints = trajectory.load_trajectory(waypoints)
     draw_waypoints(world, waypoints)
 
@@ -139,7 +149,35 @@ def main():
 
     # follow random trajectory and stop to obstacles and traffic lights
     behavior = Behavior(vehicle_actor, waypoints, trajectory, map)
-    behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle)
+    behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, 0)
+    #sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle,
+
+    while True:
+        vel = behavior.get_velocity()
+        start_waypoint = end_waypoint
+        while True:
+            end_point = random.choice(points)
+            end_waypoint = map.get_waypoint(end_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
+            #if end_waypoint == None:
+            #    continue
+            #distance = end_waypoint.transform.location.distance(start_waypoint.transform.location)
+            if end_waypoint.get_junction() == None: 
+            #and distance < 20 and end_waypoint != start_waypoint:
+                break 
+
+        route = ba._trace_route(start_waypoint, end_waypoint)
+        waypoints = []
+        for waypoint in route:
+            waypoints.append(waypoint[0])  
+
+        #save_waypoints(waypoints)
+        #waypoints = load_waypoints(world, map)
+    
+        waypoints = pruning(map, waypoints)
+        waypoints = trajectory.load_trajectory(waypoints)
+        draw_waypoints(world, waypoints)
+        behavior = Behavior(vehicle_actor, waypoints, trajectory, map)
+        behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, vel)
 
     ###########################
     # Destroy actors and exit #

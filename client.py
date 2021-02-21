@@ -31,6 +31,9 @@ class Client(object):
         self.settings.fixed_delta_seconds = 0.05
         self.world.apply_settings(self.settings)
 
+    def get_client(self):
+        return self.client
+        
     def add_actor(self, actor):
         self.created_actor_list.append(actor)
     

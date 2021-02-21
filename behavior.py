@@ -49,6 +49,9 @@ class Behavior(object):
         control.steer = 0.0
         control.throttle = 0.0
         return control 
+    
+    def get_velocity(self):
+        return self.velocity
 
     def change_lane(self, turn, i):
         if self.trajectory.change == False and i != len(self.waypoints):
@@ -98,18 +101,23 @@ class Behavior(object):
                     turn = self.turn_sub.set_turn(None)
                     self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=10, limit=10)
 
-    def follow_trajectory(self, world, vehicle_actor, spectator, front_obstacle, set_front_obstacle):
-    
+    def follow_trajectory(self, world, vehicle_actor, spectator, velocity):
+        #front_obstacle, set_front_obstacle,
         i = 0
         self.current_state = "INIT"
         #spawn()
         
-        vel = {'velocity': 0}  
+        vel = {'velocity': velocity}  
         self.pub_vel.publish(vel)
  
         while True:
             try:
-                spectator()
+
+                if i == len(self.waypoints):
+                    control_signal = self.custom_controller.run_step(0, self.waypoints[i - 1])
+                    break
+                
+                #spectator()
                 '''
                 p1 = [self.waypoints[i].transform.location.x, self.waypoints[i].transform.location.y, self.waypoints[i].transform.location.z]
                 p2 = [vehicle_actor.get_location().x, vehicle_actor.get_location().y, vehicle_actor.get_location().z]
@@ -145,12 +153,18 @@ class Behavior(object):
                 self.change_lane(turn, i)
 
                 # check for red lights, front obstacles and stop button 
-                if traffic_light_state == "RED" or front_obstacle() == True or stop == True:
-                    set_front_obstacle(False)                                               # set False in order to check if obstacle detector has triggered again  
+                if traffic_light_state == "RED":
                     control_signal = self.emergency_stop()
+
+                #elif front_obstacle() == True:
+                #    set_front_obstacle(False)                                               # set False in order to check if obstacle detector has triggered again  
+                #    control_signal = self.emergency_stop() 
+
+                elif stop == True:
+                    control_signal = self.emergency_stop()
+                
                 else:
                     control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
-                    
                     if abs(control_signal.steer) > 0.6:
                         self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=10, limit=10)
                         control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
@@ -167,11 +181,6 @@ class Behavior(object):
                 if dist < 2:
                     i += 1
                     self.trajectory.change = False
-
-                if i == len(self.waypoints):
-                    control_signal = self.custom_controller.run_step(0, self.waypoints[i - 1])
-                    break
-
 
                 vehicle_actor.apply_control(control_signal)
                 world.tick()      
