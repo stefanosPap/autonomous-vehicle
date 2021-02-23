@@ -22,6 +22,67 @@ class VehicleSubscriberMQTT():
         sub = Subscriber(topic=self.topic, on_message=self.data_callback, conn_params=connection_parameters)
         sub.run()
 
+class VehicleSubscriberCoorMQTT(VehicleSubscriberMQTT):
+    def __init__(self, topic):  
+        super().__init__(topic)
+        self.coordinates = [] 
+
+    def data_callback(self, msg):
+        if self.topic == 'coordinates':
+            self.coordinates = msg['coordinates']
+    
+    def get_coordinates(self):
+        return self.coordinates
+
+    def set_coordinates(self, coordinates):
+        self.coordinates = coordinates
+
+
+class VehicleSubscriberEnterMQTT(VehicleSubscriberMQTT):
+    def __init__(self, topic):  
+        super().__init__(topic)
+        self.enter = False
+
+    def data_callback(self, msg):
+        if self.topic == 'enter':
+            self.enter = msg['enter']
+    
+    def get_enter(self):
+        return self.enter
+
+    def set_enter(self, enter):
+        self.enter = enter
+
+class VehicleSubscriberDoneMQTT(VehicleSubscriberMQTT):
+    def __init__(self, topic):  
+        super().__init__(topic)
+        self.done = False
+
+    def data_callback(self, msg):
+        if self.topic == 'done':
+            self.done = msg['done']
+    
+    def get_done(self):
+        return self.done
+
+    def set_done(self, done):
+        self.done = done
+
+class VehicleSubscriberBehaviorMQTT(VehicleSubscriberMQTT):
+    def __init__(self, topic):  
+        super().__init__(topic)
+        self.behavior = False 
+
+    def data_callback(self, msg):
+        if self.topic == 'behavior':
+            self.behavior = msg['behavior']
+    
+    def get_behavior(self):
+        return self.behavior
+
+    def set_behavior(self, behavior):
+        self.behavior = behavior
+
 class VehicleSubscriberPositionMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):  
         super().__init__(topic)

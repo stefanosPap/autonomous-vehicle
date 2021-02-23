@@ -8,22 +8,28 @@ from communicationMQTT import   VehiclePublisherMQTT, \
                                 VehicleSubscriberStartStopMQTT, \
                                 VehicleSubscriberVelocityMQTT, \
                                 VehicleSubscriberLeftRightMQTT, \
-                                VehicleSubscriberPositionMQTT
+                                VehicleSubscriberPositionMQTT, \
+                                VehicleSubscriberBehaviorMQTT
 
 class Behavior(object):
     def __init__(self, vehicle_actor, waypoints, trajectory, map):
         # controller 
         self.custom_controller = VehiclePIDController(vehicle_actor, args_lateral = {'K_P': 1, 'K_D': 0, 'K_I': 0}, args_longitudinal = {'K_P': 1, 'K_D': 0, 'K_I': 0})    
 
-        # communication attributes 
+        # communication attributes
+        # 
+        # Publishers
         self.pub_vel = VehiclePublisherMQTT(topic='speed_configure')
+        self.pub_notify = VehiclePublisherMQTT(topic='turn notification')
+        self.pub = VehiclePublisherMQTT(topic='speed_topic')
+
+        # Subscribers
         self.sub = VehicleSubscriberStartStopMQTT(topic='start_stop_topic')
         self.speed_sub = VehicleSubscriberVelocityMQTT(topic='speed_configure')
         self.turn_sub = VehicleSubscriberLeftRightMQTT(topic='turn')
         self.sub_pos = VehicleSubscriberPositionMQTT(topic='position')
-        self.pub = VehiclePublisherMQTT(topic='speed_topic')
-        self.pub_notify = VehiclePublisherMQTT(topic='turn notification')
-       
+        self.sub_behavior = VehicleSubscriberBehaviorMQTT(topic='behavior')
+
         self.waypoints = waypoints
         self.velocity = 0
         self.trajectory = trajectory
@@ -101,8 +107,7 @@ class Behavior(object):
                     turn = self.turn_sub.set_turn(None)
                     self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=10, limit=10)
 
-    def follow_trajectory(self, world, vehicle_actor, spectator, velocity):
-        #front_obstacle, set_front_obstacle,
+    def follow_trajectory(self, world, vehicle_actor, spectator, front_obstacle, set_front_obstacle, velocity):
         i = 0
         self.current_state = "INIT"
         #spawn()
@@ -148,7 +153,10 @@ class Behavior(object):
                     world.debug.draw_string(right.transform.location, '{}'.format(1), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
                 '''
                 turn = self.turn_sub.get_turn()
-                
+                behavior = self.sub_behavior.get_behavior()
+                if behavior == True:
+                    behavior = self.sub_behavior.set_behavior(False)
+                    break 
                 # check for lane change
                 self.change_lane(turn, i)
 
