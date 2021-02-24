@@ -6,7 +6,12 @@ from client import Client
 from utilities import plot_axis, draw_vehicle_box, configure_sensor, save_waypoints, load_waypoints, pruning, draw_waypoints
 from trajectory import Trajectory
 from behavior import Behavior
-from communicationMQTT import VehicleSubscriberStartStopMQTT, VehicleSubscriberCoorMQTT, VehicleSubscriberEnterMQTT, VehicleSubscriberDoneMQTT
+from communicationMQTT import VehicleSubscriberStartStopMQTT, \
+                              VehicleSubscriberCoorMQTT, \
+                              VehicleSubscriberEnterMQTT, \
+                              VehicleSubscriberDoneMQTT, \
+                              VehiclePublisherMQTT
+
 from vehicle_move import spawn
 #from agents.navigation.roaming_agent import RoamingAgent
 #from agents.navigation.behavior_agent import BehaviorAgent
@@ -68,7 +73,16 @@ def main():
 
     origin = start_point                                    # plot vehicle's starting coordinate frame 
     plot_axis(world, origin)
-
+    
+    # configure sensors 
+    sensors = configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, "ObstacleDetector")
+    
+    # add sensor to vehicle's configuration
+    vehicle.add_sensor(sensors['obs'])                            
+    
+    # just wander in autopilot mode and collect data
+    # vehicle.wander()                                                                  
+ 
     #world.debug.draw_string(map.get_waypoint(vehicle_actor.get_location()).transform.location, 'O', draw_shadow=False, color=carla.Color(r=255, g=200, b=0), life_time=50, persistent_lines=True)  
     #agent = BasicAgent(vehicle_actor)
     #agent.set_destination([-6.446170, -50.055023, 0.275307])
@@ -93,92 +107,118 @@ def main():
     #client.add_actor(ped_actor)
     
     # generate random trajectory for the vehicle 
-    
-    trajectory = Trajectory(world, map)
-    #waypoints = trajectory.generate_random_trajectory(start_waypoint, number_of_waypoints = 200)
-    #custom_point = carla.Transform(carla.Location(x=-125.793716, y=-4 , z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
-    #custom_waypoint = map.get_waypoint(custom_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
-    #end_point = carla.Transform(carla.Location(x=-137.793716, y=-1.8, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
-    #end_waypoint = map.get_waypoint(end_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
-        
-    #index = len(waypoints) - 1
-    #location = [stop_point.location.x, stop_point.location.y, stop_point.location.z]
-    #location = [waypoints[index].transform.location.x, waypoints[index].transform.location.y, waypoints[index].transform.location.z]
-    #waypoints.append(start_point)
-    #waypoints.append(custom_point)
-    #waypoints.append(end_waypoint)
-    end_waypoints = [start_waypoint]
     sub_coor = VehicleSubscriberCoorMQTT(topic='coordinates')
     sub_enter = VehicleSubscriberEnterMQTT(topic='enter')
     sub_done = VehicleSubscriberDoneMQTT(topic='done')
+    pub = VehiclePublisherMQTT(topic='text')
+    pub_vel = VehiclePublisherMQTT(topic='speed_topic')
+    pub_vel_conf = VehiclePublisherMQTT(topic='speed_configure')
+    pub_waypoint = VehiclePublisherMQTT(topic='waypoint_choose')
+    pub_enter = VehiclePublisherMQTT(topic='enter_info')
+    pub_done = VehiclePublisherMQTT(topic='done_info')
+    pub_start = VehiclePublisherMQTT(topic='start notification')
 
-    prev_point = []
+    msg = {'value': 'Press ENTER for inserting new waypoint'}
+    pub_enter.publish(msg)
+    
+    msg = {'value': 'Press DONE for finishing waypoint selection'}
+    pub_done.publish(msg)
+    
     while True:
-        world.tick()
+        msg = {'value': ''}
+        pub_waypoint.publish(msg)
+        
+        trajectory = Trajectory(world, map)
+        #waypoints = trajectory.generate_random_trajectory(start_waypoint, number_of_waypoints = 200)
+        #custom_point = carla.Transform(carla.Location(x=-125.793716, y=-4 , z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
+        #custom_waypoint = map.get_waypoint(custom_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
+        #end_point = carla.Transform(carla.Location(x=-137.793716, y=-1.8, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
+        #end_waypoint = map.get_waypoint(end_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
+            
+        #index = len(waypoints) - 1
+        #location = [stop_point.location.x, stop_point.location.y, stop_point.location.z]
+        #location = [waypoints[index].transform.location.x, waypoints[index].transform.location.y, waypoints[index].transform.location.z]
+        #waypoints.append(start_point)
+        #waypoints.append(custom_point)
+        #waypoints.append(end_waypoint)
+        end_waypoints = [start_waypoint]
+        text = {'text': ''}
+        pub.publish(text)
 
-        if sub_enter.get_enter() == True:
-            sub_enter.set_enter(False)
-            coordinates = sub_coor.get_coordinates()
+        vel = {'velocity': 0}  
+        pub_vel.publish(vel)
+        pub_vel_conf.publish(vel)
 
-            if coordinates != []:
-                point = [int(item) for item in coordinates.split()]
+        prev_point = []
+        num = 1 
+        while True:
+            world.tick()
+
+            if sub_enter.get_enter() == True:
+                sub_enter.set_enter(False)
+                pub.publish(text)
+                coordinates = sub_coor.get_coordinates()
                 
-                if len(point) == 3 and point != prev_point: 
-                    prev_point = point 
-                    point = carla.Location(point[0],point[1],point[2])
-                    waypoint = map.get_waypoint(point, project_to_road=True, lane_type=carla.LaneType.Any)
-                    end_waypoints.append(waypoint)
-        
-        if sub_done.get_done() == True:
-            break 
+                if coordinates != []:
+                    point = [int(item) for item in coordinates.split()]
+
+                    if len(point) == 3 and point != prev_point: 
+                        print(point)
+                        way = {'value': 'Waypoint {} is x:{}, y:{} z:{}'.format(num, point[0], point[1], point[2])}
+                        pub_waypoint.publish(way)
+                        num += 1  
+
+                        prev_point = point 
+                        point = carla.Location(point[0],point[1],point[2])
+                        waypoint = map.get_waypoint(point, project_to_road=True, lane_type=carla.LaneType.Any)
+                        end_waypoints.append(waypoint)
+            
+            if sub_done.get_done() == True:
+                sub_done.set_done(False)
+                break 
         
 
-    '''
-    while True:
-        end_point = random.choice(points)
-        end_waypoint = map.get_waypoint(end_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
-        if end_waypoint == None:
-                continue
-        #distance = end_waypoint.transform.location.distance(start_waypoint.transform.location)
-        if end_waypoint.get_junction() == None: 
-        #and distance < 20 and end_waypoint != start_waypoint:
-            break 
-    '''
-    waypoints = []
-    for k in range(len(end_waypoints) - 1): 
-        route = ba._trace_route(end_waypoints[k], end_waypoints[k+1])
-        world.debug.draw_string(end_waypoints[k + 1].transform.location, '{}'.format(end_waypoints[k + 1].transform.location.x), draw_shadow=False, color=carla.Color(r=0, g=0, b=0), life_time=1000)
-        for waypoint in route:
-            waypoints.append(waypoint[0])  
+        '''
+        while True:
+            end_point = random.choice(points)
+            end_waypoint = map.get_waypoint(end_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
+            if end_waypoint == None:
+                    continue
+            #distance = end_waypoint.transform.location.distance(start_waypoint.transform.location)
+            if end_waypoint.get_junction() == None: 
+            #and distance < 20 and end_waypoint != start_waypoint:
+                break 
+        '''
+        waypoints = []
+        for k in range(len(end_waypoints) - 1): 
+            route = ba._trace_route(end_waypoints[k], end_waypoints[k+1])
+            world.debug.draw_string(end_waypoints[k + 1].transform.location, '{}'.format(end_waypoints[k + 1].transform.location.x), draw_shadow=False, color=carla.Color(r=0, g=0, b=0), life_time=1000)
+            for waypoint in route:
+                waypoints.append(waypoint[0])  
 
-    #save_waypoints(waypoints)
-    #waypoints = load_waypoints(world, map)
-    
-    waypoints = pruning(map, waypoints)
-    waypoints = trajectory.load_trajectory(waypoints)
-    draw_waypoints(world, waypoints, 100)
-     
-    # configure sensors 
-    sensors = configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, "ObstacleDetector")
-    
-    # add sensor to vehicle's configuration
-    vehicle.add_sensor(sensors['obs'])                            
-    
-    # just wander in autopilot mode and collect data
-    #vehicle.wander()                                                                  
- 
-    # wait until start button is pushed     
-    sub = VehicleSubscriberStartStopMQTT(topic='start_stop_topic')
-    while True:
-        world.tick()
-        start = sub.get_start()
-        if start == True:
-            break 
+        #save_waypoints(waypoints)
+        #waypoints = load_waypoints(world, map)
 
-    # follow random trajectory and stop to obstacles and traffic lights
-    behavior = Behavior(vehicle_actor, waypoints, trajectory, map)
-    behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, 0)
-        
+        waypoints = pruning(map, waypoints)
+        waypoints = trajectory.load_trajectory(waypoints)
+        draw_waypoints(world, waypoints, 100)
+
+        # wait until start button is pushed     
+        sub = VehicleSubscriberStartStopMQTT(topic='start_stop_topic')
+        pub_start.publish({'value': 'Waypoint selection has completed! Press START to begin!'})
+        while True:
+            world.tick()
+            start = sub.get_start()
+            if start == True:
+                sub.set_start(False)
+                pub_start.publish({'value': 'Your car is on! Choose velocity to begin!'})
+                break 
+
+        # follow random trajectory and stop to obstacles and traffic lights
+        behavior = Behavior(vehicle_actor, waypoints, trajectory, map)
+        behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, 0)
+        start_waypoint = map.get_waypoint(vehicle_actor.get_location(), project_to_road=True, lane_type=carla.LaneType.Any)
+
     col = 100
     while True:
         vel = behavior.get_velocity()

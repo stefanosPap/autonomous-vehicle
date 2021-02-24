@@ -156,7 +156,12 @@ class Behavior(object):
                 behavior = self.sub_behavior.get_behavior()
                 if behavior == True:
                     behavior = self.sub_behavior.set_behavior(False)
+                    control_signal = self.emergency_stop()
+                    vehicle_actor.apply_control(control_signal)
+                    vel = {'velocity': 0}  
+                    self.pub_vel.publish(vel)
                     break 
+
                 # check for lane change
                 self.change_lane(turn, i)
 
