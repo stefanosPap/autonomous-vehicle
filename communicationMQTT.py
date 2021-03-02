@@ -22,6 +22,18 @@ class VehicleSubscriberMQTT():
         sub = Subscriber(topic=self.topic, on_message=self.data_callback, conn_params=connection_parameters)
         sub.run()
 
+class VehicleSubscriberAggressiveMQTT(VehicleSubscriberMQTT):
+    def __init__(self, topic):
+        super().__init__(topic)
+        self.aggressive = 0 
+
+    def data_callback(self, msg):
+        if self.topic == 'aggressive':
+            self.aggressive = msg['aggressive']
+
+    def get_aggressive(self):
+        return self.aggressive 
+
 class VehicleSubscriberCoorMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):  
         super().__init__(topic)

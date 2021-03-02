@@ -9,7 +9,8 @@ from communicationMQTT import   VehiclePublisherMQTT, \
                                 VehicleSubscriberVelocityMQTT, \
                                 VehicleSubscriberLeftRightMQTT, \
                                 VehicleSubscriberPositionMQTT, \
-                                VehicleSubscriberBehaviorMQTT
+                                VehicleSubscriberBehaviorMQTT, \
+                                VehicleSubscriberAggressiveMQTT
 
 class Behavior(object):
     def __init__(self, vehicle_actor, waypoints, trajectory, map):
@@ -29,7 +30,7 @@ class Behavior(object):
         self.turn_sub = VehicleSubscriberLeftRightMQTT(topic='turn')
         self.sub_pos = VehicleSubscriberPositionMQTT(topic='position')
         self.sub_behavior = VehicleSubscriberBehaviorMQTT(topic='behavior')
-
+        self.sub_agg = VehicleSubscriberAggressiveMQTT(topic="aggressive")
         self.waypoints = waypoints
         self.velocity = 0
         self.trajectory = trajectory
@@ -114,7 +115,7 @@ class Behavior(object):
         
         vel = {'velocity': velocity}  
         self.pub_vel.publish(vel)
- 
+            
         while True:
             try:
 
@@ -162,6 +163,9 @@ class Behavior(object):
                     self.pub_vel.publish(vel)
                     break 
 
+                if self.sub_agg.get_aggressive():
+                    self.speed_up(0, self.sub_agg.get_aggressive())
+                
                 # check for lane change
                 self.change_lane(turn, i)
 
