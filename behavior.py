@@ -10,7 +10,8 @@ from communicationMQTT import   VehiclePublisherMQTT, \
                                 VehicleSubscriberLeftRightMQTT, \
                                 VehicleSubscriberPositionMQTT, \
                                 VehicleSubscriberBehaviorMQTT, \
-                                VehicleSubscriberAggressiveMQTT
+                                VehicleSubscriberAggressiveMQTT, \
+                                VehicleSubscriberCautiousMQTT
 
 class Behavior(object):
     def __init__(self, vehicle_actor, waypoints, trajectory, map):
@@ -31,6 +32,8 @@ class Behavior(object):
         self.sub_pos = VehicleSubscriberPositionMQTT(topic='position')
         self.sub_behavior = VehicleSubscriberBehaviorMQTT(topic='behavior')
         self.sub_agg = VehicleSubscriberAggressiveMQTT(topic="aggressive")
+        self.sub_caut = VehicleSubscriberCautiousMQTT(topic="cautious")
+        
         self.waypoints = waypoints
         self.velocity = 0
         self.trajectory = trajectory
@@ -108,6 +111,20 @@ class Behavior(object):
                     turn = self.turn_sub.set_turn(None)
                     self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=10, limit=10)
 
+    def cautious(self):
+        #self.slow_down(self.velocity, self.sub_caut.get_cautius(), 0)
+        self.velocity -= self.sub_caut.get_cautius()
+        vel = {'velocity': self.velocity}  
+        self.pub_vel.publish(vel)
+    
+    def neutral(self):
+        pass
+
+    def aggressive(self):
+        self.velocity += self.sub_agg.get_aggressive()
+        vel = {'velocity': self.velocity}  
+        self.pub_vel.publish(vel)
+        
     def follow_trajectory(self, world, vehicle_actor, spectator, front_obstacle, set_front_obstacle, velocity):
         i = 0
         self.current_state = "INIT"
@@ -164,15 +181,20 @@ class Behavior(object):
                     break 
 
                 if self.sub_agg.get_aggressive():
-                    self.speed_up(0, self.sub_agg.get_aggressive())
-                
+                    self.aggressive()
+                    self.sub_agg.set_aggressive()
+
+                if self.sub_caut.get_cautius():
+                    self.cautious()
+                    self.sub_caut.set_cautius()
+
                 # check for lane change
                 self.change_lane(turn, i)
 
                 # check for red lights, front obstacles and stop button 
                 if traffic_light_state == "RED":
                     control_signal = self.emergency_stop()
-
+                    pass
                 #elif front_obstacle() == True:
                 #    set_front_obstacle(False)                                               # set False in order to check if obstacle detector has triggered again  
                 #    control_signal = self.emergency_stop() 

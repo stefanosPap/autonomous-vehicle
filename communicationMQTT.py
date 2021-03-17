@@ -33,19 +33,43 @@ class VehicleSubscriberAggressiveMQTT(VehicleSubscriberMQTT):
 
     def get_aggressive(self):
         return self.aggressive 
+    
+    def set_aggressive(self):
+        self.aggressive = 0 
+
+class VehicleSubscriberCautiousMQTT(VehicleSubscriberMQTT):
+    def __init__(self, topic):
+        super().__init__(topic)
+        self.cautius = 0 
+
+    def data_callback(self, msg):
+        if self.topic == 'cautious':
+            self.cautius = msg['cautious']
+
+    def get_cautius(self):
+        return self.cautius 
+
+    def set_cautius(self):
+        self.cautius = 0
 
 class VehicleSubscriberCoorMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):  
         super().__init__(topic)
         self.coordinates = [] 
+        self.location = None
 
     def data_callback(self, msg):
         if self.topic == 'coordinates':
+            print(msg['location'])
             self.coordinates = msg['coordinates']
-    
+            self.location = msg['location']
+
     def get_coordinates(self):
         return self.coordinates
 
+    def get_location(self):
+        return self.location
+    
     def set_coordinates(self, coordinates):
         self.coordinates = coordinates
 

@@ -97,7 +97,7 @@ def main():
     #waypoints = map.generate_waypoints(3.0)
     #for waypoint in waypoints:
     #    for waypoint in top[i]['path']:
-    #        world.debug.draw_string(waypoint.transform.location, '{}'.format(waypoint.transform.location.x), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+    #        world.debug.draw_string(waypoint.transform.location, '{}'.format(round(waypoint.transform.location.y)), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
     #        world.debug.draw_string(waypoint[1].transform.location, 'e', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
     #print(top)
 
@@ -160,11 +160,13 @@ def main():
                 coordinates = sub_coor.get_coordinates()
                 
                 if coordinates != []:
-                    point = [int(item) for item in coordinates.split()]
-
+                    #point = [int(item) for item in coordinates.split()]
+                    point = coordinates
                     if len(point) == 3 and point != prev_point: 
                         print(point)
-                        way = {'value': 'Waypoint {} is x:{}, y:{} z:{}'.format(num, point[0], point[1], point[2])}
+                        #way = {'value': 'Waypoint {} is x:{}, y:{} z:{}'.format(num, point[0], point[1], point[2])}
+                        way = {'value': 'Location {} at: {}'.format(num, sub_coor.get_location())}
+
                         pub_waypoint.publish(way)
                         num += 1  
 
