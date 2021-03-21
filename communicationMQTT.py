@@ -60,7 +60,6 @@ class VehicleSubscriberCoorMQTT(VehicleSubscriberMQTT):
 
     def data_callback(self, msg):
         if self.topic == 'coordinates':
-            print(msg['location'])
             self.coordinates = msg['coordinates']
             self.location = msg['location']
 

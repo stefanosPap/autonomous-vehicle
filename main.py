@@ -12,6 +12,7 @@ from communicationMQTT import VehicleSubscriberStartStopMQTT, \
                               VehicleSubscriberDoneMQTT, \
                               VehiclePublisherMQTT
 
+from interface import Interface
 from vehicle_move import spawn
 #from agents.navigation.roaming_agent import RoamingAgent
 #from agents.navigation.behavior_agent import BehaviorAgent
@@ -55,6 +56,7 @@ def main():
         if start_waypoint.get_junction() == None:                                        # spawn vehicles only on roads, not junctions
             break 
 
+
     #print(start_point)
     #print(start_waypoint)
     ##########################
@@ -76,13 +78,14 @@ def main():
     
     # configure sensors 
     sensors = configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, "ObstacleDetector")
+
     
     # add sensor to vehicle's configuration
     vehicle.add_sensor(sensors['obs'])                            
     
     # just wander in autopilot mode and collect data
-    # vehicle.wander()                                                                  
- 
+    # vehicle.wander() 
+   
     #world.debug.draw_string(map.get_waypoint(vehicle_actor.get_location()).transform.location, 'O', draw_shadow=False, color=carla.Color(r=255, g=200, b=0), life_time=50, persistent_lines=True)  
     #agent = BasicAgent(vehicle_actor)
     #agent.set_destination([-6.446170, -50.055023, 0.275307])
@@ -123,64 +126,18 @@ def main():
     
     msg = {'value': 'Press DONE for finishing waypoint selection'}
     pub_done.publish(msg)
-    
-    while True:
-        msg = {'value': ''}
-        pub_waypoint.publish(msg)
+    #custom_point = carla.Transform(carla.Location(x=-125.793716, y=-4 , z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
+    #custom_waypoint = map.get_waypoint(custom_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
+    #end_point = carla.Transform(carla.Location(x=-137.793716, y=-1.8, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
+    #end_waypoint = map.get_waypoint(end_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
         
-        trajectory = Trajectory(world, map)
-        #waypoints = trajectory.generate_random_trajectory(start_waypoint, number_of_waypoints = 200)
-        #custom_point = carla.Transform(carla.Location(x=-125.793716, y=-4 , z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
-        #custom_waypoint = map.get_waypoint(custom_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
-        #end_point = carla.Transform(carla.Location(x=-137.793716, y=-1.8, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
-        #end_waypoint = map.get_waypoint(end_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
-            
-        #index = len(waypoints) - 1
-        #location = [stop_point.location.x, stop_point.location.y, stop_point.location.z]
-        #location = [waypoints[index].transform.location.x, waypoints[index].transform.location.y, waypoints[index].transform.location.z]
-        #waypoints.append(start_point)
-        #waypoints.append(custom_point)
-        #waypoints.append(end_waypoint)
-        end_waypoints = [start_waypoint]
-        text = {'text': ''}
-        pub.publish(text)
-
-        vel = {'velocity': 0}  
-        pub_vel.publish(vel)
-        pub_vel_conf.publish(vel)
-
-        prev_point = []
-        num = 1 
-        while True:
-            world.tick()
-
-            if sub_enter.get_enter() == True:
-                sub_enter.set_enter(False)
-                pub.publish(text)
-                coordinates = sub_coor.get_coordinates()
-                
-                if coordinates != []:
-                    #point = [int(item) for item in coordinates.split()]
-                    point = coordinates
-                    if len(point) == 3 and point != prev_point: 
-                        print(point)
-                        #way = {'value': 'Waypoint {} is x:{}, y:{} z:{}'.format(num, point[0], point[1], point[2])}
-                        way = {'value': 'Location {} at: {}'.format(num, sub_coor.get_location())}
-
-                        pub_waypoint.publish(way)
-                        num += 1  
-
-                        prev_point = point 
-                        point = carla.Location(point[0],point[1],point[2])
-                        waypoint = map.get_waypoint(point, project_to_road=True, lane_type=carla.LaneType.Any)
-                        end_waypoints.append(waypoint)
-            
-            if sub_done.get_done() == True:
-                sub_done.set_done(False)
-                break 
-        
-
-        '''
+    #index = len(waypoints) - 1
+    #location = [stop_point.location.x, stop_point.location.y, stop_point.location.z]
+    #location = [waypoints[index].transform.location.x, waypoints[index].transform.location.y, waypoints[index].transform.location.z]
+    #waypoints.append(start_point)
+    #waypoints.append(custom_point)
+    #waypoints.append(end_waypoint)
+    '''
         while True:
             end_point = random.choice(points)
             end_waypoint = map.get_waypoint(end_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
@@ -190,7 +147,13 @@ def main():
             if end_waypoint.get_junction() == None: 
             #and distance < 20 and end_waypoint != start_waypoint:
                 break 
-        '''
+    '''
+    
+    interface = Interface(world, map)
+    trajectory = Trajectory(world, map)
+
+    while True:
+        end_waypoints = interface.handle(start_waypoint)
         waypoints = []
         for k in range(len(end_waypoints) - 1): 
             route = ba._trace_route(end_waypoints[k], end_waypoints[k+1])
@@ -202,6 +165,68 @@ def main():
         #waypoints = load_waypoints(world, map)
 
         waypoints = pruning(map, waypoints)
+        '''
+
+        waypoints = []                
+        waypoint = start_waypoint
+                                        
+
+        while True:
+            world.tick()
+            if sub_enter.get_enter() == True:
+                p = sub_coor.get_coordinates()
+                try:
+                    p = int(p)
+                    
+                    text = {'text': ''}
+                    pub.publish(text)
+                    way = {'value': 'Going forward {} meters'.format(p)}
+                    pub_waypoint.publish(way)
+                    waypoint = start_waypoint
+                    
+                    while p > 0:
+                        current_waypoints = waypoint.next_until_lane_end(1.0)
+                        p = p - len(current_waypoints)
+                        if p > 0:
+                            waypoints = waypoints + current_waypoints
+                        else:
+                            waypoints = waypoints + current_waypoints[0:p]
+                        waypoint = waypoints[len(waypoints) - 1].next(1.0)
+
+                        if len(waypoint) != 1:
+                            for i in range(len(waypoint)):
+                                final_waypoint = waypoint[i].next_until_lane_end(1.0)
+                                if abs(waypoints[len(waypoints) - 1].transform.rotation.yaw - final_waypoint[len(final_waypoint) - 1].transform.rotation.yaw) < 3:
+                                    break 
+                            waypoint = waypoint[i]
+
+                        else:
+                            waypoint = waypoint[0]
+                            
+                    break
+
+                except ValueError, TypeError:
+                    way = {'value': 'Invalid Value! Try again!'}
+                    pub_waypoint.publish(way)
+                    text = {'text': ''}
+                    pub.publish(text)
+                sub_enter.set_enter(False)
+
+                    
+
+                    
+            paths = waypoints[len(waypoints) - 1].next(1.0)
+            for i in range(len(paths)):
+                ways = paths[i].next_until_lane_end(1.0)
+                if abs(ways[len(ways) - 1].transform.rotation.yaw - waypoints[len(waypoints) - 1].transform.rotation.yaw) < 3:
+                    print("straight")
+                elif ways[len(ways) - 1].transform.rotation.yaw > waypoints[len(waypoints) - 1].transform.rotation.yaw:
+                    print("right")
+                elif ways[len(ways) - 1].transform.rotation.yaw < waypoints[len(waypoints) - 1].transform.rotation.yaw:
+                    print("left")
+                for i in range(len(ways)):
+                    waypoints.append(ways[i])
+        '''
         waypoints = trajectory.load_trajectory(waypoints)
         draw_waypoints(world, waypoints, 100)
 
