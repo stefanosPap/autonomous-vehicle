@@ -1,12 +1,14 @@
 import carla 
 import random 
+from agents.navigation.basic_agent import BasicAgent 
 
 class Trajectory():
-    def __init__(self, world, map):
+    def __init__(self, world, map, vehicle_actor):
         self.world = world
         self.map = map
         self.waypoints = []
         self.change = False
+        self.basic_agent = BasicAgent(vehicle_actor)
 
     def load_trajectory(self, waypoints):
         self.waypoints = waypoints
@@ -61,3 +63,12 @@ class Trajectory():
             else:
                 w = prev_waypoint
             return w
+
+    def trace_route(self, end_waypoints):
+        waypoints = []
+        for k in range(len(end_waypoints) - 1): 
+            route = self.basic_agent._trace_route(end_waypoints[k], end_waypoints[k+1])
+            self.world.debug.draw_string(end_waypoints[k + 1].transform.location, '{}'.format(end_waypoints[k + 1].transform.location.x), draw_shadow=False, color=carla.Color(r=0, g=0, b=0), life_time=1000)
+            for waypoint in route:
+                waypoints.append(waypoint[0]) 
+        return waypoints
