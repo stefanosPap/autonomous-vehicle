@@ -159,9 +159,6 @@ def main():
         elif option == 2:
             waypoints = interface.handle_forward(start_waypoint)
 
-        #save_waypoints(waypoints)
-        #waypoints = load_waypoints(world, map)
-
         waypoints = pruning(map, waypoints)
         waypoints = trajectory.load_trajectory(waypoints)
         draw_waypoints(world, waypoints, 100)
@@ -181,35 +178,6 @@ def main():
         behavior = Behavior(vehicle_actor, waypoints, trajectory, map)
         behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, 0)
         start_waypoint = map.get_waypoint(vehicle_actor.get_location(), project_to_road=True, lane_type=carla.LaneType.Any)
-
-    col = 100
-    while True:
-        vel = behavior.get_velocity()
-        start_waypoint = map.get_waypoint(vehicle_actor.get_location(), project_to_road=False, lane_type=carla.LaneType.Any)
-        while True:
-            end_point = random.choice(points)
-            end_waypoint = map.get_waypoint(end_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
-            if end_waypoint == None:
-                continue
-            #distance = end_waypoint.transform.location.distance(start_waypoint.transform.location)
-            if end_waypoint.get_junction() == None: 
-            #and distance < 20 and end_waypoint != start_waypoint:
-                break 
-
-        route = ba._trace_route(start_waypoint, end_waypoint)
-        waypoints = []
-        for waypoint in route:
-            waypoints.append(waypoint[0])  
-
-        #save_waypoints(waypoints)
-        #waypoints = load_waypoints(world, map)
-        col += 10
-        waypoints = pruning(map, waypoints)
-        waypoints = trajectory.load_trajectory(waypoints)
-        draw_waypoints(world, waypoints, 150)
-        
-        behavior = Behavior(vehicle_actor, waypoints, trajectory, map)
-        behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, vel)
 
     ###########################
     # Destroy actors and exit #

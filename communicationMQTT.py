@@ -37,6 +37,22 @@ class VehicleSubscriberAggressiveMQTT(VehicleSubscriberMQTT):
     def set_aggressive(self):
         self.aggressive = 0 
 
+class VehicleSubscriberForwardMQTT(VehicleSubscriberMQTT):
+    def __init__(self, topic):
+        super().__init__(topic)
+        self.forward = False  
+
+    def data_callback(self, msg):
+        if self.topic == 'forward':
+            self.forward = msg['forward']
+
+    def get_forward(self):
+        return self.forward
+
+    def set_forward(self, forward):
+        self.forward = forward
+
+
 class VehicleSubscriberCautiousMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):
         super().__init__(topic)

@@ -3,7 +3,8 @@ from communicationMQTT import VehicleSubscriberStartStopMQTT, \
                               VehicleSubscriberCoorMQTT, \
                               VehicleSubscriberEnterMQTT, \
                               VehicleSubscriberDoneMQTT, \
-                              VehiclePublisherMQTT
+                              VehiclePublisherMQTT, \
+                              VehicleSubscriberForwardMQTT
 class Interface(object):
     def __init__(self, world, map):
         self.world = world 
@@ -15,9 +16,12 @@ class Interface(object):
         self.pub = VehiclePublisherMQTT(topic='text')
         self.pub_vel = VehiclePublisherMQTT(topic='speed_topic')
         self.pub_vel_conf = VehiclePublisherMQTT(topic='speed_configure')
+        self.pub_forward = VehiclePublisherMQTT(topic='forward meters')
+
         self.sub_enter = VehicleSubscriberEnterMQTT(topic='enter')
         self.sub_done = VehicleSubscriberDoneMQTT(topic='done')
         self.sub_coor = VehicleSubscriberCoorMQTT(topic='coordinates')
+        self.sub_forward = VehicleSubscriberForwardMQTT(topic='forward')
 
     def handle(self, start_waypoint):
 
@@ -67,43 +71,47 @@ class Interface(object):
 
         while True:
             self.world.tick()
-            if self.sub_enter.get_enter() == True:
-                p = self.sub_coor.get_coordinates()
-                try:
-                    p = int(p)
-                    
-                    text = {'text': ''}
-                    self.pub.publish(text)
-                    way = {'value': 'Going forward {} meters'.format(p)}
-                    self.pub_waypoint.publish(way)
-                    waypoint = start_waypoint
-                    
-                    while p > 0:
-                        current_waypoints = waypoint.next_until_lane_end(1.0)
-                        p = p - len(current_waypoints)
-                        if p > 0:
-                            waypoints = waypoints + current_waypoints
-                        else:
-                            waypoints = waypoints + current_waypoints[0:p]
-                        waypoint = waypoints[len(waypoints) - 1].next(1.0)
+            if self.sub_forward.get_forward() == True:
+                self.pub_forward.publish({'value': "Specify the distance in meters you want to go forward!"})
+                self.sub_forward.set_forward(False)
 
-                        if len(waypoint) != 1:
-                            for i in range(len(waypoint)):
-                                final_waypoint = waypoint[i].next_until_lane_end(1.0)
-                                if abs(waypoint[i].transform.rotation.yaw - final_waypoint[len(final_waypoint) - 1].transform.rotation.yaw) < 3:
-                                    break 
-                            waypoint = waypoint[i]
+                while True:
+                    self.world.tick()
+                    if self.sub_enter.get_enter():
+                        self.sub_enter.set_enter(False)
+                        p = self.sub_coor.get_coordinates()
+                        try:
+                            p = int(p)
 
-                        else:
-                            waypoint = waypoint[0]   
-                    break
-                except ValueError:
-                    way = {'value': 'Invalid Value! Try again!'}
-                    self.pub_waypoint.publish(way)
-                    text = {'text': ''}
-                    self.pub.publish(text)
-                self.sub_enter.set_enter(False)
-        
+                        except ValueError:
+                            self.pub_waypoint.publish({'value': 'Invalid Value! Try again!'})
+                            self.pub.publish({'text': ''})
+                            continue
+                    
+                        self.pub.publish({'text': ''})
+                        self.pub_waypoint.publish({'value': 'Going forward {} meters'.format(p)})
+                        waypoint = start_waypoint
+                        
+                        while p > 0:
+                            current_waypoints = waypoint.next_until_lane_end(1.0)
+                            p = p - len(current_waypoints)
+                            if p > 0:
+                                waypoints = waypoints + current_waypoints
+                            else:
+                                waypoints = waypoints + current_waypoints[0:p]
+                            waypoint = waypoints[len(waypoints) - 1].next(1.0)
+
+                            if len(waypoint) != 1:
+                                for i in range(len(waypoint)):
+                                    final_waypoint = waypoint[i].next_until_lane_end(1.0)
+                                    if abs(waypoint[i].transform.rotation.yaw - final_waypoint[len(final_waypoint) - 1].transform.rotation.yaw) < 3:
+                                        break 
+                                waypoint = waypoint[i]
+
+                            else:
+                                waypoint = waypoint[0]   
+                        break
+                break
         return waypoints
 
         '''
