@@ -10,6 +10,7 @@ from communicationMQTT import VehicleSubscriberStartStopMQTT, \
                               VehicleSubscriberCoorMQTT, \
                               VehicleSubscriberEnterMQTT, \
                               VehicleSubscriberDoneMQTT, \
+                              VehicleSubscriberLogMQTT, \
                               VehiclePublisherMQTT
 
 from interface import Interface
@@ -111,6 +112,8 @@ def main():
     sub_coor = VehicleSubscriberCoorMQTT(topic='coordinates')
     sub_enter = VehicleSubscriberEnterMQTT(topic='enter')
     sub_done = VehicleSubscriberDoneMQTT(topic='done')
+    sub_log = VehicleSubscriberLogMQTT(topic='log')
+
     pub = VehiclePublisherMQTT(topic='text')
     pub_vel = VehiclePublisherMQTT(topic='speed_topic')
     pub_vel_conf = VehiclePublisherMQTT(topic='speed_configure')
@@ -146,18 +149,38 @@ def main():
             #and distance < 20 and end_waypoint != start_waypoint:
                 break 
     '''
-    
+        
     interface = Interface(world, map)
     trajectory = Trajectory(world, map, vehicle_actor)
-
+    waypoints = []
+    pub.publish({'text': " "})
+    
     while True:
-        option = 2
-        if option == 1:
-            end_waypoints = interface.handle(start_waypoint)
-            waypoints = trajectory.trace_route(end_waypoints)
+        while True:
+            while True:
+                world.tick()
+                action = " "
+                if sub_log.get_log() != " ":
+                    action = sub_log.get_log()
+                    sub_log.set_log(" ")
+                    #pub.publish({'text': ''})
 
-        elif option == 2:
-            waypoints = interface.handle_forward(start_waypoint)
+                if action == "Location":
+                    end_waypoints = interface.handle(start_waypoint)
+                    custom_waypoints = trajectory.trace_route(end_waypoints)
+                    waypoints = waypoints + custom_waypoints
+                    break
+
+                elif action == "Direction":
+                    custom_waypoints = interface.handle_forward(start_waypoint)
+                    waypoints = waypoints + custom_waypoints
+                    break 
+                break
+
+            if sub_done.get_done() == True:
+                sub_done.set_done(False)
+                break
+
 
         waypoints = pruning(map, waypoints)
         waypoints = trajectory.load_trajectory(waypoints)

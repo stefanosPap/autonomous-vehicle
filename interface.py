@@ -4,7 +4,8 @@ from communicationMQTT import VehicleSubscriberStartStopMQTT, \
                               VehicleSubscriberEnterMQTT, \
                               VehicleSubscriberDoneMQTT, \
                               VehiclePublisherMQTT, \
-                              VehicleSubscriberForwardMQTT
+                              VehicleSubscriberForwardMQTT, \
+                              VehicleSubscriberCoorForwardMQTT
 class Interface(object):
     def __init__(self, world, map):
         self.world = world 
@@ -21,6 +22,8 @@ class Interface(object):
         self.sub_enter = VehicleSubscriberEnterMQTT(topic='enter')
         self.sub_done = VehicleSubscriberDoneMQTT(topic='done')
         self.sub_coor = VehicleSubscriberCoorMQTT(topic='coordinates')
+        self.sub_coor_forward = VehicleSubscriberCoorForwardMQTT(topic='coordinates_forward')
+
         self.sub_forward = VehicleSubscriberForwardMQTT(topic='forward')
 
     def handle(self, start_waypoint):
@@ -60,8 +63,7 @@ class Interface(object):
                         waypoint = self.map.get_waypoint(point, project_to_road=True, lane_type=carla.LaneType.Any)
                         end_waypoints.append(waypoint)
             
-            if self.sub_done.get_done() == True:
-                self.sub_done.set_done(False)
+
                 break
         return end_waypoints 
     
@@ -74,12 +76,11 @@ class Interface(object):
             if self.sub_forward.get_forward() == True:
                 self.pub_forward.publish({'value': "Specify the distance in meters you want to go forward!"})
                 self.sub_forward.set_forward(False)
-
                 while True:
                     self.world.tick()
                     if self.sub_enter.get_enter():
                         self.sub_enter.set_enter(False)
-                        p = self.sub_coor.get_coordinates()
+                        p = self.sub_coor_forward.get_coordinates()
                         try:
                             p = int(p)
 

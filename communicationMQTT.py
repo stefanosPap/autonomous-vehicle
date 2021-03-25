@@ -37,6 +37,22 @@ class VehicleSubscriberAggressiveMQTT(VehicleSubscriberMQTT):
     def set_aggressive(self):
         self.aggressive = 0 
 
+class VehicleSubscriberLogMQTT(VehicleSubscriberMQTT):
+    def __init__(self, topic):
+        super().__init__(topic)
+        self.log = " "  
+
+    def data_callback(self, msg):
+        if self.topic == 'log':
+            print(msg['log'])
+            self.log= msg['log']
+
+    def get_log(self):
+        return self.log
+
+    def set_log(self, log):
+        self.log = log
+
 class VehicleSubscriberForwardMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):
         super().__init__(topic)
@@ -75,7 +91,7 @@ class VehicleSubscriberCoorMQTT(VehicleSubscriberMQTT):
         self.location = None
 
     def data_callback(self, msg):
-        if self.topic == 'coordinates':
+        if self.topic == "coordinates":
             self.coordinates = msg['coordinates']
             self.location = msg['location']
 
@@ -88,6 +104,26 @@ class VehicleSubscriberCoorMQTT(VehicleSubscriberMQTT):
     def set_coordinates(self, coordinates):
         self.coordinates = coordinates
 
+
+class VehicleSubscriberCoorForwardMQTT(VehicleSubscriberMQTT):
+    def __init__(self, topic):  
+        super().__init__(topic)
+        self.coordinates = "" 
+        self.location = None
+
+    def data_callback(self, msg):
+        if self.topic == "coordinates_forward":
+            self.coordinates = msg['coordinates_forward']
+            self.location = msg['location']
+
+    def get_coordinates(self):
+        return self.coordinates
+
+    def get_location(self):
+        return self.location
+    
+    def set_coordinates(self, coordinates):
+        self.coordinates = coordinates
 
 class VehicleSubscriberEnterMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):  
