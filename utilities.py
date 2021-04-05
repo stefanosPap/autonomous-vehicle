@@ -258,7 +258,7 @@ def load_waypoints(world, map):
     return waypoints
 
 ###########################################################################################################
-# Function for eliminating double waypoints adn filling gaps between distant waypoints in waypoints' list #
+# Function for eliminating double waypoints and filling gaps between distant waypoints in waypoints' list #
 ###########################################################################################################
 def pruning(map, waypoints):
     

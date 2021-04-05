@@ -3,7 +3,14 @@
 from vehicle import Vehicle
 from client import Client
 
-from utilities import plot_axis, draw_vehicle_box, configure_sensor, save_waypoints, load_waypoints, pruning, draw_waypoints
+from utilities import   plot_axis, \
+                        draw_vehicle_box, \
+                        configure_sensor, \
+                        save_waypoints, \
+                        load_waypoints, \
+                        pruning, \
+                        draw_waypoints
+                        
 from trajectory import Trajectory
 from behavior import Behavior
 from communicationMQTT import VehicleSubscriberStartStopMQTT, \
@@ -11,7 +18,8 @@ from communicationMQTT import VehicleSubscriberStartStopMQTT, \
                               VehicleSubscriberEnterMQTT, \
                               VehicleSubscriberDoneMQTT, \
                               VehicleSubscriberLogMQTT, \
-                              VehiclePublisherMQTT
+                              VehiclePublisherMQTT, \
+                              VehicleSubscriberTurnMQTT
 
 from interface import Interface
 from vehicle_move import spawn
@@ -113,8 +121,9 @@ def main():
     sub_enter = VehicleSubscriberEnterMQTT(topic='enter')
     sub_done = VehicleSubscriberDoneMQTT(topic='done')
     sub_log = VehicleSubscriberLogMQTT(topic='log')
+    sub_turn = VehicleSubscriberTurnMQTT(topic='turn_junction')
 
-    pub = VehiclePublisherMQTT(topic='text')
+    pub = VehiclePublisherMQTT(topic='clean')
     pub_vel = VehiclePublisherMQTT(topic='speed_topic')
     pub_vel_conf = VehiclePublisherMQTT(topic='speed_configure')
     pub_waypoint = VehiclePublisherMQTT(topic='waypoint_choose')
@@ -127,6 +136,9 @@ def main():
     
     msg = {'value': 'Press DONE for finishing waypoint selection'}
     pub_done.publish(msg)
+
+    msg = {'value': ''}
+    pub_waypoint.publish(msg)
     #custom_point = carla.Transform(carla.Location(x=-125.793716, y=-4 , z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
     #custom_waypoint = map.get_waypoint(custom_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
     #end_point = carla.Transform(carla.Location(x=-137.793716, y=-1.8, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
@@ -153,7 +165,7 @@ def main():
     interface = Interface(world, map)
     trajectory = Trajectory(world, map, vehicle_actor)
     waypoints = []
-    pub.publish({'text': " "})
+    pub.publish({'value': " "})
     
     while True:
         while True:
@@ -163,17 +175,39 @@ def main():
                 if sub_log.get_log() != " ":
                     action = sub_log.get_log()
                     sub_log.set_log(" ")
-                    #pub.publish({'text': ''})
 
                 if action == "Location":
                     end_waypoints = interface.handle(start_waypoint)
                     custom_waypoints = trajectory.trace_route(end_waypoints)
+                    start_waypoint = custom_waypoints[len(custom_waypoints) - 1]
                     waypoints = waypoints + custom_waypoints
                     break
 
                 elif action == "Direction":
-                    custom_waypoints = interface.handle_forward(start_waypoint)
+                    
+                    while sub_turn.get_turn() == None:
+                        world.tick()
+
+                    if sub_turn.get_turn() == "RIGHT":
+                        custom_waypoints = interface.handle_turn(start_waypoint, "RIGHT")
+                        sub_turn.set_turn(None)
+
+                    elif sub_turn.get_turn() == "LEFT":
+                        custom_waypoints = interface.handle_turn(start_waypoint, "LEFT")
+                        sub_turn.set_turn(None)
+                    
+                    elif sub_turn.get_turn() == "STRAIGHT":
+                        custom_waypoints = interface.handle_turn(start_waypoint, "STRAIGHT")
+                        sub_turn.set_turn(None)
+                    
+                    elif sub_turn.get_turn() == "FORWARD":
+                        custom_waypoints = interface.handle_forward(start_waypoint)
+                        sub_turn.set_turn(None)
+                    
                     waypoints = waypoints + custom_waypoints
+                    if custom_waypoints != []:
+                        start_waypoint = custom_waypoints[len(custom_waypoints) - 1]
+                    
                     break 
                 break
 
