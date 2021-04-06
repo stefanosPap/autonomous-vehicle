@@ -120,9 +120,9 @@ class Interface(object):
         for i in range(len(paths)):
             
             ways = paths[i].next_until_lane_end(1.0)
-            
+           
             if  turn == "RIGHT":
-                if (ways[len(ways) - 1].transform.rotation.yaw > waypoints[len(waypoints) - 1].transform.rotation.yaw):
+                if (ways[len(ways) - 1].transform.rotation.yaw - ways[0].transform.rotation.yaw) > 10:
                     self.pub_waypoint.publish({'value': 'Turn RIGHT at the next junction'})
                     self.pub.publish({'value': ''})
                     for i in range(len(ways)):
@@ -134,8 +134,8 @@ class Interface(object):
                     self.pub.publish({'value': ''})
                     return []
 
-            elif turn == "LEFT":    
-                if ways[len(ways) - 1].transform.rotation.yaw < waypoints[len(waypoints) - 1].transform.rotation.yaw and turn == "LEFT":
+            elif turn == "LEFT":   
+                if ways[len(ways) - 1].transform.rotation.yaw < ways[0].transform.rotation.yaw:
                     self.pub_waypoint.publish({'value': 'Turn LEFT at the next junction'})
                     self.pub.publish({'value': ''})
                     for i in range(len(ways)):
@@ -148,7 +148,7 @@ class Interface(object):
                     return []
 
             elif turn == "STRAIGHT":
-                if abs(ways[len(ways) - 1].transform.rotation.yaw - waypoints[len(waypoints) - 1].transform.rotation.yaw) < 3:
+                if abs(ways[len(ways) - 1].transform.rotation.yaw - ways[0].transform.rotation.yaw) < 3:
                     self.pub_waypoint.publish({'value': 'Going STRAIGHT at the next junction'})
                     self.pub.publish({'value': ''})
                     for i in range(len(ways)):
