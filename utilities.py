@@ -2,9 +2,9 @@ import carla
 import numpy as np  
 from sensor import Sensor, Lidar, CameraRGB, GNSS, IMU, ObstacleDetector, LaneInvasionDetector, Radar, CameraSemantic
 
-########################################################
-# Function for rotating through bounding box's center  #
-########################################################
+#######################################################
+# Function for rotating through bounding box's center #
+#######################################################
 def rotate(bb, degrees, location):
     theta = np.radians(degrees)
     c, s = np.cos(theta), np.sin(theta)
@@ -19,9 +19,9 @@ def rotate(bb, degrees, location):
     point = point + carla.Location(bb.location.x, bb.location.y, bb.location.z)
     return point 
 
-########################################################
-# Function for scaling through bounding box's center   #
-########################################################
+######################################################
+# Function for scaling through bounding box's center #
+######################################################
 def scale(bb, valueX, valueY, location):
     point = location 
     point = point - carla.Location(bb.location.x, bb.location.y, bb.location.z)
@@ -30,9 +30,9 @@ def scale(bb, valueX, valueY, location):
     point = point + carla.Location(bb.location.x, bb.location.y, bb.location.z)
     return point
 
-########################################################
-#      Function for finding expanded bounding box      #
-########################################################
+##############################################
+# Function for finding expanded bounding box #
+##############################################
 def expanded_bounding(world, bb, pointA, pointB, pointC, pointD, rate=2):
     a = [pointA.x, pointA.y]
     b = [pointB.x, pointB.y]
@@ -66,9 +66,9 @@ def expanded_bounding(world, bb, pointA, pointB, pointC, pointD, rate=2):
         point = scale(bb=bb, valueX=rate, valueY=rate, location=point)
         world.debug.draw_string(point, 'X', draw_shadow=False, color=carla.Color(r=255, g=255, b=0), life_time=100, persistent_lines=True)
 
-########################################################
-#      Function for finding rectangle bounding box     #
-########################################################
+###############################################
+# Function for finding rectangle bounding box #
+###############################################
 def rectangle_bounding(world, x_values, y_values):
         minValueX = min(x_values)
         minIndexX = x_values.index(minValueX)
@@ -118,9 +118,9 @@ def rectangle_bounding(world, x_values, y_values):
                 point = carla.Location(maxValueX,maxValueY,0)
                 world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=255, g=0, b=255), life_time=100, persistent_lines=True)
          
-###############################################
-#     Function for ploting axis               #
-###############################################
+#############################
+# Function for ploting axis #
+#############################
 def plot_axis(world, origin):
     length = 20
 
@@ -239,9 +239,9 @@ def save_waypoints(waypoints):
         fileData.write(str(waypoint.transform.location.x) + "  " + str(waypoint.transform.location.y) + "  " + str(waypoint.transform.location.z) + "\n")    
     fileData.close() 
 
-##################################################
-#   Function for loading waypoints from a file   #
-##################################################
+##############################################
+# Function for loading waypoints from a file #
+##############################################
 def load_waypoints(world, map): 
     fileData = open("data.txt", 'r')
     Lines = fileData.readlines() 
@@ -320,7 +320,7 @@ def draw_waypoints(world, waypoints, col):
     color = carla.Color(r=col, g=col, b=0)
     for waypoint in waypoints:
         if isinstance(waypoint, carla.libcarla.Waypoint):
-            world.debug.draw_string(waypoint.transform.location, '{}'.format(m), draw_shadow=False, color=color, life_time=1000)
+            world.debug.draw_string(waypoint.transform.location, '{}'.format(round(waypoint.transform.rotation.yaw)), draw_shadow=False, color=color, life_time=1000)
         elif isinstance(waypoint, carla.libcarla.Transform):
             world.debug.draw_string(waypoint.location, '{}'.format(m), draw_shadow=False, color=color, life_time=1000)
         m += 1 

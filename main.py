@@ -65,7 +65,7 @@ def main():
             break 
 
     
-    #start_point = carla.Transform(carla.Location(x=239.225464, y=119.054146, z=0.683280), carla.Rotation(pitch=358.826721, yaw=271.393188, roll=0.0))
+    #start_point = carla.Transform(carla.Location(x=-88.182701, y=66.842422, z=0.833380), carla.Rotation(pitch=0.089919, yaw=89.843735, roll=0.0))
     #start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
     print(start_waypoint)
     #print(start_point)
@@ -106,12 +106,13 @@ def main():
     #gp = GlobalRoutePlanner(gp_dao)
     #top = gp.get_topology()
     #spawn()
-    #waypoints = map.get_topology()
+    waypoints = map.get_topology()
     #waypoints = map.generate_waypoints(3.0)
-    #for waypoint in waypoints:
+    for waypoint in waypoints:
     #    for waypoint in top[i]['path']:
-    #        world.debug.draw_string(waypoint.transform.location, '{}'.format(round(waypoint.transform.location.y)), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
-    #        world.debug.draw_string(waypoint[1].transform.location, 'e', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
+    #        world.debug.draw_string(waypoint.transform.location, '{}'.format(round(waypoint.transform.rotation.yaw)), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+            world.debug.draw_string(waypoint[0].transform.location, 's', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
+            world.debug.draw_string(waypoint[1].transform.location, 'e', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
     #print(top)
 
     #pedestrian_actor = world.get_blueprint_library().filter('walker.pedestrian.0001')
@@ -187,10 +188,11 @@ def main():
                     break
 
                 elif action == "Direction":
-                    
+
+                    interface.turn_info(start_waypoint)
                     while sub_turn.get_turn() == None:
                         world.tick()
-
+                        
                     if sub_turn.get_turn() == "RIGHT":
                         custom_waypoints = interface.handle_turn(start_waypoint, "RIGHT")
                         sub_turn.set_turn(None)
@@ -210,7 +212,6 @@ def main():
                     waypoints = waypoints + custom_waypoints
                     if custom_waypoints != []:
                         start_waypoint = custom_waypoints[len(custom_waypoints) - 1]
-                    
                     break 
                 break
 
