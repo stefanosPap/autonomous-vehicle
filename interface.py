@@ -150,27 +150,39 @@ class Interface(object):
             ways = paths[i].next_until_lane_end(1.0)
             #print(ways[len(ways) - 1].transform.rotation.yaw)
             #print(ways[0].transform.rotation.yaw)
+            vec1 = ways[0].transform.get_forward_vector()
+            vec1 = [vec1.x, vec1.y]
             
-            if (ways[len(ways) - 1].transform.rotation.yaw - ways[0].transform.rotation.yaw) > 10 and turn == "RIGHT":
+            vec2 = ways[len(ways) - 1].transform.get_forward_vector()
+            vec2 = [vec2.x, vec2.y]
+            
+            unit_vector_1 = vec1 / np.linalg.norm(vec1)
+            unit_vector_2 = vec2 / np.linalg.norm(vec2)
+            dot_product = np.dot(unit_vector_1, unit_vector_2)
+            angle = np.arctan(dot_product)
+            
+            if round(angle, 1) == 0.8 and turn == "STRAIGHT": 
+                self.pub_waypoint.publish({'value': 'Going STRAIGHT at the next junction'})
+                self.pub.publish({'value': ''})
+                for i in range(len(ways)):
+                    waypoints.append(ways[i])
+                break
+            
+            elif (ways[len(ways) - 1].transform.rotation.yaw - ways[0].transform.rotation.yaw) > 10 and turn == "RIGHT":
                 self.pub_waypoint.publish({'value': 'Turn RIGHT at the next junction'})
                 self.pub.publish({'value': ''})
                 for i in range(len(ways)):
                     waypoints.append(ways[i])
                 break
             
-            elif ways[len(ways) - 1].transform.rotation.yaw < ways[0].transform.rotation.yaw and turn == "LEFT":
+            elif ways[len(ways) - 1].transform.rotation.yaw - ways[0].transform.rotation.yaw < 0 and turn == "LEFT":
                 self.pub_waypoint.publish({'value': 'Turn LEFT at the next junction'})
                 self.pub.publish({'value': ''})
                 for i in range(len(ways)):
                     waypoints.append(ways[i])
                 break 
             
-            elif (ways[len(ways) - 1].transform.rotation.yaw - ways[0].transform.rotation.yaw) < 3: 
-                self.pub_waypoint.publish({'value': 'Going STRAIGHT at the next junction'})
-                self.pub.publish({'value': ''})
-                for i in range(len(ways)):
-                    waypoints.append(ways[i])
-                break
+
             
             elif i == len(paths) - 1:
                 self.pub_waypoint.publish({'value': 'Unable to go {} at the next junction'.format(turn)})
@@ -196,25 +208,25 @@ class Interface(object):
 
             ways = paths[i].next_until_lane_end(1.0)
 
-            vec1 = ways[0].transform.get_forward_vector()
-            vec1 = [vec1.x, vec1.y]
             #self.world.debug.draw_arrow(ways[0].transform.location, carla.Location(x=vec.x, y=vec.y, z=vec.z), thickness=0.1, color=carla.Color(255,0,0), life_time=0)
             #loc1 = carla.Location(x=vec1.x, y=vec1.y, z=vec1.z)
             #self.world.debug.draw_point(loc, size=0.1, color=carla.Color(255,0,0), life_time=0)
             
+            vec1 = ways[0].transform.get_forward_vector()
+            vec1 = [vec1.x, vec1.y]
+            
             vec2 = ways[len(ways) - 1].transform.get_forward_vector()
             vec2 = [vec2.x, vec2.y]
-            #loc2 = carla.Location(x=vec.x, y=vec.y, z=vec.z)
             
             unit_vector_1 = vec1 / np.linalg.norm(vec1)
             unit_vector_2 = vec2 / np.linalg.norm(vec2)
             dot_product = np.dot(unit_vector_1, unit_vector_2)
             angle = np.arctan(dot_product)
-            print(round(ways[len(ways) - 1].transform.rotation.yaw))
+            print("------------------------")
+            print(ways[0].transform.rotation.yaw)
+            print(ways[len(ways) - 1].transform.rotation.yaw)
             print(angle)
-            plot_axis(self.world, ways[0].transform)
-            plot_axis(self.world, ways[len(ways) - 1].transform)
-
+            print("------------------------")
             '''
             if angle > 10:
                 turn += " RIGHT"
@@ -225,21 +237,22 @@ class Interface(object):
             elif angle < 3: 
                 turn += " STRAIGHT"
             '''
-            
-            if (ways[len(ways) - 1].transform.rotation.yaw - ways[0].transform.rotation.yaw) > 10:
+
+            if round(angle, 1) == 0.8: 
+                turn += " STRAIGHT"            
+           
+            elif (ways[len(ways) - 1].transform.rotation.yaw - ways[0].transform.rotation.yaw) > 10:
                 turn += " RIGHT"
                             
-            elif ways[len(ways) - 1].transform.rotation.yaw < ways[0].transform.rotation.yaw:
+            elif ways[len(ways) - 1].transform.rotation.yaw - ways[0].transform.rotation.yaw < 0 :
                 turn += " LEFT"
-            
-            elif (ways[len(ways) - 1].transform.rotation.yaw - ways[0].transform.rotation.yaw) < 3: 
-                turn += " STRAIGHT"
+
             
 
             #self.world.debug.draw_arrow(ways[len(ways) - 1].transform.location, carla.Location(x=vec.x, y=vec.y, z=vec.z), thickness=0.1, color=carla.Color(0,0,0), life_time=0)
             #self.world.debug.draw_point(loc, size=0.1, color=carla.Color(255,0,0), life_time=0)
 
-            self.world.debug.draw_string(ways[0].transform.location, '{}'.format(round(ways[0].transform.rotation.yaw)), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
+            #self.world.debug.draw_string(ways[0].transform.location, '{}'.format(round(ways[0].transform.rotation.yaw)), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
             for j in range(1, len(ways)):
                 self.world.debug.draw_string(ways[j].transform.location, '{}'.format(round(ways[j].transform.rotation.yaw)), draw_shadow=False, color=carla.Color(r=0, g=0, b=0), life_time=1000, persistent_lines=True)
         
