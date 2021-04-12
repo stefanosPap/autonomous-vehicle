@@ -9,7 +9,8 @@ from utilities import   plot_axis, \
                         save_waypoints, \
                         load_waypoints, \
                         pruning, \
-                        draw_waypoints
+                        draw_waypoints, \
+                        rotate
                         
 from trajectory import Trajectory
 from behavior import Behavior
@@ -57,20 +58,20 @@ def main():
     #world = client.get_client().reload_world()
     #print(client.get_client().get_available_maps())
     points = map.get_spawn_points()                         # returns a list of recommendations 
-    start_point = carla.Transform(carla.Location(x=-95.793716, y=-3.109917, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
-    '''
+    #start_point = carla.Transform(carla.Location(x=-95.793716, y=-3.109917, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
     while True:
-        #start_point = random.choice(points)                                              # choose first point as spawn point
+        start_point = random.choice(points)                                              # choose first point as spawn point
         start_waypoint = map.get_waypoint(start_point.location, project_to_road=False)   # return the waypoint of the spawn point 
         if start_waypoint.get_junction() == None:                                        # spawn vehicles only on roads, not junctions
             break 
-    '''
     
-    #start_point = carla.Transform(carla.Location(x=-88.182701, y=66.842422, z=0.833380), carla.Rotation(pitch=0.089919, yaw=89.843735, roll=0.0))
-    #start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
-    print(start_waypoint)
-    #print(start_point)
+    
+    #start_point = carla.Transform(carla.Location(x=-88.182701, y=66.842422, z=1), carla.Rotation(pitch=0.089919, yaw=89.843735, roll=0.0))
+    start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
+
+    start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
     #print(start_waypoint)
+    #print(start_point)
     ##########################
     # create new ego vehicle #
     ##########################
@@ -89,11 +90,11 @@ def main():
     plot_axis(world, origin)
     
     # configure sensors 
-    sensors = configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, "ObstacleDetector")
+    #sensors = configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, "ObstacleDetector")
 
     
     # add sensor to vehicle's configuration
-    vehicle.add_sensor(sensors['obs'])                            
+    #vehicle.add_sensor(sensors['obs'])                            
     
     # just wander in autopilot mode and collect data
     # vehicle.wander() 
@@ -167,7 +168,7 @@ def main():
                 break 
     '''
         
-    interface = Interface(world, map)
+    interface = Interface(world, map, vehicle_actor)
     trajectory = Trajectory(world, map, vehicle_actor)
     waypoints = []
     pub.publish({'value': " "})

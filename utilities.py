@@ -2,6 +2,19 @@ import carla
 import numpy as np  
 from sensor import Sensor, Lidar, CameraRGB, GNSS, IMU, ObstacleDetector, LaneInvasionDetector, Radar, CameraSemantic
 
+def change_coordinate_system(start_point, point):
+    
+    degrees = start_point.rotation.yaw
+    theta = np.radians(degrees)
+    c, s = np.cos(theta), np.sin(theta)
+    R = np.array(((c, -s , 0), (s, c, 0), (0, 0, 1)))
+    point = point - start_point.location
+
+    point =  np.matmul(R, np.array([point.x, point.y, point.z]))
+
+    point = carla.Location(point[0], point[1], point[2])
+    return point
+    
 #######################################################
 # Function for rotating through bounding box's center #
 #######################################################

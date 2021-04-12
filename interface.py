@@ -1,6 +1,6 @@
 import carla
 import numpy as np
-from utilities import plot_axis
+from utilities import plot_axis, change_coordinate_system
 from communicationMQTT import VehicleSubscriberStartStopMQTT, \
                               VehicleSubscriberCoorMQTT, \
                               VehicleSubscriberEnterMQTT, \
@@ -8,10 +8,12 @@ from communicationMQTT import VehicleSubscriberStartStopMQTT, \
                               VehiclePublisherMQTT, \
                               VehicleSubscriberForwardMQTT, \
                               VehicleSubscriberCoorForwardMQTT
+
 class Interface(object):
-    def __init__(self, world, map):
+    def __init__(self, world, map, vehicle_actor):
         self.world = world 
         self.map = map
+        self.vehicle_actor = vehicle_actor
         self.setupCom()
 
     def setupCom(self):
@@ -161,6 +163,12 @@ class Interface(object):
             dot_product = np.dot(unit_vector_1, unit_vector_2)
             angle = np.arctan(dot_product)
             
+            final_point = change_coordinate_system(ways[0].transform, ways[len(ways) - 1].transform.location)
+            initial_point = change_coordinate_system(ways[0].transform, ways[0].transform.location)
+            print("XXXXXXXXXXXXXXXXXXXXXXXX")
+            print(round(angle, 1))
+            print(turn)
+            print("XXXXXXXXXXXXXXXXXXXXXXXX")
             if round(angle, 1) == 0.8 and turn == "STRAIGHT": 
                 self.pub_waypoint.publish({'value': 'Going STRAIGHT at the next junction'})
                 self.pub.publish({'value': ''})
@@ -168,14 +176,15 @@ class Interface(object):
                     waypoints.append(ways[i])
                 break
             
-            elif (ways[len(ways) - 1].transform.rotation.yaw - ways[0].transform.rotation.yaw) > 10 and turn == "RIGHT":
+            elif ((final_point.x < 0 and final_point.y < 0) or (final_point.x > 0 and final_point.y > 0)) and turn == "RIGHT" and round(angle, 1) != 0.8:
+                print(turn)
                 self.pub_waypoint.publish({'value': 'Turn RIGHT at the next junction'})
                 self.pub.publish({'value': ''})
                 for i in range(len(ways)):
                     waypoints.append(ways[i])
                 break
             
-            elif ways[len(ways) - 1].transform.rotation.yaw - ways[0].transform.rotation.yaw < 0 and turn == "LEFT":
+            elif ((final_point.x > 0 and final_point.y < 0) or (final_point.x < 0 and final_point.y > 0)) and turn == "LEFT" and round(angle, 1) != 0.8:
                 self.pub_waypoint.publish({'value': 'Turn LEFT at the next junction'})
                 self.pub.publish({'value': ''})
                 for i in range(len(ways)):
@@ -222,33 +231,36 @@ class Interface(object):
             unit_vector_2 = vec2 / np.linalg.norm(vec2)
             dot_product = np.dot(unit_vector_1, unit_vector_2)
             angle = np.arctan(dot_product)
-            print("------------------------")
-            print(ways[0].transform.rotation.yaw)
-            print(ways[len(ways) - 1].transform.rotation.yaw)
-            print(angle)
-            print("------------------------")
-            '''
-            if angle > 10:
-                turn += " RIGHT"
-                            
-            elif ways[len(ways) - 1].transform.rotation.yaw < ways[0].transform.rotation.yaw:
-                turn += " LEFT"
-            
-            elif angle < 3: 
-                turn += " STRAIGHT"
-            '''
 
+            final_point = change_coordinate_system(ways[0].transform, ways[len(ways) - 1].transform.location)
+            initial_point = change_coordinate_system(ways[0].transform, ways[0].transform.location)
+            
             if round(angle, 1) == 0.8: 
                 turn += " STRAIGHT"            
-           
-            elif (ways[len(ways) - 1].transform.rotation.yaw - ways[0].transform.rotation.yaw) > 10:
+                print("-----------------------")
+                print(final_point)
+                print(initial_point)
+                print(round(angle, 1))
+                print(ways[len(ways) - 1].transform.rotation.yaw)
+                print(turn)
+                print("------------------------")
+            elif ((final_point.x < 0 and final_point.y < 0) or (final_point.x > 0 and final_point.y > 0)):
                 turn += " RIGHT"
-                            
-            elif ways[len(ways) - 1].transform.rotation.yaw - ways[0].transform.rotation.yaw < 0 :
+                print("------------------------")
+                print(final_point)
+                print(initial_point)
+                print(round(angle, 1))
+                print(ways[len(ways) - 1].transform.rotation.yaw)
+                print("RIGHT")
+                print("------------------------")            
+            elif ((final_point.x > 0 and final_point.y < 0) or (final_point.x < 0 and final_point.y > 0)):
                 turn += " LEFT"
-
+                print("------------------------")
+                print(final_point)
+                print(initial_point)
+                print("LEFT")
+                print("------------------------")            
             
-
             #self.world.debug.draw_arrow(ways[len(ways) - 1].transform.location, carla.Location(x=vec.x, y=vec.y, z=vec.z), thickness=0.1, color=carla.Color(0,0,0), life_time=0)
             #self.world.debug.draw_point(loc, size=0.1, color=carla.Color(255,0,0), life_time=0)
 
