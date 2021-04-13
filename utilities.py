@@ -2,12 +2,27 @@ import carla
 import numpy as np  
 from sensor import Sensor, Lidar, CameraRGB, GNSS, IMU, ObstacleDetector, LaneInvasionDetector, Radar, CameraSemantic
 
+def calculate_angle(ways):
+    vec1 = ways[0].transform.get_forward_vector()
+    vec1 = [vec1.x, vec1.y]
+    
+    vec2 = ways[len(ways) - 1].transform.get_forward_vector()
+    vec2 = [vec2.x, vec2.y]
+    
+    unit_vector_1 = vec1 / np.linalg.norm(vec1)
+    unit_vector_2 = vec2 / np.linalg.norm(vec2)
+    
+    dot_product = np.dot(unit_vector_1, unit_vector_2)
+    angle = np.arctan(dot_product)
+
+    return angle
+
 def change_coordinate_system(start_point, point):
     
     degrees = start_point.rotation.yaw
     theta = np.radians(degrees)
     c, s = np.cos(theta), np.sin(theta)
-    R = np.array(((c, -s , 0), (s, c, 0), (0, 0, 1)))
+    R = np.array(((c, s , 0), (-s, c, 0), (0, 0, 1)))
     point = point - start_point.location
 
     point =  np.matmul(R, np.array([point.x, point.y, point.z]))

@@ -10,8 +10,8 @@ from utilities import   plot_axis, \
                         load_waypoints, \
                         pruning, \
                         draw_waypoints, \
-                        rotate
-                        
+                        rotate, \
+                        change_coordinate_system
 from trajectory import Trajectory
 from behavior import Behavior
 from communicationMQTT import VehicleSubscriberStartStopMQTT, \
@@ -67,9 +67,9 @@ def main():
     
     
     #start_point = carla.Transform(carla.Location(x=-88.182701, y=66.842422, z=1), carla.Rotation(pitch=0.089919, yaw=89.843735, roll=0.0))
-    start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
+    #start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
 
-    start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
+    #start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
     #print(start_waypoint)
     #print(start_point)
     ##########################
@@ -98,7 +98,7 @@ def main():
     
     # just wander in autopilot mode and collect data
     # vehicle.wander() 
-   
+
     #world.debug.draw_string(map.get_waypoint(vehicle_actor.get_location()).transform.location, 'O', draw_shadow=False, color=carla.Color(r=255, g=200, b=0), life_time=50, persistent_lines=True)  
     #agent = BasicAgent(vehicle_actor)
     #agent.set_destination([-6.446170, -50.055023, 0.275307])
@@ -237,7 +237,7 @@ def main():
                 pub_start.publish({'value': 'Your car is on! Choose velocity to begin!'})
                 break 
 
-        # follow random trajectory and stop to obstacles and traffic lights
+        # follow trajectory and stop to obstacles and traffic lights
         behavior = Behavior(vehicle_actor, waypoints, trajectory, map)
         behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, 0)
         start_waypoint = map.get_waypoint(vehicle_actor.get_location(), project_to_road=True, lane_type=carla.LaneType.Any)
