@@ -66,10 +66,10 @@ def main():
             break 
     
     
-    #start_point = carla.Transform(carla.Location(x=-88.182701, y=66.842422, z=1), carla.Rotation(pitch=0.089919, yaw=89.843735, roll=0.0))
+    start_point = carla.Transform(carla.Location(x=-78.182701, y=66.842422, z=1), carla.Rotation(pitch=0.0, yaw=-90, roll=0.0))
     #start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
 
-    #start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
+    start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
     #print(start_waypoint)
     #print(start_point)
     ##########################

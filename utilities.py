@@ -2,6 +2,9 @@ import carla
 import numpy as np  
 from sensor import Sensor, Lidar, CameraRGB, GNSS, IMU, ObstacleDetector, LaneInvasionDetector, Radar, CameraSemantic
 
+#################################################################################
+# Function for caclulating angle between the first and the last point of a path #
+#################################################################################
 def calculate_angle(ways):
     vec1 = ways[0].transform.get_forward_vector()
     vec1 = [vec1.x, vec1.y]
@@ -17,6 +20,9 @@ def calculate_angle(ways):
 
     return angle
 
+#####################################################
+# Function for changing a point's coordinate system #
+#####################################################
 def change_coordinate_system(start_point, point):
     
     degrees = start_point.rotation.yaw

@@ -16,12 +16,17 @@ class Interface(object):
         self.vehicle_actor = vehicle_actor
         self.setupCom()
 
+    ####################################
+    # Setup publishers and subscribers #
+    ####################################
     def setupCom(self):
         self.pub_waypoint = VehiclePublisherMQTT(topic='waypoint_choose')
         self.pub = VehiclePublisherMQTT(topic='clean')
         self.pub_vel = VehiclePublisherMQTT(topic='speed_topic')
         self.pub_vel_conf = VehiclePublisherMQTT(topic='speed_configure')
         self.pub_forward = VehiclePublisherMQTT(topic='forward meters')
+        self.pub_turn = VehiclePublisherMQTT(topic='turn number')
+        self.pub_turn_clean = VehiclePublisherMQTT(topic='turn clean')
 
         self.sub_enter = VehicleSubscriberEnterMQTT(topic='enter')
         self.sub_done = VehicleSubscriberDoneMQTT(topic='done')
@@ -29,6 +34,9 @@ class Interface(object):
         self.sub_coor_forward = VehicleSubscriberCoorForwardMQTT(topic='coordinates_forward')
         self.sub_forward = VehicleSubscriberForwardMQTT(topic='forward')
 
+    #############################
+    # Handle location decisions #
+    #############################
     def handle(self, start_waypoint):
 
         msg = {'value': ''}
@@ -51,7 +59,7 @@ class Interface(object):
             if self.sub_enter.get_enter() == True:
                 self.sub_enter.set_enter(False)
                 self.pub.publish(text)
-                coordinates = self.sub_coor.get_coordinates()
+                location = self.sub_coor.get_location()
                 
                 if coordinates != []:
                     #point = [int(item) for item in coordinates.split()]
@@ -72,6 +80,9 @@ class Interface(object):
                 break
         return end_waypoints 
     
+    ###########################
+    # Handle forward decision #
+    ###########################
     def handle_forward(self, start_waypoint):
         waypoints = []                
         waypoint = start_waypoint
@@ -116,6 +127,9 @@ class Interface(object):
                 
         return waypoints
 
+    ########################
+    # Handle turn decision #
+    ########################
     def handle_turn(self, start_waypoint, turn):
         #w = start_waypoint.previous(1.0)
         #w = w[0]
@@ -154,14 +168,12 @@ class Interface(object):
 
             angle = calculate_angle(ways)
             
-            try:
-                final_point = change_coordinate_system(paths[i].transform, ways[len(ways) - 1].transform.location)
-            except IndexError:
-                final_point = change_coordinate_system(paths[i].transform, ways[0].transform.location)
-            
+            final_point = change_coordinate_system(paths[i].transform, ways[len(ways) - 1].transform.location)
             initial_point = change_coordinate_system(ways[0].transform, ways[0].transform.location)
 
-            if round(angle, 1) == 0.8 and turn == "STRAIGHT": 
+            if round(angle, 1) == 0.8 and turn == "STRAIGHT":
+
+                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False, color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True) 
                 self.pub_waypoint.publish({'value': 'Going STRAIGHT at the next junction'})
                 self.pub.publish({'value': ''})
                 for i in range(len(ways)):
@@ -169,20 +181,88 @@ class Interface(object):
                 break
             
             elif ((final_point.x < 0 and final_point.y < 0) or (final_point.x > 0 and final_point.y > 0)) and turn == "RIGHT" and round(angle, 1) != 0.8:
+                
+                if self.right_counter > 1:
+                    self.pub_turn.publish({'value': "Specify the number of turn you want to follow!"})
+                    while True:
+                        self.world.tick()
+                        if self.sub_enter.get_enter():
+                            self.sub_enter.set_enter(False)
+                            choice = self.sub_coor_forward.get_coordinates()
+
+                            try:
+                                choice = int(choice)
+
+                                if choice in list(range(1, len(self.right_turn_endings) + 1)):
+                                    k = 0
+                                    while self.right_turn_endings[choice - 1].transform.rotation.yaw != ways[len(ways) - 1].transform.rotation.yaw:
+                                        ways = paths[k].next_until_lane_end(1.0)
+                                        k += 1
+
+                                    for j in range(len(ways)):
+                                        waypoints.append(ways[j])
+                                    break
+
+                                else:
+                                    self.pub_waypoint.publish({'value': 'Invalid Value! Try again!'})
+                                    self.pub_turn_clean.publish({'value': ''})
+                                    continue
+                            
+                            except ValueError:
+                                self.pub_waypoint.publish({'value': 'Invalid Value! Try again!'})
+                                self.pub_turn_clean.publish({'value': ''})
+                                continue
+                
+                else:
+                    for i in range(len(ways)):
+                        waypoints.append(ways[i])
+
+                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False, color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)                    
                 self.pub_waypoint.publish({'value': 'Turn RIGHT at the next junction'})
                 self.pub.publish({'value': ''})
-                for i in range(len(ways)):
-                    waypoints.append(ways[i])
-                break
-            
-            elif ((final_point.x > 0 and final_point.y < 0) or (final_point.x < 0 and final_point.y > 0)) and turn == "LEFT" and round(angle, 1) != 0.8:
-                self.pub_waypoint.publish({'value': 'Turn LEFT at the next junction'})
-                self.pub.publish({'value': ''})
-                for i in range(len(ways)):
-                    waypoints.append(ways[i])
                 break 
             
+            elif ((final_point.x > 0 and final_point.y < 0) or (final_point.x < 0 and final_point.y > 0)) and turn == "LEFT" and round(angle, 1) != 0.8:
+                
+                if self.left_counter > 1:
+                    self.pub_turn.publish({'value': "Specify the number of turn you want to follow!"})
+                    while True:
+                        self.world.tick()
+                        if self.sub_enter.get_enter():
+                            self.sub_enter.set_enter(False)
+                            choice = self.sub_coor_forward.get_coordinates()
 
+                            try:
+                                choice = int(choice)
+
+                                if choice in list(range(1, len(self.left_turn_endings) + 1)):
+                                    k = 0
+                                    while self.left_turn_endings[choice - 1].transform.rotation.yaw != ways[len(ways) - 1].transform.rotation.yaw:
+                                        ways = paths[k].next_until_lane_end(1.0)
+                                        k += 1
+
+                                    for j in range(len(ways)):
+                                        waypoints.append(ways[j])
+                                    break
+
+                                else:
+                                    self.pub_waypoint.publish({'value': 'Invalid Value! Try again!'})
+                                    self.pub_turn_clean.publish({'value': ''})
+                                    continue
+
+                            except ValueError:
+                                self.pub_waypoint.publish({'value': 'Invalid Value! Try again!'})
+                                self.pub_turn_clean.publish({'value': ''})
+                                continue
+                
+                else:
+                    for i in range(len(ways)):
+                        waypoints.append(ways[i])
+
+                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False, color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)    
+                self.pub_waypoint.publish({'value': 'Turn LEFT at the next junction'})
+                self.pub.publish({'value': ''})
+                break 
             
             elif i == len(paths) - 1:
                 self.pub_waypoint.publish({'value': 'Unable to go {} at the next junction'.format(turn)})
@@ -192,6 +272,9 @@ class Interface(object):
         self.world.debug.draw_string(waypoints[len(waypoints) - 1].transform.location, 'X', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
         return waypoints
     
+    ###################################################
+    # Function for informing about possible direction #
+    ###################################################
     def turn_info(self, start_waypoint):
         
         # This try except block is used in case of the start waypoint is at the end of the lane and it cannot produse new waypoints. 
@@ -203,34 +286,60 @@ class Interface(object):
             pass 
             
         paths = waypoints[len(waypoints) - 1].next(1.0)
+        
         turn = "Possible paths:"
+        turn_right = ""
+        turn_left = ""
+        turn_draw_right = ""
+        turn_draw_left = ""
+
+        self.right_counter = 0
+        self.left_counter = 0
+        self.right_turn_endings = []
+        self.left_turn_endings = []
+        
         for i in range(len(paths)):
 
             ways = paths[i].next_until_lane_end(1.0)
 
             angle = calculate_angle(ways)
 
-            try:
-                final_point = change_coordinate_system(paths[i].transform, ways[len(ways) - 1].transform.location)
-            except IndexError:
-                final_point = change_coordinate_system(paths[i].transform, ways[0].transform.location)
+            final_point = change_coordinate_system(paths[i].transform, ways[len(ways) - 1].transform.location)
             initial_point = change_coordinate_system(ways[0].transform, ways[0].transform.location)
             
             if round(angle, 1) == 0.8: 
                 turn += " STRAIGHT"            
+                turn_draw = "STRAIGHT"
+
+                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
 
             elif ((final_point.x < 0 and final_point.y < 0) or (final_point.x > 0 and final_point.y > 0)):
-                turn += " RIGHT"
-           
-            elif ((final_point.x > 0 and final_point.y < 0) or (final_point.x < 0 and final_point.y > 0)):
-                turn += " LEFT"
-         
-            
-            #self.world.debug.draw_arrow(ways[len(ways) - 1].transform.location, carla.Location(x=vec.x, y=vec.y, z=vec.z), thickness=0.1, color=carla.Color(0,0,0), life_time=0)
-            #self.world.debug.draw_point(loc, size=0.1, color=carla.Color(255,0,0), life_time=0)
+                self.right_counter += 1 
+                self.right_turn_endings.append(ways[len(ways) - 1])
 
-            #self.world.debug.draw_string(ways[0].transform.location, '{}'.format(round(ways[0].transform.rotation.yaw)), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
-            for j in range(1, len(ways)):
-                self.world.debug.draw_string(ways[j].transform.location, '{}'.format(round(ways[j].transform.rotation.yaw)), draw_shadow=False, color=carla.Color(r=0, g=0, b=0), life_time=1000, persistent_lines=True)
-        
+                turn_right += " RIGHT {}".format(self.right_counter)
+                turn_draw_right = "RIGHT {}".format(self.right_counter)
+
+                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw_right, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
+
+            elif ((final_point.x > 0 and final_point.y < 0) or (final_point.x < 0 and final_point.y > 0)):
+                self.left_counter += 1
+                self.left_turn_endings.append(ways[len(ways) - 1])
+                
+                turn_left += " LEFT {}".format(self.left_counter)                
+                turn_draw_left = "LEFT {}".format(self.left_counter)
+
+                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw_left, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
+
+            
+            #for j in range(1, len(ways)):
+            #    self.world.debug.draw_string(ways[j].transform.location, '{}'.format(round(ways[j].transform.rotation.yaw)), draw_shadow=False, color=carla.Color(r=0, g=0, b=0), life_time=1000, persistent_lines=True)
+            
+        if self.right_counter == 1: 
+            turn_right = ''.join([i for i in turn_right if not i.isdigit()])
+            
+        if self.left_counter == 1: 
+            turn_left = ''.join([i for i in turn_left if not i.isdigit()])
+
+        turn += turn_left + turn_right
         self.pub_waypoint.publish({'value': turn})

@@ -6,7 +6,7 @@ from commlib.transports.mqtt import Subscriber, ConnectionParameters, Publisher
 class VehiclePublisherMQTT(): 
     def __init__(self, topic):
         self.topic = topic  
-        self.connection_parameters = ConnectionParameters(host='test.mosquitto.org', port=1883)
+        self.connection_parameters = ConnectionParameters(host='localhost', port=1883)
         self.publisher = Publisher(topic=self.topic, conn_params=self.connection_parameters)
     
     def publish(self, msg):
@@ -18,7 +18,7 @@ class VehicleSubscriberMQTT():
         self.subscribe()
 
     def subscribe(self):
-        connection_parameters = ConnectionParameters(host='test.mosquitto.org', port=1883)
+        connection_parameters = ConnectionParameters(host='localhost', port=1883)
         sub = Subscriber(topic=self.topic, on_message=self.data_callback, conn_params=connection_parameters)
         sub.run()
 
@@ -101,24 +101,16 @@ class VehicleSubscriberCautiousMQTT(VehicleSubscriberMQTT):
 
 class VehicleSubscriberCoorMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):  
-        super().__init__(topic)
-        self.coordinates = [] 
+        super().__init__(topic) 
         self.location = None
 
     def data_callback(self, msg):
         if self.topic == "coordinates":
-            print(msg)
-            self.coordinates = msg['coordinates']
             self.location = msg['location']
-
-    def get_coordinates(self):
-        return self.coordinates
 
     def get_location(self):
         return self.location
-    
-    def set_coordinates(self, coordinates):
-        self.coordinates = coordinates
+
 
 
 class VehicleSubscriberCoorForwardMQTT(VehicleSubscriberMQTT):
