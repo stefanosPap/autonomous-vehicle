@@ -1,6 +1,7 @@
 import carla
 import numpy as np  
 from sensor import Sensor, Lidar, CameraRGB, GNSS, IMU, ObstacleDetector, LaneInvasionDetector, Radar, CameraSemantic
+from communicationMQTT import VehiclePublisherMQTT, VehicleSubscriberCancelMQTT
 
 #################################################################################
 # Function for caclulating angle between the first and the last point of a path #
@@ -358,3 +359,22 @@ def draw_waypoints(world, waypoints, col):
         elif isinstance(waypoint, carla.libcarla.Transform):
             world.debug.draw_string(waypoint.location, '{}'.format(m), draw_shadow=False, color=color, life_time=1000)
         m += 1 
+
+#################################
+# Class for canceling a process #
+#################################
+class Cancel(object):
+    def __init__(self):
+        self.pub_cancel = VehiclePublisherMQTT(topic='cancel command')
+        self.pub = VehiclePublisherMQTT(topic='clean')
+        self.sub_cancel = VehicleSubscriberCancelMQTT(topic='cancel')
+
+    def cancel_process(self):
+        if self.sub_cancel.get_cancel():
+            self.sub_cancel.set_cancel(False)
+            self.pub.publish({'value': " "})
+            return True
+        return False
+
+    def cancel_now(self, value):
+       self.pub_cancel.publish({'value': value})

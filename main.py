@@ -11,7 +11,9 @@ from utilities import   plot_axis, \
                         pruning, \
                         draw_waypoints, \
                         rotate, \
-                        change_coordinate_system
+                        change_coordinate_system, \
+                        Cancel
+
 from trajectory import Trajectory
 from behavior import Behavior
 from communicationMQTT import VehicleSubscriberStartStopMQTT, \
@@ -20,7 +22,8 @@ from communicationMQTT import VehicleSubscriberStartStopMQTT, \
                               VehicleSubscriberDoneMQTT, \
                               VehicleSubscriberLogMQTT, \
                               VehiclePublisherMQTT, \
-                              VehicleSubscriberTurnMQTT
+                              VehicleSubscriberTurnMQTT, \
+                              VehicleSubscriberCancelMQTT
 
 from interface import Interface
 from vehicle_move import spawn
@@ -66,10 +69,10 @@ def main():
             break 
     
     
-    start_point = carla.Transform(carla.Location(x=-78.182701, y=66.842422, z=1), carla.Rotation(pitch=0.0, yaw=-90, roll=0.0))
+    #start_point = carla.Transform(carla.Location(x=-78.182701, y=66.842422, z=1), carla.Rotation(pitch=0.0, yaw=-90, roll=0.0))
     #start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
 
-    start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
+    #start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
     #print(start_waypoint)
     #print(start_point)
     ##########################
@@ -125,6 +128,7 @@ def main():
     # generate random trajectory for the vehicle 
     sub_coor = VehicleSubscriberCoorMQTT(topic='coordinates')
     sub_enter = VehicleSubscriberEnterMQTT(topic='enter')
+
     sub_done = VehicleSubscriberDoneMQTT(topic='done')
     sub_log = VehicleSubscriberLogMQTT(topic='log')
     sub_turn = VehicleSubscriberTurnMQTT(topic='turn_junction')
@@ -167,15 +171,27 @@ def main():
             #and distance < 20 and end_waypoint != start_waypoint:
                 break 
     '''
-        
+    cancel = Cancel()
     interface = Interface(world, map, vehicle_actor)
     trajectory = Trajectory(world, map, vehicle_actor)
-    waypoints = []
-    pub.publish({'value': " "})
     
+    waypoints = []
+    custom_waypoints = []
+    current_waypoint = start_waypoint
+
+    pub.publish({'value': " "})
+
     while True:
         while True:
             while True:
+                if cancel.cancel_process():
+                    cancel.cancel_now(False)
+                    print("F")
+                    waypoints = []
+                    custom_waypoints = []
+                    current_waypoint = start_waypoint
+                    break
+
                 world.tick()
                 action = " "
                 if sub_log.get_log() != " ":
@@ -183,49 +199,64 @@ def main():
                     sub_log.set_log(" ")
 
                 if action == "Location":
-                    end_waypoints = interface.handle(start_waypoint)
-                    custom_waypoints = trajectory.trace_route(end_waypoints)
-                    start_waypoint = custom_waypoints[len(custom_waypoints) - 1]
-                    waypoints = waypoints + custom_waypoints
+                    end_waypoints = interface.handle(current_waypoint)
+                    
+                    try:
+                        custom_waypoints = trajectory.trace_route(end_waypoints)
+                        current_waypoint = custom_waypoints[len(custom_waypoints) - 1]
+                        waypoints = waypoints + custom_waypoints
+                    except IndexError:
+                        waypoints = []
+                        custom_waypoints = []
+                        current_waypoint = start_waypoint
+                    
                     break
 
                 elif action == "Direction":
-
-                    interface.turn_info(start_waypoint)
+                    
+                    interface.turn_info(current_waypoint)
                     while sub_turn.get_turn() == None:
                         world.tick()
-                        
+                        if cancel.cancel_process():
+                            print("R")
+                            cancel.cancel_now(False)
+                            custom_waypoints = []
+                            waypoints = []
+                            current_waypoint = start_waypoint
+                            break 
+                                             
                     if sub_turn.get_turn() == "RIGHT":
-                        custom_waypoints = interface.handle_turn(start_waypoint, "RIGHT")
+                        custom_waypoints = interface.handle_turn(current_waypoint, "RIGHT")
                         sub_turn.set_turn(None)
 
                     elif sub_turn.get_turn() == "LEFT":
-                        custom_waypoints = interface.handle_turn(start_waypoint, "LEFT")
+                        custom_waypoints = interface.handle_turn(current_waypoint, "LEFT")
                         sub_turn.set_turn(None)
                     
                     elif sub_turn.get_turn() == "STRAIGHT":
-                        custom_waypoints = interface.handle_turn(start_waypoint, "STRAIGHT")
+                        custom_waypoints = interface.handle_turn(current_waypoint, "STRAIGHT")
                         sub_turn.set_turn(None)
                     
                     elif sub_turn.get_turn() == "FORWARD":
-                        custom_waypoints = interface.handle_forward(start_waypoint)
+                        custom_waypoints = interface.handle_forward(current_waypoint)
                         sub_turn.set_turn(None)
                     
                     waypoints = waypoints + custom_waypoints
                     if custom_waypoints != []:
-                        start_waypoint = custom_waypoints[len(custom_waypoints) - 1]
+                        current_waypoint = custom_waypoints[len(custom_waypoints) - 1]
                     break 
                 break
-
+                
             if sub_done.get_done() == True:
                 sub_done.set_done(False)
                 break
 
-
-        waypoints = pruning(map, waypoints)
-        waypoints = trajectory.load_trajectory(waypoints)
-        draw_waypoints(world, waypoints, 100)
-
+        try:
+            waypoints = pruning(map, waypoints)
+            waypoints = trajectory.load_trajectory(waypoints)
+            draw_waypoints(world, waypoints, 100)
+        except IndexError:
+            continue
         # wait until start button is pushed     
         sub = VehicleSubscriberStartStopMQTT(topic='start_stop_topic')
         pub_start.publish({'value': 'Waypoint selection has completed! Press START to begin!'})

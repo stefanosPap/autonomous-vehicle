@@ -1,6 +1,6 @@
 import carla
 import numpy as np
-from utilities import plot_axis, change_coordinate_system, calculate_angle
+from utilities import plot_axis, change_coordinate_system, calculate_angle, Cancel
 from communicationMQTT import VehicleSubscriberStartStopMQTT, \
                               VehicleSubscriberCoorMQTT, \
                               VehicleSubscriberEnterMQTT, \
@@ -8,6 +8,7 @@ from communicationMQTT import VehicleSubscriberStartStopMQTT, \
                               VehiclePublisherMQTT, \
                               VehicleSubscriberForwardMQTT, \
                               VehicleSubscriberCoorForwardMQTT
+from town import Town
 
 class Interface(object):
     def __init__(self, world, map, vehicle_actor):
@@ -15,6 +16,7 @@ class Interface(object):
         self.map = map
         self.vehicle_actor = vehicle_actor
         self.setupCom()
+        self.cancel = Cancel()
 
     ####################################
     # Setup publishers and subscribers #
@@ -52,31 +54,49 @@ class Interface(object):
         self.pub_vel_conf.publish(vel)
 
         prev_point = []
-        num = 1 
-        
+        num_of_locations = 1 
+
+        town = Town()
+        print("DD")
+
         while True:
             self.world.tick()
+            if self.cancel.cancel_process():
+                self.cancel.cancel_now(False)
+                print("V")
+                break 
+            
+            # Waiting for ENTER button to be pressed
             if self.sub_enter.get_enter() == True:
+                
                 self.sub_enter.set_enter(False)
                 self.pub.publish(text)
-                location = self.sub_coor.get_location()
                 
-                if coordinates != []:
-                    #point = [int(item) for item in coordinates.split()]
-                    point = coordinates
-                    if len(point) == 3 and point != prev_point: 
-                        way = {'value': 'Location {} at: {}'.format(num, self.sub_coor.get_location())}
-                        self.pub_waypoint.publish(way)
-                        self.pub.publish({'value': ''})
+                # Take the location that the user has specified
+                location = self.sub_coor.get_location()
 
-                        num += 1  
+                #try catch block in order to check if this location exists in the current map 
+                try:
+                    destinations = town.get_destinations()
+                    point = destinations[location]
+                except:
+                    way = {'value': 'Specify another location!'}
+                    self.pub_waypoint.publish(way)
+                    continue
 
-                        prev_point = point 
-                        point = carla.Location(point[0],point[1],point[2])
-                        waypoint = self.map.get_waypoint(point, project_to_road=True, lane_type=carla.LaneType.Any)
-                        end_waypoints.append(waypoint)
-            
+                # if the given location is different from thw previous then log this
+                if point != prev_point: 
+                    way = {'value': 'Location {} at: {}'.format(num_of_locations, self.sub_coor.get_location())}
+                    self.pub_waypoint.publish(way)
+                    self.pub.publish({'value': ''})
 
+                    num_of_locations += 1  
+
+                    prev_point = point 
+                    point = carla.Location(point[0],point[1],point[2])
+                    waypoint = self.map.get_waypoint(point, project_to_road=True, lane_type=carla.LaneType.Any)
+                    end_waypoints.append(waypoint)
+        
                 break
         return end_waypoints 
     
@@ -86,10 +106,13 @@ class Interface(object):
     def handle_forward(self, start_waypoint):
         waypoints = []                
         waypoint = start_waypoint
-
         self.pub_forward.publish({'value': "Specify the distance in meters you want to go forward!"})
         while True:
             self.world.tick()
+            if self.cancel.cancel_process():
+                self.cancel.cancel_now(False)
+                break 
+            
             if self.sub_enter.get_enter():
                 self.sub_enter.set_enter(False)
                 p = self.sub_coor_forward.get_coordinates()
