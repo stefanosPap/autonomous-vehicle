@@ -93,11 +93,11 @@ def main():
     plot_axis(world, origin)
     
     # configure sensors 
-    #sensors = configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, "ObstacleDetector")
+    sensors = configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, "ObstacleDetector")
 
     
     # add sensor to vehicle's configuration
-    #vehicle.add_sensor(sensors['obs'])                            
+    vehicle.add_sensor(sensors['obs'])                            
     
     # just wander in autopilot mode and collect data
     # vehicle.wander() 
@@ -184,20 +184,27 @@ def main():
     while True:
         while True:
             while True:
+
+                # check if cancel button be pushed 
                 if cancel.cancel_process():
+                    
                     cancel.cancel_now(False)
-                    print("F")
+                    
+                    # initialize all the variables again in order to start again
                     waypoints = []
                     custom_waypoints = []
                     current_waypoint = start_waypoint
+                    
                     break
 
+                # check if new destination goal has logged 
                 world.tick()
                 action = " "
                 if sub_log.get_log() != " ":
                     action = sub_log.get_log()
                     sub_log.set_log(" ")
 
+                # case of location chosen 
                 if action == "Location":
                     end_waypoints = interface.handle(current_waypoint)
                     
@@ -212,19 +219,20 @@ def main():
                     
                     break
 
+                # case of direction chosen 
                 elif action == "Direction":
                     
                     interface.turn_info(current_waypoint)
                     while sub_turn.get_turn() == None:
                         world.tick()
                         if cancel.cancel_process():
-                            print("R")
                             cancel.cancel_now(False)
                             custom_waypoints = []
                             waypoints = []
                             current_waypoint = start_waypoint
                             break 
-                                             
+    
+                    # handle each direction 
                     if sub_turn.get_turn() == "RIGHT":
                         custom_waypoints = interface.handle_turn(current_waypoint, "RIGHT")
                         sub_turn.set_turn(None)
@@ -247,6 +255,7 @@ def main():
                     break 
                 break
                 
+            # check if DONE button has been pushed  
             if sub_done.get_done() == True:
                 sub_done.set_done(False)
                 break
@@ -257,11 +266,24 @@ def main():
             draw_waypoints(world, waypoints, 100)
         except IndexError:
             continue
-        # wait until start button is pushed     
+
+        # wait until START button is pushed     
         sub = VehicleSubscriberStartStopMQTT(topic='start_stop_topic')
         pub_start.publish({'value': 'Waypoint selection has completed! Press START to begin!'})
+        
         while True:
+
             world.tick()
+        
+            if cancel.cancel_process():
+                cancel.cancel_now(False)
+                    
+                # initialize all the variables again in order to start again
+                waypoints = []
+                custom_waypoints = []
+                current_waypoint = start_waypoint      
+                break
+
             start = sub.get_start()
             if start == True:
                 sub.set_start(False)
@@ -269,10 +291,13 @@ def main():
                 break 
 
         # follow trajectory and stop to obstacles and traffic lights
-        behavior = Behavior(vehicle_actor, waypoints, trajectory, map)
-        behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, 0)
-        start_waypoint = map.get_waypoint(vehicle_actor.get_location(), project_to_road=True, lane_type=carla.LaneType.Any)
-
+        try:
+            behavior = Behavior(vehicle_actor, waypoints, trajectory, map)
+            behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, 0)
+            start_waypoint = map.get_waypoint(vehicle_actor.get_location(), project_to_road=True, lane_type=carla.LaneType.Any)
+        except IndexError:
+            continue
+        
     ###########################
     # Destroy actors and exit #
     ###########################

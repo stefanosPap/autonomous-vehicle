@@ -84,7 +84,7 @@ class Interface(object):
                     self.pub_waypoint.publish(way)
                     continue
 
-                # if the given location is different from thw previous then log this
+                # if the given location is different from the previous then log this
                 if point != prev_point: 
                     way = {'value': 'Location {} at: {}'.format(num_of_locations, self.sub_coor.get_location())}
                     self.pub_waypoint.publish(way)
