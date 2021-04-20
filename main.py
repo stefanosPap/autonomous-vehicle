@@ -147,8 +147,8 @@ def main():
     msg = {'value': 'Press DONE for finishing waypoint selection'}
     pub_done.publish(msg)
 
-    msg = {'value': ''}
-    pub_waypoint.publish(msg)
+
+
     #custom_point = carla.Transform(carla.Location(x=-125.793716, y=-4 , z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
     #custom_waypoint = map.get_waypoint(custom_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
     #end_point = carla.Transform(carla.Location(x=-137.793716, y=-1.8, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
@@ -175,13 +175,22 @@ def main():
     interface = Interface(world, map, vehicle_actor)
     trajectory = Trajectory(world, map, vehicle_actor)
     
-    waypoints = []
-    custom_waypoints = []
-    current_waypoint = start_waypoint
-
     pub.publish({'value': " "})
 
+    msg = {'value': ''}
+    pub_waypoint.publish(msg)
+
+    msg = {'velocity': 0}
+    #pub_vel_conf.publish(msg)
+    #pub_vel.publish(msg)
+
+
     while True:
+    
+        waypoints = []
+        custom_waypoints = []
+        current_waypoint = start_waypoint
+        
         while True:
             while True:
 
@@ -294,7 +303,17 @@ def main():
         try:
             behavior = Behavior(vehicle_actor, waypoints, trajectory, map)
             behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, 0)
-            start_waypoint = map.get_waypoint(vehicle_actor.get_location(), project_to_road=True, lane_type=carla.LaneType.Any)
+            vel = vehicle_actor.get_velocity() 
+            vector = [vel.x, vel.y, vel.z]
+            
+            while np.linalg.norm(vector) > 0.0001:
+                vel = vehicle_actor.get_velocity() 
+                vector = [vel.x, vel.y, vel.z]
+                world.tick()
+
+            start_waypoint = map.get_waypoint(vehicle_actor.get_location(), project_to_road=False, lane_type=carla.LaneType.Any)
+            pub_waypoint.publish({'value': 'You have reached your destination! Define a new route to continue!'})
+
         except IndexError:
             continue
         

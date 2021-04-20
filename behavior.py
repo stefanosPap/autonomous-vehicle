@@ -138,6 +138,7 @@ class Behavior(object):
 
                 if i == len(self.waypoints):
                     control_signal = self.custom_controller.run_step(0, self.waypoints[i - 1])
+                    vehicle_actor.apply_control(control_signal)
                     break
                 
                 #spectator()
