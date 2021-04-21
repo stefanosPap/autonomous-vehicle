@@ -104,16 +104,21 @@ class Interface(object):
     # Handle forward decision #
     ###########################
     def handle_forward(self, start_waypoint):
+       
         waypoints = []                
         waypoint = start_waypoint
         self.pub_forward.publish({'value': "Specify the distance in meters you want to go forward!"})
+       
         while True:
+       
             self.world.tick()
+       
             if self.cancel.cancel_process():
                 self.cancel.cancel_now(False)
                 break 
             
             if self.sub_enter.get_enter():
+       
                 self.sub_enter.set_enter(False)
                 p = self.sub_coor_forward.get_coordinates()
                 try:
@@ -184,6 +189,25 @@ class Interface(object):
         #print(waypoints[len(waypoints) - 1].is_junction)
         #print(waypoints[0].is_junction)
         paths = waypoints[len(waypoints) - 1].next(1.0)
+        try:
+            next_waypoint = waypoints[len(waypoints) - 1].get_left_lane()
+            location = carla.Location(next_waypoint.transform.location.x, next_waypoint.transform.location.y, next_waypoint.transform.location.z)
+            w = self.map.get_waypoint(location, project_to_road=False)
+            paths_left = w.next(1.0)
+            self.check(paths_left)
+            paths += paths_left
+        except:
+            pass
+
+        try:
+            next_waypoint = waypoints[len(waypoints) - 1].get_right_lane()
+            location = carla.Location(next_waypoint.transform.location.x, next_waypoint.transform.location.y, next_waypoint.transform.location.z)
+            w = self.map.get_waypoint(location, project_to_road=False)
+            paths_right = w.next(1.0)
+            self.check(paths_right)
+            paths += paths_right
+        except:
+            pass
 
         for i in range(len(paths)):
             
@@ -305,12 +329,32 @@ class Interface(object):
         waypoints = [start_waypoint]
         try:
             waypoints = start_waypoint.next_until_lane_end(1.0)
-        except RuntimeError:
+        except (RuntimeError, AttributeError) as e:
             pass 
             
         paths = waypoints[len(waypoints) - 1].next(1.0)
-        
-        turn = "Possible paths:"
+        try:
+            next_waypoint = waypoints[len(waypoints) - 1].get_left_lane()
+            location = carla.Location(next_waypoint.transform.location.x, next_waypoint.transform.location.y, next_waypoint.transform.location.z)
+            w = self.map.get_waypoint(location, project_to_road=False)
+            paths_left = w.next(1.0)
+            self.check(paths_left)
+            paths += paths_left
+        except:
+            pass
+
+        try:
+            next_waypoint = waypoints[len(waypoints) - 1].get_right_lane()
+            location = carla.Location(next_waypoint.transform.location.x, next_waypoint.transform.location.y, next_waypoint.transform.location.z)
+            w = self.map.get_waypoint(location, project_to_road=False)
+            paths_right = w.next(1.0)
+            self.check(paths_right)
+            paths += paths_right
+        except:
+            pass
+
+        self.turn = "Possible paths:"
+
         turn_right = ""
         turn_left = ""
         turn_draw_right = ""
@@ -320,7 +364,7 @@ class Interface(object):
         self.left_counter = 0
         self.right_turn_endings = []
         self.left_turn_endings = []
-        
+
         for i in range(len(paths)):
 
             ways = paths[i].next_until_lane_end(1.0)
@@ -331,38 +375,43 @@ class Interface(object):
             initial_point = change_coordinate_system(ways[0].transform, ways[0].transform.location)
             
             if round(angle, 1) == 0.8: 
-                turn += " STRAIGHT"            
-                turn_draw = "STRAIGHT"
-
-                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
+                
+                if "STRAIGHT" not in self.turn:
+                    self.turn += " STRAIGHT"            
+                    turn_draw = "STRAIGHT"
+                    self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
 
             elif ((final_point.x < 0 and final_point.y < 0) or (final_point.x > 0 and final_point.y > 0)):
-                self.right_counter += 1 
-                self.right_turn_endings.append(ways[len(ways) - 1])
 
-                turn_right += " RIGHT {}".format(self.right_counter)
-                turn_draw_right = "RIGHT {}".format(self.right_counter)
+                if "RIGHT" not in self.turn:
+                    self.right_counter += 1 
+                    self.right_turn_endings.append(ways[len(ways) - 1])
 
-                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw_right, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
+                    turn_right += " RIGHT {}".format(self.right_counter)
+                    turn_draw_right = "RIGHT {}".format(self.right_counter)
+
+                    self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw_right, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
 
             elif ((final_point.x > 0 and final_point.y < 0) or (final_point.x < 0 and final_point.y > 0)):
-                self.left_counter += 1
-                self.left_turn_endings.append(ways[len(ways) - 1])
-                
-                turn_left += " LEFT {}".format(self.left_counter)                
-                turn_draw_left = "LEFT {}".format(self.left_counter)
 
-                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw_left, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
+                if "LEFT" not in self.turn:
+                    self.left_counter += 1
+                    self.left_turn_endings.append(ways[len(ways) - 1])
+                    
+                    turn_left += " LEFT {}".format(self.left_counter)                
+                    turn_draw_left = "LEFT {}".format(self.left_counter)
 
-            
-            #for j in range(1, len(ways)):
-            #    self.world.debug.draw_string(ways[j].transform.location, '{}'.format(round(ways[j].transform.rotation.yaw)), draw_shadow=False, color=carla.Color(r=0, g=0, b=0), life_time=1000, persistent_lines=True)
-            
+                    self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw_left, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
+        
         if self.right_counter == 1: 
             turn_right = ''.join([i for i in turn_right if not i.isdigit()])
             
         if self.left_counter == 1: 
             turn_left = ''.join([i for i in turn_left if not i.isdigit()])
 
-        turn += turn_left + turn_right
-        self.pub_waypoint.publish({'value': turn})
+        self.turn += turn_left + turn_right
+        self.pub_waypoint.publish({'value': self.turn})
+        
+            #for j in range(1, len(ways)):
+            #    self.world.debug.draw_string(ways[j].transform.location, '{}'.format(round(ways[j].transform.rotation.yaw)), draw_shadow=False, color=carla.Color(r=0, g=0, b=0), life_time=1000, persistent_lines=True)
+            

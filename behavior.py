@@ -194,10 +194,16 @@ class Behavior(object):
 
                 # check for red lights, front obstacles and stop button 
                 if traffic_light_state == "RED":
-                    control_signal = self.emergency_stop()
-                    pass
+
+                    # if RED light has activated when vehicle was inside the junction then it is better to get out of the junction
+                    if not self.waypoints[i].is_junction:
+                        control_signal = self.emergency_stop()
+                    else:
+                        control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
+
                 #elif front_obstacle() == True:
-                #    set_front_obstacle(False)                                               # set False in order to check if obstacle detector has triggered again  
+                     # set False in order to check if obstacle detector has triggered again 
+                #    set_front_obstacle(False)                                               
                 #    control_signal = self.emergency_stop() 
 
                 elif stop == True:

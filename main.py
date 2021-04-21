@@ -181,8 +181,8 @@ def main():
     pub_waypoint.publish(msg)
 
     msg = {'velocity': 0}
-    #pub_vel_conf.publish(msg)
-    #pub_vel.publish(msg)
+    pub_vel_conf.publish(msg)
+    pub_vel.publish(msg)
 
 
     while True:
@@ -313,6 +313,8 @@ def main():
 
             start_waypoint = map.get_waypoint(vehicle_actor.get_location(), project_to_road=False, lane_type=carla.LaneType.Any)
             pub_waypoint.publish({'value': 'You have reached your destination! Define a new route to continue!'})
+            pub_vel_conf.publish(msg)
+            pub_vel.publish(msg)
 
         except IndexError:
             continue

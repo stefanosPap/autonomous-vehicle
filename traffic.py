@@ -10,6 +10,7 @@ class Traffic(object):
         self.world = world
         self.lane_info = {}
         self.map = map
+
     ######################################
     # Method for checking traffic lights #
     ######################################
@@ -19,15 +20,12 @@ class Traffic(object):
         
             if traffic_light != None:
                 if traffic_light.get_state() == carla.TrafficLightState.Red:
-                    #print("Red")
                     self.traffic_state = "RED"
 
                 elif traffic_light.get_state() == carla.TrafficLightState.Yellow:
-                    #print("Yellow")
                     self.traffic_state = "YELLOW"
 
                 elif traffic_light.get_state() == carla.TrafficLightState.Green:
-                    #print("Green")
                     self.traffic_state = "GREEN"
     
         return self.traffic_state
