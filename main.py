@@ -69,10 +69,10 @@ def main():
             break 
     
     
-    #start_point = carla.Transform(carla.Location(x=-78.182701, y=66.842422, z=1), carla.Rotation(pitch=0.0, yaw=-90, roll=0.0))
+    start_point = carla.Transform(carla.Location(x=-78.182701, y=66.842422, z=1), carla.Rotation(pitch=0.0, yaw=-90, roll=0.0))
     #start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
 
-    #start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
+    start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
     #print(start_waypoint)
     #print(start_point)
     ##########################
@@ -111,13 +111,17 @@ def main():
     #gp = GlobalRoutePlanner(gp_dao)
     #top = gp.get_topology()
     #spawn()
-    waypoints = map.get_topology()
-    #waypoints = map.generate_waypoints(3.0)
-    for waypoint in waypoints:
+    #waypoints = map.get_topology()
+    #waypoints = map.generate_waypoints(1.0)
+    #for waypoint in waypoints:
     #    for waypoint in top[i]['path']:
-    #        world.debug.draw_string(waypoint.transform.location, '{}'.format(round(waypoint.transform.rotation.yaw)), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
-            world.debug.draw_string(waypoint[0].transform.location, 's', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
-            world.debug.draw_string(waypoint[1].transform.location, 'e', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
+    #    if waypoint.lane_id > 0:
+    #        world.debug.draw_string(waypoint.transform.location, '{}'.format(waypoint.road_id), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+    #    else:
+    #        world.debug.draw_string(waypoint.transform.location, '{}'.format(waypoint.lane_id), draw_shadow=False, color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
+
+    #        world.debug.draw_string(waypoint[0].transform.location, 's', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
+    #        world.debug.draw_string(waypoint[1].transform.location, 'e', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
     #print(top)
 
     #pedestrian_actor = world.get_blueprint_library().filter('walker.pedestrian.0001')

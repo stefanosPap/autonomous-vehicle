@@ -1,6 +1,7 @@
 import carla
 import numpy as np
 from utilities import plot_axis, change_coordinate_system, calculate_angle, Cancel
+from trajectory import Trajectory
 from communicationMQTT import VehicleSubscriberStartStopMQTT, \
                               VehicleSubscriberCoorMQTT, \
                               VehicleSubscriberEnterMQTT, \
@@ -17,7 +18,8 @@ class Interface(object):
         self.vehicle_actor = vehicle_actor
         self.setupCom()
         self.cancel = Cancel()
-
+        self.trajectory = Trajectory(world, map, vehicle_actor)
+        
     ####################################
     # Setup publishers and subscribers #
     ####################################
@@ -57,13 +59,11 @@ class Interface(object):
         num_of_locations = 1 
 
         town = Town()
-        print("DD")
 
         while True:
             self.world.tick()
             if self.cancel.cancel_process():
                 self.cancel.cancel_now(False)
-                print("V")
                 break 
             
             # Waiting for ENTER button to be pressed
@@ -164,10 +164,10 @@ class Interface(object):
         #self.world.debug.draw_string(w.transform.location, 'F', draw_shadow=False, color=carla.Color(r=255, g=0, b=255), life_time=1000, persistent_lines=True)
         waypoints = [start_waypoint]
         #if not start_waypoint.is_junction:
-        try:
-            waypoints = start_waypoint.next_until_lane_end(1.0)
-        except RuntimeError:
-            pass 
+        #try:
+        #    waypoints = start_waypoint.next_until_lane_end(1.0)
+        #except RuntimeError:
+        #    pass 
         
         #waypoint = start_waypoint
         
@@ -189,30 +189,34 @@ class Interface(object):
         #print(waypoints[len(waypoints) - 1].is_junction)
         #print(waypoints[0].is_junction)
         paths = waypoints[len(waypoints) - 1].next(1.0)
+
+        # In case of left lane exists, check if there is another turn besides the existing
         try:
             next_waypoint = waypoints[len(waypoints) - 1].get_left_lane()
             location = carla.Location(next_waypoint.transform.location.x, next_waypoint.transform.location.y, next_waypoint.transform.location.z)
             w = self.map.get_waypoint(location, project_to_road=False)
             paths_left = w.next(1.0)
-            self.check(paths_left)
-            paths += paths_left
+            if "Solid" not in str(waypoints[len(waypoints) - 1].left_lane_marking.type):
+                paths += paths_left
         except:
             pass
 
+        # In case of right lane exists, check if there is another turn besides the existing
         try:
             next_waypoint = waypoints[len(waypoints) - 1].get_right_lane()
             location = carla.Location(next_waypoint.transform.location.x, next_waypoint.transform.location.y, next_waypoint.transform.location.z)
             w = self.map.get_waypoint(location, project_to_road=False)
             paths_right = w.next(1.0)
-            self.check(paths_right)
-            paths += paths_right
+            if "Solid" not in str(waypoints[len(waypoints) - 1].right_lane_marking.type):
+                paths += paths_right
+
         except:
             pass
 
         for i in range(len(paths)):
             
             ways = paths[i].next_until_lane_end(1.0)
-
+           
             angle = calculate_angle(ways)
             
             final_point = change_coordinate_system(paths[i].transform, ways[len(ways) - 1].transform.location)
@@ -273,7 +277,9 @@ class Interface(object):
                 
                 if self.left_counter > 1:
                     self.pub_turn.publish({'value': "Specify the number of turn you want to follow!"})
+
                     while True:
+                    
                         self.world.tick()
                         if self.sub_enter.get_enter():
                             self.sub_enter.set_enter(False)
@@ -315,103 +321,132 @@ class Interface(object):
                 self.pub_waypoint.publish({'value': 'Unable to go {} at the next junction'.format(turn)})
                 self.pub.publish({'value': ''})
                 return []
-
-        self.world.debug.draw_string(waypoints[len(waypoints) - 1].transform.location, 'X', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+        print(waypoints[len(waypoints) - 1]
         return waypoints
     
-    ###################################################
-    # Function for informing about possible direction #
-    ###################################################
+    ####################################################
+    # Function for informing about possible directions #
+    ####################################################
     def turn_info(self, start_waypoint):
         
         # This try except block is used in case of the start waypoint is at the end of the lane and it cannot produse new waypoints. 
         # Therefore it throws a RuntimeError and we use as waypoints the starting waypoint  
         waypoints = [start_waypoint]
-        try:
-            waypoints = start_waypoint.next_until_lane_end(1.0)
-        except (RuntimeError, AttributeError) as e:
-            pass 
+        #try:
+        #    waypoints = start_waypoint.next_until_lane_end(1.0)
+        #except (RuntimeError, AttributeError) as e:
+        #    pass 
             
         paths = waypoints[len(waypoints) - 1].next(1.0)
+        self.turn = "Possible paths:"
+
+        self.turn_right = ""
+        self.turn_left = ""
+        
+        self.turn_draw_right = ""
+        self.turn_draw_left = ""
+        
+        self.right_road_ids = []
+        self.left_road_ids = []
+        
+        self.right_counter = 0
+        self.left_counter = 0
+        
+        self.right_turn_endings = []
+        self.left_turn_endings = []
+
+        self.check_directions(paths, False)
+
+        # In case of left lane exists, check if there is another turn besides the existing
         try:
             next_waypoint = waypoints[len(waypoints) - 1].get_left_lane()
             location = carla.Location(next_waypoint.transform.location.x, next_waypoint.transform.location.y, next_waypoint.transform.location.z)
             w = self.map.get_waypoint(location, project_to_road=False)
             paths_left = w.next(1.0)
-            self.check(paths_left)
-            paths += paths_left
+
+            if "Solid" not in str(waypoints[len(waypoints) - 1].left_lane_marking.type):
+                self.check_directions(paths_left, True)
+            
         except:
             pass
 
+        # In case of right lane exists, check if there is another turn besides the existing
         try:
             next_waypoint = waypoints[len(waypoints) - 1].get_right_lane()
             location = carla.Location(next_waypoint.transform.location.x, next_waypoint.transform.location.y, next_waypoint.transform.location.z)
             w = self.map.get_waypoint(location, project_to_road=False)
             paths_right = w.next(1.0)
-            self.check(paths_right)
-            paths += paths_right
+
+            if "Solid" not in str(waypoints[len(waypoints) - 1].right_lane_marking.type):
+                self.check_directions(paths_right, True)
+
         except:
             pass
+        
+        # remove numbers in direction in case of single right or left turns 
+        if self.right_counter == 1: 
+            self.turn_right = ''.join([i for i in self.turn_right if not i.isdigit()])
+            
+        if self.left_counter == 1: 
+            self.turn_left = ''.join([i for i in self.turn_left if not i.isdigit()])
 
-        self.turn = "Possible paths:"
+        # concatenate the total result 
+        self.turn += self.turn_left + self.turn_right
 
-        turn_right = ""
-        turn_left = ""
-        turn_draw_right = ""
-        turn_draw_left = ""
+        # publish result 
+        self.pub_waypoint.publish({'value': self.turn})
 
-        self.right_counter = 0
-        self.left_counter = 0
-        self.right_turn_endings = []
-        self.left_turn_endings = []
+    #############################################
+    # Function for checking possible directions #
+    #############################################
+    def check_directions(self, paths, check_duplicates):
 
         for i in range(len(paths)):
 
             ways = paths[i].next_until_lane_end(1.0)
 
+            # calculate angle between first and last waypoint of the path in order to check if 
+            # it is a STRAIGHT direction. After experiments it is estimated that the rounded value between them is 0.8
             angle = calculate_angle(ways)
 
+            # convert coordinates to a coordinate system taking as starting point, the starting point of the path.
+            # this is done in order to decide in which direction is each path located.  
             final_point = change_coordinate_system(paths[i].transform, ways[len(ways) - 1].transform.location)
             initial_point = change_coordinate_system(ways[0].transform, ways[0].transform.location)
-            
+
             if round(angle, 1) == 0.8: 
                 
+                # check in order to avoid duplicates in direction
                 if "STRAIGHT" not in self.turn:
+
                     self.turn += " STRAIGHT"            
                     turn_draw = "STRAIGHT"
                     self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
 
             elif ((final_point.x < 0 and final_point.y < 0) or (final_point.x > 0 and final_point.y > 0)):
 
-                if "RIGHT" not in self.turn:
-                    self.right_counter += 1 
-                    self.right_turn_endings.append(ways[len(ways) - 1])
+                # check in order to avoid creating double RIGHT directions in the same road 
+                if check_duplicates and "RIGHT" in self.turn_right:
+                    continue 
 
-                    turn_right += " RIGHT {}".format(self.right_counter)
-                    turn_draw_right = "RIGHT {}".format(self.right_counter)
+                self.right_counter += 1 
+                self.right_turn_endings.append(ways[len(ways) - 1])
 
-                    self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw_right, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
+                self.turn_right += " RIGHT {}".format(self.right_counter)
+                self.turn_draw_right = "RIGHT {}".format(self.right_counter)
+
+                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, self.turn_draw_right, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
 
             elif ((final_point.x > 0 and final_point.y < 0) or (final_point.x < 0 and final_point.y > 0)):
 
-                if "LEFT" not in self.turn:
-                    self.left_counter += 1
-                    self.left_turn_endings.append(ways[len(ways) - 1])
-                    
-                    turn_left += " LEFT {}".format(self.left_counter)                
-                    turn_draw_left = "LEFT {}".format(self.left_counter)
-
-                    self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw_left, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
-        
-        if self.right_counter == 1: 
-            turn_right = ''.join([i for i in turn_right if not i.isdigit()])
-            
-        if self.left_counter == 1: 
-            turn_left = ''.join([i for i in turn_left if not i.isdigit()])
-
-        self.turn += turn_left + turn_right
-        self.pub_waypoint.publish({'value': self.turn})
-        
-            #for j in range(1, len(ways)):
-            #    self.world.debug.draw_string(ways[j].transform.location, '{}'.format(round(ways[j].transform.rotation.yaw)), draw_shadow=False, color=carla.Color(r=0, g=0, b=0), life_time=1000, persistent_lines=True)
-            
+                # check in order to avoid creating double LEFT directions in the same road 
+                if check_duplicates and "LEFT" in self.turn_left:
+                    continue 
+                
+                self.left_counter += 1
+                self.left_turn_endings.append(ways[len(ways) - 1])
+                      
+                self.turn_left += " LEFT {}".format(self.left_counter)                
+                self.turn_draw_left = "LEFT {}".format(self.left_counter)
+                
+                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, self.turn_draw_left, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)

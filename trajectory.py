@@ -65,10 +65,11 @@ class Trajectory():
             return w
 
     def trace_route(self, end_waypoints):
+
         waypoints = []
         for k in range(len(end_waypoints) - 1): 
             route = self.basic_agent._trace_route(end_waypoints[k], end_waypoints[k+1])
-            self.world.debug.draw_string(end_waypoints[k + 1].transform.location, '{}'.format(end_waypoints[k + 1].transform.location.x), draw_shadow=False, color=carla.Color(r=0, g=0, b=0), life_time=1000)
+            #self.world.debug.draw_string(end_waypoints[k + 1].transform.location, '{}'.format(end_waypoints[k + 1].transform.location.x), draw_shadow=False, color=carla.Color(r=0, g=0, b=0), life_time=1000)
             for waypoint in route:
                 waypoints.append(waypoint[0]) 
         return waypoints
