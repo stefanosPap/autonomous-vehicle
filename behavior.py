@@ -160,7 +160,7 @@ class Behavior(object):
                 vel = {'velocity': round(3.6 * velocity_norm, 1)}
                 self.pub.publish(vel)
 
-                # print('Distance from waypoint {}'.format(i), dist) draw_vehicle_box(world, vehicle_actor,
+                #draw_vehicle_box(world, vehicle_actor,
                 # vehicle_actor.get_transform().location, vehicle_actor.get_transform().rotation, 0.05)
 
                 traffic = Traffic(world, self.map)
@@ -232,6 +232,7 @@ class Behavior(object):
                 p2 = carla.Location(vehicle_actor.get_location().x, vehicle_actor.get_location().y,
                                     vehicle_actor.get_location().z)
                 dist = p1.distance(p2)
+                print('Distance from waypoint {}'.format(i), dist) 
 
                 if dist < 2:
                     i += 1

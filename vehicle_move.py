@@ -17,12 +17,15 @@ def spawn():
     [blueprint, world, map]= client.get_simulation()
     yaw = 90
     start_point = carla.Transform(carla.Location(x=-6.5, y=-90, z=0.275307), carla.Rotation(pitch=0.000000, yaw=yaw, roll=0.000000))
+    start_point = carla.Transform(carla.Location(x=30.551256, y=-197.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+    
     pub = VehiclePublisherMQTT(topic='position')
 
     for k in range(1,10,10):
         spawn_point = carla.Transform()
         spawn_point.location = start_point.location + carla.Location(k,38,0)
         spawn_point.rotation = start_point.rotation 
+        
         vehicle = Vehicle()                                  
         vehicle.choose_spawn_point(spawn_point)                 # spawn the vehicle 
         vehicle.choose_model('model3', blueprint, world)

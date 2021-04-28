@@ -322,6 +322,7 @@ class Interface(object):
                 self.pub_waypoint.publish({'value': 'Unable to go {} at the next junction'.format(turn)})
                 self.pub.publish({'value': ''})
                 return []
+
         return waypoints
 
     ####################################################
@@ -332,10 +333,35 @@ class Interface(object):
         # This try except block is used in case of the start waypoint is at the end of the lane and it cannot produse new waypoints. 
         # Therefore it throws a RuntimeError and we use as waypoints the starting waypoint  
         waypoints = [start_waypoint]
-        #try:
-        #    waypoints = start_waypoint.next_until_lane_end(1.0)
-        #except (RuntimeError, AttributeError) as e:
-        #    pass 
+        try:
+            waypoints = start_waypoint.next_until_lane_end(1.0)
+        except (RuntimeError, AttributeError) as e:
+            pass 
+        
+        # waypoint = start_waypoint
+
+        # while True:
+        #    next = waypoint.next(1.0)
+        #    for i in range(len(next)):
+        #        if next[i].lane_id == waypoint.lane_id:
+        #            waypoints.append(next[i])
+        #            break
+        #    if next[i].is_junction:
+        #        break
+        #    waypoint = next[i]
+
+        # while True:
+        #    if waypoints[len(waypoints) - 1].next(1.0)[0].is_junction:
+        #        break
+        #    waypoints += waypoints[len(waypoints) - 1].next_until_lane_end(1.0)
+
+        # print(waypoints[len(waypoints) - 1].is_junction)
+        # print(waypoints[0].is_junction)
+
+        waypoint = waypoints[len(waypoints) - 1]
+        if not waypoint.is_junction:
+            waypoints = waypoints + waypoints[len(waypoints) - 1].next_until_lane_end(1.0)
+            waypoint = waypoints[len(waypoints) - 1]
 
         paths = waypoints[len(waypoints) - 1].next(1.0)
 

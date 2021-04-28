@@ -1,5 +1,5 @@
 #!/usr/bin/python3 
-
+from scipy.interpolate import interp1d
 from vehicle import Vehicle
 from client import Client
 
@@ -47,7 +47,7 @@ def main():
     client.connect()  # connect the client
     [blueprint, world, map] = client.get_simulation()
 
-    # world = client.get_client().load_world('/Game/Carla/Maps/Town02')
+    # world = client.get_client().load_world('Town02')
     # world = client.get_client().reload_world()
     # print(client.get_client().get_available_maps())
     points = map.get_spawn_points()  # returns a list of recommendations
@@ -64,6 +64,7 @@ def main():
     # start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
 
     start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
+
     # print(start_waypoint)
     # print(start_point)
     ##########################
@@ -74,6 +75,46 @@ def main():
     vehicle.choose_model('model3', blueprint, world)  # choose the model
     vehicle_actor = vehicle.get_vehicle_actor()  # return actor object of the vehicle
     vehicle_transform = vehicle.get_vehicle_transform()  # get vehicle's transform
+
+    start_point = carla.Transform(carla.Location(x=50.551256, y=-197.809540, z=1),
+                                  carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+    last_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
+    
+    right_waypoint = last_waypoint.get_right_lane()
+    waypoint_2 = last_waypoint.previous(5.0)
+    waypoint_2 = waypoint_2[0]
+
+    waypoint_1 = last_waypoint.previous(7.0)
+    waypoint_1 = waypoint_1[0]
+
+    waypoint_3 = right_waypoint.previous(3.0)
+    waypoint_3 = waypoint_3[0]
+
+    waypoint_4 = right_waypoint.next(3.0)
+    waypoint_4 = waypoint_4[0]
+
+    waypoint_5 = last_waypoint.next(7.0)
+    waypoint_5 = waypoint_5[0]
+
+    trajectory = Trajectory(world, map, vehicle_actor)
+
+    end_waypoints = [start_waypoint, waypoint_2]
+    cust = trajectory.trace_route(end_waypoints)
+    cust = []
+
+    x=np.array([start_waypoint.transform.location.x, waypoint_1.transform.location.x, waypoint_2.transform.location.x,  waypoint_3.transform.location.x, right_waypoint.transform.location.x,   waypoint_4.transform.location.x, waypoint_5.transform.location.x])
+    y=np.array([start_waypoint.transform.location.y, waypoint_1.transform.location.y, waypoint_2.transform.location.y,  waypoint_3.transform.location.y, right_waypoint.transform.location.y,  waypoint_4.transform.location.y,  waypoint_5.transform.location.y,])
+
+    x_new = np.linspace(x.min(), x.max(),100)
+
+    f = interp1d(x, y, kind='quadratic')
+    y_smooth=f(x_new)
+
+
+    #vehicle = Vehicle()                                  
+    #vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
+    #vehicle.choose_model('model3', blueprint, world)
+    
     # vehicle.set_spectator()
     client.add_actor(vehicle_actor)
 
@@ -101,12 +142,14 @@ def main():
     # gp = GlobalRoutePlanner(gp_dao)
     # top = gp.get_topology()
     # spawn()
-    # waypoints = map.get_topology()
+    #waypoints = map.get_topology()
     #waypoints = map.generate_waypoints(1.0)
     #for waypoint in waypoints:
     #    for waypoint in top[i]['path']:
-    #    if waypoint.lane_id > 0:
-    #        world.debug.draw_string(waypoint.transform.location, '{}'.format(waypoint.lane_id), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+    #    if waypoint[0].is_junction:
+    #        world.debug.draw_string(waypoint[0].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+    #    if waypoint[1].is_junction:
+    #        world.debug.draw_string(waypoint[1].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
     #    else:
     #        world.debug.draw_string(waypoint.transform.location, '{}'.format(waypoint.lane_id), draw_shadow=False, color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
 
@@ -165,8 +208,7 @@ def main():
     '''
     cancel = Cancel()
     interface = Interface(world, map, vehicle_actor)
-    trajectory = Trajectory(world, map, vehicle_actor)
-
+    
     pub.publish({'value': " "})
 
     msg = {'value': ''}
@@ -260,7 +302,13 @@ def main():
                 break
 
         try:
-            waypoints = pruning(map, waypoints)
+            waypoints = cust
+            #waypoints = pruning(map, waypoints)
+            for i in range(len(x_new)):
+                point = carla.Location(x_new[i], y_smooth[i], 0)
+                trans = carla.Transform(point)
+                waypoints.append(trans)
+
             waypoints = trajectory.load_trajectory(waypoints)
             draw_waypoints(world, waypoints, 100)
         except IndexError:
