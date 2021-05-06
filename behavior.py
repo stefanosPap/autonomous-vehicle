@@ -2,6 +2,7 @@ import carla
 import numpy as np
 from agents.navigation.controller import VehiclePIDController
 from traffic import Traffic
+from vehicle_move import spawn
 from communicationMQTT import VehiclePublisherMQTT, \
     VehicleSubscriberStartStopMQTT, \
     VehicleSubscriberVelocityMQTT, \
@@ -14,11 +15,12 @@ from communicationMQTT import VehiclePublisherMQTT, \
 
 class Behavior(object):
     def __init__(self, vehicle_actor, waypoints, trajectory, map):
+        
         # controller 
         self.custom_controller = VehiclePIDController(vehicle_actor, args_lateral={'K_P': 1, 'K_D': 0, 'K_I': 0},
                                                       args_longitudinal={'K_P': 1, 'K_D': 0, 'K_I': 0})
 
-        # communication attributes
+        # Communication attributes
         # 
         # Publishers
         self.pub_vel = VehiclePublisherMQTT(topic='speed_configure')
@@ -34,13 +36,14 @@ class Behavior(object):
         self.sub_agg = VehicleSubscriberAggressiveMQTT(topic="aggressive")
         self.sub_caut = VehicleSubscriberCautiousMQTT(topic="cautious")
 
+        self.vehicle_actor = vehicle_actor
         self.waypoints = waypoints
         self.velocity = 0
         self.trajectory = trajectory
         self.map = map
 
-    def slow_down(self, current_velocity, desired_velocity, limit):
-        if current_velocity > limit:
+    def slow_down(self, current_velocity, desired_velocity):
+        if current_velocity > desired_velocity:
             current_velocity = desired_velocity
             vel = {'velocity': current_velocity}
             self.pub_vel.publish(vel)
@@ -58,6 +61,8 @@ class Behavior(object):
         control.brake = 1.0
         control.steer = 0.0
         control.throttle = 0.0
+        vel = {'velocity': 0}
+        self.pub_vel.publish(vel)
         return control
 
     def get_velocity(self):
@@ -79,8 +84,7 @@ class Behavior(object):
                         else:
                             self.current_state = turn
                             self.pub_notify.publish({'value': self.current_state})
-                            self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=10,
-                                                           limit=10)
+                            self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=8)
                     else:
                         self.current_state = "INIT"
                     turn = self.turn_sub.set_turn(None)
@@ -90,7 +94,9 @@ class Behavior(object):
                     turn = self.turn_sub.set_turn(None)
 
             elif self.current_state == "LEFT" or self.current_state == "RIGHT":
+            
                 if turn == self.current_state or turn == None:
+                
                     prev = self.waypoints[i + 1]
                     if self.current_state == "LEFT":
                         w = self.trajectory.change_waypoint(waypoint=i + 1, direction="LEFT")
@@ -102,22 +108,21 @@ class Behavior(object):
                         if w == prev:
                             self.current_state = "INIT"
                             self.pub_notify.publish({'value': self.current_state})
-                            self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=10,
-                                                           limit=10)
+                            self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=8)
                     else:
                         self.current_state = "INIT"
                         self.pub_notify.publish({'value': self.current_state})
-                        self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=10, limit=10)
+                        self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=8)
                     turn = self.turn_sub.set_turn(None)
 
                 elif turn != self.current_state:
                     self.current_state = "INIT"
                     self.pub_notify.publish({'value': self.current_state})
                     turn = self.turn_sub.set_turn(None)
-                    self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=10, limit=10)
-
+                    self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=8)
+        
     def cautious(self):
-        # self.slow_down(self.velocity, self.sub_caut.get_cautius(), 0)
+        # self.slow_down(self.velocity, self.sub_caut.get_cautius())
         self.velocity -= self.sub_caut.get_cautious()
         vel = {'velocity': self.velocity}
         self.pub_vel.publish(vel)
@@ -130,10 +135,12 @@ class Behavior(object):
         vel = {'velocity': self.velocity}
         self.pub_vel.publish(vel)
 
-    def follow_trajectory(self, world, vehicle_actor, spectator, front_obstacle, set_front_obstacle, velocity):
+    def follow_trajectory(self, world, vehicle_actor, spectator,get_front_obstacle, set_front_obstacle, velocity):
         i = 0
         self.current_state = "INIT"
-        # spawn()
+        turn = None
+        turn_obstacle = None
+        spawn()
 
         vel = {'velocity': velocity}
         self.pub_vel.publish(vel)
@@ -176,7 +183,18 @@ class Behavior(object):
                 if right != None:
                     world.debug.draw_string(right.transform.location, '{}'.format(1), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
                 '''
+                
+                # check for lane change
                 turn = self.turn_sub.get_turn()
+                if turn_obstacle != None:
+                    self.change_lane(turn_obstacle, i)
+                    turn_obstacle = None
+                    
+                else:
+                    self.change_lane(turn, i)
+                
+
+                # change goal --need-change-topic 
                 behavior = self.sub_behavior.get_behavior()
                 if behavior == True:
                     behavior = self.sub_behavior.set_behavior(False)
@@ -185,7 +203,7 @@ class Behavior(object):
                     vel = {'velocity': 0}
                     self.pub_vel.publish(vel)
                     break
-
+            
                 if self.sub_agg.get_aggressive():
                     self.aggressive()
                     self.sub_agg.set_aggressive()
@@ -194,11 +212,8 @@ class Behavior(object):
                     self.cautious()
                     self.sub_caut.set_cautious()
 
-                # check for lane change
-                self.change_lane(turn, i)
-
                 # check for red lights, front obstacles and stop button 
-                if traffic_light_state == "RED":
+                if traffic_light_state == "RED" and False:
 
                     # if RED light has activated when vehicle was inside the junction then it is better to get out of
                     # the junction
@@ -207,20 +222,51 @@ class Behavior(object):
                     else:
                         control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
 
-                # elif front_obstacle() == True:
+                elif get_front_obstacle():
+                    
                 # set False in order to check if obstacle detector has triggered again
-                #    set_front_obstacle(False)                                               
-                #    control_signal = self.emergency_stop() 
+                    set_front_obstacle(False)
+
+                    #if self.behavior_state == "STOPPED_VEHICLE_FRONT":
+
+                    #self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=0)
+                    current_waypoint = self.map.get_waypoint(self.vehicle_actor.get_location(), project_to_road=True)
+                    
+                    if current_waypoint.get_left_lane() != None and "Solid" not in str(current_waypoint.left_lane_marking.type):
+                        turn_obstacle = "LEFT"
+                        #control_signal = carla.VehicleControl(throttle=0.2, steer=0.0, brake=0.0, hand_brake=False, reverse=True)
+                        #self.velocity = self.speed_up(self.velocity, 8)
+                                                    
+                    elif current_waypoint.get_right_lane() != None and "Solid" not in str(current_waypoint.right_lane_marking.type):
+                        turn_obstacle = "RIGHT"
+                        #control_signal = carla.VehicleControl(throttle=0.2, steer=0.0, brake=0.0, hand_brake=False, reverse=True)
+                        #self.velocity = self.speed_up(self.velocity, 8)
+
+                    #vel = {'velocity': self.velocity}
+                    #self.pub_vel.publish(vel)
+                    #self.behavior_state = "CHANGE LANE"
+                        
+                    #elif self.velocity != 0 and self.behavior_state != "CHANGE LANE": 
+                    #    self.behavior_state = "SLOW DOWN"
+                    #    control_signal = self.emergency_stop() 
+
+                    #elif self.velocity == 0 and self.behavior_state != "CHANGE LANE":
+                    #    self.behavior_state = "STOPPED_VEHICLE_FRONT"
+                    
+                    #elif control_signal.steer < 0.1 and self.velocity > 5 and self.behavior_state == "CHANGE LANE":
+                    #    self.behavior_state = "SLOW DOWN"
+                    #    control_signal = self.emergency_stop() 
 
                 elif stop:
                     control_signal = self.emergency_stop()
 
-                else:
+                           
+                control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
+                if abs(control_signal.steer) > 0.6:
+                    self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=10)
                     control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
-                    if abs(control_signal.steer) > 0.6:
-                        self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=10, limit=10)
-                        control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
 
+                
                 if isinstance(self.waypoints[i], carla.libcarla.Waypoint):
                     p1 = carla.Location(self.waypoints[i].transform.location.x, self.waypoints[i].transform.location.y,
                                         self.waypoints[i].transform.location.z)
@@ -232,7 +278,7 @@ class Behavior(object):
                 p2 = carla.Location(vehicle_actor.get_location().x, vehicle_actor.get_location().y,
                                     vehicle_actor.get_location().z)
                 dist = p1.distance(p2)
-                print('Distance from waypoint {}'.format(i), dist) 
+                #print('Distance from waypoint {}'.format(i), dist) 
 
                 if dist < 2:
                     i += 1

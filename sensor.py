@@ -219,11 +219,11 @@ class ObstacleDetector(Sensor):
         super().__init__('sensor.other.obstacle')
 
     def obstacle_callback(self, obs):
-        print("Obstacle Detector measure:\n" + str(obs.distance) + '\n')
-        if obs.distance < 5 and obs.distance != 0.0:
-            self.front_obstacle = True
-        else:
-            self.front_obstacle = False
+        #print("Obstacle Detector measure:\n" + str(obs.distance) + '\n')
+        #if obs.distance < 5 and obs.distance != 0.0:
+        self.front_obstacle = True
+        #else:
+        #    self.front_obstacle = False
 
     def read(self):
         self.obstacle_detector = super().get_sensor()

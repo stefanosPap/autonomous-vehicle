@@ -76,10 +76,11 @@ def main():
     vehicle_actor = vehicle.get_vehicle_actor()  # return actor object of the vehicle
     vehicle_transform = vehicle.get_vehicle_transform()  # get vehicle's transform
 
-    start_point = carla.Transform(carla.Location(x=50.551256, y=-197.809540, z=1),
-                                  carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+    trajectory = Trajectory(world, map, vehicle_actor)
+
+    '''
     last_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
-    
+
     right_waypoint = last_waypoint.get_right_lane()
     waypoint_2 = last_waypoint.previous(5.0)
     waypoint_2 = waypoint_2[0]
@@ -96,7 +97,6 @@ def main():
     waypoint_5 = last_waypoint.next(7.0)
     waypoint_5 = waypoint_5[0]
 
-    trajectory = Trajectory(world, map, vehicle_actor)
 
     end_waypoints = [start_waypoint, waypoint_2]
     cust = trajectory.trace_route(end_waypoints)
@@ -109,11 +109,8 @@ def main():
 
     f = interp1d(x, y, kind='quadratic')
     y_smooth=f(x_new)
+    '''
 
-
-    #vehicle = Vehicle()                                  
-    #vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
-    #vehicle.choose_model('model3', blueprint, world)
     
     # vehicle.set_spectator()
     client.add_actor(vehicle_actor)
@@ -215,8 +212,8 @@ def main():
     pub_waypoint.publish(msg)
 
     msg = {'velocity': 0}
-    pub_vel_conf.publish(msg)
-    pub_vel.publish(msg)
+    #pub_vel_conf.publish(msg)
+    #pub_vel.publish(msg)
 
     while True:
 
@@ -302,12 +299,12 @@ def main():
                 break
 
         try:
-            waypoints = cust
-            #waypoints = pruning(map, waypoints)
-            for i in range(len(x_new)):
-                point = carla.Location(x_new[i], y_smooth[i], 0)
-                trans = carla.Transform(point)
-                waypoints.append(trans)
+            #waypoints = cust
+            waypoints = pruning(map, waypoints)
+            #for i in range(len(x_new)):
+            #    point = carla.Location(x_new[i], y_smooth[i], 0)
+            #    trans = carla.Transform(point)
+            #    waypoints.append(trans)
 
             waypoints = trajectory.load_trajectory(waypoints)
             draw_waypoints(world, waypoints, 100)

@@ -209,7 +209,7 @@ class Interface(object):
 
         for i in range(len(paths)):
 
-            ways = paths[i].next_until_lane_end(1.0)
+            ways = paths[i].next_until_lane_end(1.5)
 
             angle = calculate_angle(ways)
 
