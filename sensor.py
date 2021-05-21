@@ -216,12 +216,14 @@ class IMU(Sensor):
 class ObstacleDetector(Sensor):
     def __init__(self):
         self.front_obstacle = False
+        self.other_actor = None
         super().__init__('sensor.other.obstacle')
 
     def obstacle_callback(self, obs):
         #print("Obstacle Detector measure:\n" + str(obs.distance) + '\n')
         #if obs.distance < 5 and obs.distance != 0.0:
         self.front_obstacle = True
+        self.other_actor = obs.other_actor
         #else:
         #    self.front_obstacle = False
 
@@ -234,6 +236,9 @@ class ObstacleDetector(Sensor):
 
     def set_front_obstacle(self, state):
         self.front_obstacle = state
+
+    def get_other_actor(self):
+        return self.other_actor
 
 class LaneInvasionDetector(Sensor):
     def __init__(self):

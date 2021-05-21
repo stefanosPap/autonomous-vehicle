@@ -19,8 +19,42 @@ def spawn():
     start_point = carla.Transform(carla.Location(x=-6.5, y=-90, z=0.275307), carla.Rotation(pitch=0.000000, yaw=yaw, roll=0.000000))
     start_point = carla.Transform(carla.Location(x=30.551256, y=-197.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
     
-    pub = VehiclePublisherMQTT(topic='position')
+    start_point = carla.Transform(carla.Location(x=60.551256, y=-195.809540, z=1),
+                                  carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
 
+    vehicle = Vehicle()                                  
+    vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
+    vehicle.choose_model('model3', blueprint, world)
+    control_signal = carla.VehicleControl(throttle=0.2)
+    vehicle_actor = vehicle.get_vehicle_actor()
+    vehicle_actor.apply_control(control_signal)
+
+    #vehicle_list.append(vehicle_actor)
+
+    start_point = carla.Transform(carla.Location(x=90.551256, y=-191.809540, z=1),
+                                  carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+
+    vehicle = Vehicle()                                  
+    vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
+    vehicle.choose_model('model3', blueprint, world)
+    control_signal = carla.VehicleControl(throttle=0.2)
+    vehicle_actor = vehicle.get_vehicle_actor()
+    vehicle_actor.apply_control(control_signal)
+    
+    #vehicle_list.append(vehicle_actor)
+    
+    start_point = carla.Transform(carla.Location(x=54.551256, y=-191.809540, z=1),
+                                  carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+
+    #vehicle = Vehicle()
+    #vehicle.choose_spawn_point(start_point)  # spawn the vehicle
+    #vehicle.choose_model('model3', blueprint, world)  # choose the model
+    #vehicle_actor = vehicle.get_vehicle_actor()
+    #control_signal = carla.VehicleControl(throttle=0.19)
+    #vehicle_actor.apply_control(control_signal)
+    # pub = VehiclePublisherMQTT(topic='position')
+
+    '''
     for k in range(1,10,10):
         spawn_point = carla.Transform()
         spawn_point.location = start_point.location + carla.Location(k,38,0)
@@ -58,14 +92,14 @@ def spawn():
         
         expanded_bounding(world, bb, pointA, pointB, pointC, pointD)
         #bounding(world, [pointA.x, pointB.x, pointC.x, pointD.x], [pointA.y, pointB.y, pointC.y, pointD.y])
-
+    '''
     #while True:
-        world.tick()
-        world.tick()
-        world.tick()
-        world.tick()
-        world.tick()
-
+    world.tick()
+    world.tick()
+    world.tick()
+    world.tick()
+    world.tick()
+    #return vehicle_list
 if __name__ == "__main__":
     try:
         spawn()

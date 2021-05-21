@@ -336,12 +336,12 @@ def main():
 
                 # follow trajectory and stop to obstacles and traffic lights
         try:
-            behavior = Behavior(vehicle_actor, waypoints, trajectory, map)
+            behavior = Behavior(vehicle_actor, waypoints, trajectory, map, world)
             behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle,
-                                       sensors['obs'].set_front_obstacle, 0)
+                                       sensors['obs'].set_front_obstacle, sensors['obs'].get_other_actor, 0)
             vel = vehicle_actor.get_velocity()
             vector = [vel.x, vel.y, vel.z]
-
+            
             while np.linalg.norm(vector) > 0.0001:
                 vel = vehicle_actor.get_velocity()
                 vector = [vel.x, vel.y, vel.z]

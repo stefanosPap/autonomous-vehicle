@@ -14,7 +14,7 @@ from communicationMQTT import VehiclePublisherMQTT, \
 
 
 class Behavior(object):
-    def __init__(self, vehicle_actor, waypoints, trajectory, map):
+    def __init__(self, vehicle_actor, waypoints, trajectory, map, world):
         
         # controller 
         self.custom_controller = VehiclePIDController(vehicle_actor, args_lateral={'K_P': 1, 'K_D': 0, 'K_I': 0},
@@ -41,36 +41,28 @@ class Behavior(object):
         self.velocity = 0
         self.trajectory = trajectory
         self.map = map
+        self.world = world
 
-    def slow_down(self, current_velocity, desired_velocity):
-        if current_velocity > desired_velocity:
-            current_velocity = desired_velocity
-            vel = {'velocity': current_velocity}
-            self.pub_vel.publish(vel)
-        return current_velocity
+    def slow_down(self, desired_velocity):
+        if self.velocity > desired_velocity:
+            self.velocity = desired_velocity
+            self.publish_velocity()
 
-    def speed_up(self, current_velocity, desired_velocity):
-        if current_velocity < desired_velocity:
-            current_velocity = desired_velocity
-            vel = {'velocity': current_velocity}
-            self.pub_vel.publish(vel)
-        return current_velocity
+    def speed_up(self, desired_velocity):
+        if self.velocity < desired_velocity:
+            self.velocity = desired_velocity
+            self.publish_velocity()
 
     def emergency_stop(self):
-        control = carla.VehicleControl()
-        control.brake = 1.0
-        control.steer = 0.0
-        control.throttle = 0.0
-        vel = {'velocity': 0}
-        self.pub_vel.publish(vel)
-        return control
+        self.velocity = 0
 
-    def get_velocity(self):
-        return self.velocity
+    def publish_velocity(self):
+        self.pub_vel.publish({'velocity': self.velocity})
 
-    def change_lane(self, turn, i):
+    def change_lane(self, turn, i, num):
+
         if not self.trajectory.change and i != len(self.waypoints):
-
+        
             if self.current_state == "INIT":
 
                 if turn is not None:
@@ -84,7 +76,8 @@ class Behavior(object):
                         else:
                             self.current_state = turn
                             self.pub_notify.publish({'value': self.current_state})
-                            self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=8)
+                            self.slow_down(desired_velocity=8)
+                            
                     else:
                         self.current_state = "INIT"
                     turn = self.turn_sub.set_turn(None)
@@ -94,9 +87,8 @@ class Behavior(object):
                     turn = self.turn_sub.set_turn(None)
 
             elif self.current_state == "LEFT" or self.current_state == "RIGHT":
-            
-                if turn == self.current_state or turn == None:
-                
+        
+                if turn == self.current_state or turn == None:   
                     prev = self.waypoints[i + 1]
                     if self.current_state == "LEFT":
                         w = self.trajectory.change_waypoint(waypoint=i + 1, direction="LEFT")
@@ -108,42 +100,42 @@ class Behavior(object):
                         if w == prev:
                             self.current_state = "INIT"
                             self.pub_notify.publish({'value': self.current_state})
-                            self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=8)
+                            self.slow_down(desired_velocity=8)
                     else:
                         self.current_state = "INIT"
                         self.pub_notify.publish({'value': self.current_state})
-                        self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=8)
+                        self.slow_down(desired_velocity=8)
                     turn = self.turn_sub.set_turn(None)
 
-                elif turn != self.current_state:
+                elif turn != self.current_state:  
                     self.current_state = "INIT"
                     self.pub_notify.publish({'value': self.current_state})
                     turn = self.turn_sub.set_turn(None)
-                    self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=8)
+                    self.slow_down(desired_velocity=8)
         
     def cautious(self):
-        # self.slow_down(self.velocity, self.sub_caut.get_cautius())
         self.velocity -= self.sub_caut.get_cautious()
-        vel = {'velocity': self.velocity}
-        self.pub_vel.publish(vel)
 
     def neutral(self):
         pass
 
     def aggressive(self):
         self.velocity += self.sub_agg.get_aggressive()
-        vel = {'velocity': self.velocity}
-        self.pub_vel.publish(vel)
-
-    def follow_trajectory(self, world, vehicle_actor, spectator,get_front_obstacle, set_front_obstacle, velocity):
+        
+    def follow_trajectory(self, world, vehicle_actor, spectator, get_front_obstacle, set_front_obstacle, get_other_actor, velocity):
         i = 0
         self.current_state = "INIT"
+        
         turn = None
         turn_obstacle = None
-        spawn()
-
+        
         vel = {'velocity': velocity}
         self.pub_vel.publish(vel)
+
+        previous_velocity = 0
+        previous_obstacle_detected = None
+        
+        spawn()
 
         while True:
             try:
@@ -186,22 +178,27 @@ class Behavior(object):
                 
                 # check for lane change
                 turn = self.turn_sub.get_turn()
+                
                 if turn_obstacle != None:
-                    self.change_lane(turn_obstacle, i)
+                    print(turn_obstacle, 1)
+                    self.trajectory.change = False
+                    self.change_lane(turn_obstacle, i, 1)
                     turn_obstacle = None
                     
                 else:
-                    self.change_lane(turn, i)
+                    self.change_lane(turn, i, 2)
                 
 
                 # change goal --need-change-topic 
                 behavior = self.sub_behavior.get_behavior()
                 if behavior == True:
                     behavior = self.sub_behavior.set_behavior(False)
-                    control_signal = self.emergency_stop()
+                    self.emergency_stop()
+
+                    control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
                     vehicle_actor.apply_control(control_signal)
-                    vel = {'velocity': 0}
-                    self.pub_vel.publish(vel)
+
+                    self.publish_velocity()
                     break
             
                 if self.sub_agg.get_aggressive():
@@ -218,59 +215,48 @@ class Behavior(object):
                     # if RED light has activated when vehicle was inside the junction then it is better to get out of
                     # the junction
                     if not self.waypoints[i].is_junction:
-                        control_signal = self.emergency_stop()
+                        self.emergency_stop()
                     else:
                         control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
 
                 elif get_front_obstacle():
-                    
-                # set False in order to check if obstacle detector has triggered again
+
+                    # set False in order to check if obstacle detector has triggered again
                     set_front_obstacle(False)
 
-                    #if self.behavior_state == "STOPPED_VEHICLE_FRONT":
+                    obstacle_detected = get_other_actor().id
 
-                    #self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=0)
-                    current_waypoint = self.map.get_waypoint(self.vehicle_actor.get_location(), project_to_road=True)
-                    
-                    if current_waypoint.get_left_lane() != None and "Solid" not in str(current_waypoint.left_lane_marking.type):
-                        turn_obstacle = "LEFT"
-                        #control_signal = carla.VehicleControl(throttle=0.2, steer=0.0, brake=0.0, hand_brake=False, reverse=True)
-                        #self.velocity = self.speed_up(self.velocity, 8)
-                                                    
-                    elif current_waypoint.get_right_lane() != None and "Solid" not in str(current_waypoint.right_lane_marking.type):
-                        turn_obstacle = "RIGHT"
-                        #control_signal = carla.VehicleControl(throttle=0.2, steer=0.0, brake=0.0, hand_brake=False, reverse=True)
-                        #self.velocity = self.speed_up(self.velocity, 8)
-
-                    #vel = {'velocity': self.velocity}
-                    #self.pub_vel.publish(vel)
-                    #self.behavior_state = "CHANGE LANE"
+                    if previous_obstacle_detected != obstacle_detected and "vehicle" in get_other_actor().type_id:
                         
-                    #elif self.velocity != 0 and self.behavior_state != "CHANGE LANE": 
-                    #    self.behavior_state = "SLOW DOWN"
-                    #    control_signal = self.emergency_stop() 
+                        print("New obstacle")
+                        
+                        current_waypoint = self.map.get_waypoint(self.vehicle_actor.get_location(), project_to_road=True)
 
-                    #elif self.velocity == 0 and self.behavior_state != "CHANGE LANE":
-                    #    self.behavior_state = "STOPPED_VEHICLE_FRONT"
-                    
-                    #elif control_signal.steer < 0.1 and self.velocity > 5 and self.behavior_state == "CHANGE LANE":
-                    #    self.behavior_state = "SLOW DOWN"
-                    #    control_signal = self.emergency_stop() 
+                        if self.waypoints[i].get_left_lane() != None and "Solid" not in str(self.waypoints[i].left_lane_marking.type):
+                            turn_obstacle = "LEFT"
+                                                    
+                        elif self.waypoints[i].get_right_lane() != None and "Solid" not in str(self.waypoints[i].right_lane_marking.type):
+                            turn_obstacle = "RIGHT"
+
+                        previous_obstacle_detected = obstacle_detected
+
+                    else:
+                        pass
 
                 elif stop:
-                    control_signal = self.emergency_stop()
-
-                           
+                    self.emergency_stop()
+                
+                
                 control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
-                if abs(control_signal.steer) > 0.6:
-                    self.velocity = self.slow_down(current_velocity=self.velocity, desired_velocity=10)
-                    control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
+                #if abs(control_signal.steer) > 0.6:
+                #    self.slow_down(desired_velocity=10)
+                #    control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
 
                 
                 if isinstance(self.waypoints[i], carla.libcarla.Waypoint):
                     p1 = carla.Location(self.waypoints[i].transform.location.x, self.waypoints[i].transform.location.y,
                                         self.waypoints[i].transform.location.z)
-
+                    
                 elif isinstance(self.waypoints[i], carla.libcarla.Transform):
                     p1 = carla.Location(self.waypoints[i].location.x, self.waypoints[i].location.y,
                                         self.waypoints[i].location.z)
@@ -283,6 +269,8 @@ class Behavior(object):
                 if dist < 2:
                     i += 1
                     self.trajectory.change = False
+
+                previous_velocity = self.velocity
 
                 vehicle_actor.apply_control(control_signal)
                 world.tick()

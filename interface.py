@@ -333,10 +333,10 @@ class Interface(object):
         # This try except block is used in case of the start waypoint is at the end of the lane and it cannot produse new waypoints. 
         # Therefore it throws a RuntimeError and we use as waypoints the starting waypoint  
         waypoints = [start_waypoint]
-        try:
-            waypoints = start_waypoint.next_until_lane_end(1.0)
-        except (RuntimeError, AttributeError) as e:
-            pass 
+        #try:
+        #    waypoints = start_waypoint.next_until_lane_end(1.0)
+        #except (RuntimeError, AttributeError) as e:
+        #    pass 
         
         # waypoint = start_waypoint
 
@@ -358,10 +358,10 @@ class Interface(object):
         # print(waypoints[len(waypoints) - 1].is_junction)
         # print(waypoints[0].is_junction)
 
-        waypoint = waypoints[len(waypoints) - 1]
-        if not waypoint.is_junction:
-            waypoints = waypoints + waypoints[len(waypoints) - 1].next_until_lane_end(1.0)
-            waypoint = waypoints[len(waypoints) - 1]
+        #waypoint = waypoints[len(waypoints) - 1]
+        #if not waypoint.is_junction:
+        #    waypoints = waypoints + waypoints[len(waypoints) - 1].next_until_lane_end(1.0)
+        #    waypoint = waypoints[len(waypoints) - 1]
 
         paths = waypoints[len(waypoints) - 1].next(1.0)
 
