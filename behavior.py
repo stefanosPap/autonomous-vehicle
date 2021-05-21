@@ -59,24 +59,24 @@ class Behavior(object):
     def publish_velocity(self):
         self.pub_vel.publish({'velocity': self.velocity})
 
-    def change_lane(self, turn, i, num):
+    def change_lane(self, turn, i, desired_vel):
 
         if not self.trajectory.change and i != len(self.waypoints):
         
             if self.current_state == "INIT":
 
                 if turn is not None:
-                    prev = self.waypoints[i + 1]
-                    w = self.trajectory.change_waypoint(waypoint=i + 1, direction=turn)
+                    prev = self.waypoints[i]
+                    w = self.trajectory.change_waypoint(waypoint=i, direction=turn)
 
                     if w is not None:
-                        self.waypoints[i + 1] = w
+                        self.waypoints[i] = w
                         if w == prev:
                             self.current_state = "INIT"
                         else:
                             self.current_state = turn
                             self.pub_notify.publish({'value': self.current_state})
-                            self.slow_down(desired_velocity=8)
+                            self.slow_down(desired_velocity=desired_vel)
                             
                     else:
                         self.current_state = "INIT"
@@ -89,29 +89,29 @@ class Behavior(object):
             elif self.current_state == "LEFT" or self.current_state == "RIGHT":
         
                 if turn == self.current_state or turn == None:   
-                    prev = self.waypoints[i + 1]
+                    prev = self.waypoints[i]
                     if self.current_state == "LEFT":
-                        w = self.trajectory.change_waypoint(waypoint=i + 1, direction="LEFT")
+                        w = self.trajectory.change_waypoint(waypoint=i, direction="LEFT")
                     elif self.current_state == "RIGHT":
-                        w = self.trajectory.change_waypoint(waypoint=i + 1, direction="RIGHT")
+                        w = self.trajectory.change_waypoint(waypoint=i, direction="RIGHT")
 
                     if w != None:
-                        self.waypoints[i + 1] = w
+                        self.waypoints[i] = w
                         if w == prev:
                             self.current_state = "INIT"
                             self.pub_notify.publish({'value': self.current_state})
-                            self.slow_down(desired_velocity=8)
+                            self.slow_down(desired_velocity=desired_vel)
                     else:
                         self.current_state = "INIT"
                         self.pub_notify.publish({'value': self.current_state})
-                        self.slow_down(desired_velocity=8)
+                        self.slow_down(desired_velocity=desired_vel)
                     turn = self.turn_sub.set_turn(None)
 
                 elif turn != self.current_state:  
                     self.current_state = "INIT"
                     self.pub_notify.publish({'value': self.current_state})
                     turn = self.turn_sub.set_turn(None)
-                    self.slow_down(desired_velocity=8)
+                    self.slow_down(desired_velocity=desired_vel)
         
     def cautious(self):
         self.velocity -= self.sub_caut.get_cautious()
@@ -180,15 +180,19 @@ class Behavior(object):
                 turn = self.turn_sub.get_turn()
                 
                 if turn_obstacle != None:
-                    print(turn_obstacle, 1)
+                
                     self.trajectory.change = False
-                    self.change_lane(turn_obstacle, i, 1)
+                    i += 5
+                    self.change_lane(turn_obstacle, i, self.velocity)
                     turn_obstacle = None
                     
                 else:
-                    self.change_lane(turn, i, 2)
-                
-
+                    if turn != None:
+                        i += 5 
+                    self.change_lane(turn, i, self.velocity)
+                                        
+                self.world.debug.draw_string(self.waypoints[i].transform.location, "X", draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
+               
                 # change goal --need-change-topic 
                 behavior = self.sub_behavior.get_behavior()
                 if behavior == True:
