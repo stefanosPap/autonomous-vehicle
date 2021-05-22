@@ -66,11 +66,11 @@ class Behavior(object):
             if self.current_state == "INIT":
 
                 if turn is not None:
-                    prev = self.waypoints[i]
+                    prev = self.waypoints[self.index]
                     w = self.trajectory.change_waypoint(waypoint=i, direction=turn)
 
                     if w is not None:
-                        self.waypoints[i] = w
+                        self.waypoints[self.index] = w
                         if w == prev:
                             self.current_state = "INIT"
                         else:
@@ -89,14 +89,14 @@ class Behavior(object):
             elif self.current_state == "LEFT" or self.current_state == "RIGHT":
         
                 if turn == self.current_state or turn == None:   
-                    prev = self.waypoints[i]
+                    prev = self.waypoints[self.index]
                     if self.current_state == "LEFT":
                         w = self.trajectory.change_waypoint(waypoint=i, direction="LEFT")
                     elif self.current_state == "RIGHT":
                         w = self.trajectory.change_waypoint(waypoint=i, direction="RIGHT")
 
                     if w != None:
-                        self.waypoints[i] = w
+                        self.waypoints[self.index] = w
                         if w == prev:
                             self.current_state = "INIT"
                             self.pub_notify.publish({'value': self.current_state})
@@ -112,7 +112,21 @@ class Behavior(object):
                     self.pub_notify.publish({'value': self.current_state})
                     turn = self.turn_sub.set_turn(None)
                     self.slow_down(desired_velocity=desired_vel)
-        
+
+    def overtake(self):
+        if self.turn_obstacle != None:
+            self.trajectory.change = False
+            self.index += 5
+            self.change_lane(self.turn_obstacle, self.index, self.velocity)
+            self.turn_obstacle = None
+            return True
+        return False
+    
+    def manual_lane_change(self):
+        if self.turn != None:
+            self.index += 5 
+        self.change_lane(self.turn, self.index, self.velocity)
+    
     def cautious(self):
         self.velocity -= self.sub_caut.get_cautious()
 
@@ -123,11 +137,11 @@ class Behavior(object):
         self.velocity += self.sub_agg.get_aggressive()
         
     def follow_trajectory(self, world, vehicle_actor, spectator, get_front_obstacle, set_front_obstacle, get_other_actor, velocity):
-        i = 0
+        self.index = 0
         self.current_state = "INIT"
         
-        turn = None
-        turn_obstacle = None
+        self.turn = None
+        self.turn_obstacle = None
         
         vel = {'velocity': velocity}
         self.pub_vel.publish(vel)
@@ -140,14 +154,14 @@ class Behavior(object):
         while True:
             try:
 
-                if i == len(self.waypoints):
-                    control_signal = self.custom_controller.run_step(0, self.waypoints[i - 1])
+                if self.index == len(self.waypoints):
+                    control_signal = self.custom_controller.run_step(0, self.waypoints[self.index - 1])
                     vehicle_actor.apply_control(control_signal)
                     break
 
                 # spectator()
                 '''
-                p1 = [self.waypoints[i].transform.location.x, self.waypoints[i].transform.location.y, self.waypoints[i].transform.location.z]
+                p1 = [self.waypoints[self.index].transform.location.x, self.waypoints[self.index].transform.location.y, self.waypoints[self.index].transform.location.z]
                 p2 = [vehicle_actor.get_location().x, vehicle_actor.get_location().y, vehicle_actor.get_location().z]
                 dist = np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2 + (p2[2] - p1[2])**2)
                 '''
@@ -163,13 +177,13 @@ class Behavior(object):
                 # vehicle_actor.get_transform().location, vehicle_actor.get_transform().rotation, 0.05)
 
                 traffic = Traffic(world, self.map)
-                traffic_sign = traffic.check_signs(self.waypoints[i])
+                traffic_sign = traffic.check_signs(self.waypoints[self.index])
                 traffic_light_state = traffic.check_traffic_lights(vehicle_actor)
                 stop = self.sub.get_stop()
                 self.velocity = self.speed_sub.get_velocity()
                 '''
-                left = self.waypoints[i].get_left_lane()
-                right = self.waypoints[i].get_right_lane()
+                left = self.waypoints[self.index].get_left_lane()
+                right = self.waypoints[self.index].get_right_lane()
                 if left != None:
                     world.debug.draw_string(left.transform.location, '{}'.format(0), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
                 if right != None:
@@ -177,21 +191,14 @@ class Behavior(object):
                 '''
                 
                 # check for lane change
-                turn = self.turn_sub.get_turn()
-                
-                if turn_obstacle != None:
-                
-                    self.trajectory.change = False
-                    i += 5
-                    self.change_lane(turn_obstacle, i, self.velocity)
-                    turn_obstacle = None
-                    
-                else:
-                    if turn != None:
-                        i += 5 
-                    self.change_lane(turn, i, self.velocity)
+                self.turn = self.turn_sub.get_turn()
+
+                success = self.overtake()
+
+                if not success:
+                    self.manual_lane_change()         
                                         
-                self.world.debug.draw_string(self.waypoints[i].transform.location, "X", draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
+                self.world.debug.draw_string(self.waypoints[self.index].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
                
                 # change goal --need-change-topic 
                 behavior = self.sub_behavior.get_behavior()
@@ -199,7 +206,7 @@ class Behavior(object):
                     behavior = self.sub_behavior.set_behavior(False)
                     self.emergency_stop()
 
-                    control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
+                    control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
                     vehicle_actor.apply_control(control_signal)
 
                     self.publish_velocity()
@@ -218,10 +225,10 @@ class Behavior(object):
 
                     # if RED light has activated when vehicle was inside the junction then it is better to get out of
                     # the junction
-                    if not self.waypoints[i].is_junction:
+                    if not self.waypoints[self.index].is_junction:
                         self.emergency_stop()
                     else:
-                        control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
+                        control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
 
                 elif get_front_obstacle():
 
@@ -236,11 +243,11 @@ class Behavior(object):
                         
                         current_waypoint = self.map.get_waypoint(self.vehicle_actor.get_location(), project_to_road=True)
 
-                        if self.waypoints[i].get_left_lane() != None and "Solid" not in str(self.waypoints[i].left_lane_marking.type):
-                            turn_obstacle = "LEFT"
+                        if self.waypoints[self.index].get_left_lane() != None and "Solid" not in str(self.waypoints[self.index].left_lane_marking.type):
+                            self.turn_obstacle = "LEFT"
                                                     
-                        elif self.waypoints[i].get_right_lane() != None and "Solid" not in str(self.waypoints[i].right_lane_marking.type):
-                            turn_obstacle = "RIGHT"
+                        elif self.waypoints[self.index].get_right_lane() != None and "Solid" not in str(self.waypoints[self.index].right_lane_marking.type):
+                            self.turn_obstacle = "RIGHT"
 
                         previous_obstacle_detected = obstacle_detected
 
@@ -251,19 +258,19 @@ class Behavior(object):
                     self.emergency_stop()
                 
                 
-                control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
+                control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
                 #if abs(control_signal.steer) > 0.6:
                 #    self.slow_down(desired_velocity=10)
-                #    control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[i])
+                #    control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
 
                 
-                if isinstance(self.waypoints[i], carla.libcarla.Waypoint):
-                    p1 = carla.Location(self.waypoints[i].transform.location.x, self.waypoints[i].transform.location.y,
-                                        self.waypoints[i].transform.location.z)
+                if isinstance(self.waypoints[self.index], carla.libcarla.Waypoint):
+                    p1 = carla.Location(self.waypoints[self.index].transform.location.x, self.waypoints[self.index].transform.location.y,
+                                        self.waypoints[self.index].transform.location.z)
                     
-                elif isinstance(self.waypoints[i], carla.libcarla.Transform):
-                    p1 = carla.Location(self.waypoints[i].location.x, self.waypoints[i].location.y,
-                                        self.waypoints[i].location.z)
+                elif isinstance(self.waypoints[self.index], carla.libcarla.Transform):
+                    p1 = carla.Location(self.waypoints[self.index].location.x, self.waypoints[self.index].location.y,
+                                        self.waypoints[self.index].location.z)
 
                 p2 = carla.Location(vehicle_actor.get_location().x, vehicle_actor.get_location().y,
                                     vehicle_actor.get_location().z)
@@ -271,7 +278,7 @@ class Behavior(object):
                 #print('Distance from waypoint {}'.format(i), dist) 
 
                 if dist < 2:
-                    i += 1
+                    self.index += 1
                     self.trajectory.change = False
 
                 previous_velocity = self.velocity
