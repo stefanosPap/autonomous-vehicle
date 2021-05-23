@@ -61,6 +61,26 @@ class Trajectory():
                     self.world.debug.draw_string(w.transform.location, '{}'.format(waypoint), draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=1000, persistent_lines=True)
                     return w
             else:
+                #prev = self.waypoints[waypoint - 1]
+                #waypoints = prev.next(1.0)
+                
+                #prev1 = self.waypoints[waypoint]
+                #loc1 = prev1.transform.location
+                #min_dist = loc1.distance(prev1.transform.location)
+                #min_w = prev1
+                #print(len(waypoints))
+                
+                #for w in waypoints:
+                    #loc2 = w.transform.location
+                    #dist = loc1.distance(loc2)
+                    #if dist < min_dist:
+                    #    min_dist = dist
+                    #    min_w = w
+                #    self.world.debug.draw_string(w.transform.location, 'F', draw_shadow=False, color=carla.Color(r=0, g=0, b=0), life_time=1000, persistent_lines=True)
+ 
+                #w = min_w
+                #self.world.debug.draw_string(w.transform.location, 'S', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
+
                 w = prev_waypoint
             return w
 

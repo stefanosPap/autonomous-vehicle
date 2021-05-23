@@ -14,7 +14,7 @@ from communicationMQTT import VehiclePublisherMQTT, \
 
 
 class Behavior(object):
-    def __init__(self, vehicle_actor, waypoints, trajectory, map, world):
+    def __init__(self, vehicle_actor, waypoints, trajectory, map, world, vehicle_list):
         
         # controller 
         self.custom_controller = VehiclePIDController(vehicle_actor, args_lateral={'K_P': 1, 'K_D': 0, 'K_I': 0},
@@ -42,6 +42,7 @@ class Behavior(object):
         self.trajectory = trajectory
         self.map = map
         self.world = world
+        self.vehicle_list = vehicle_list
 
     def slow_down(self, desired_velocity):
         if self.velocity > desired_velocity:
@@ -98,6 +99,8 @@ class Behavior(object):
                     if w != None:
                         self.waypoints[self.index] = w
                         if w == prev:
+                            self.waypoints[self.index] = self.waypoints[self.index + 5]
+                            self.index += 5
                             self.current_state = "INIT"
                             self.pub_notify.publish({'value': self.current_state})
                             self.slow_down(desired_velocity=desired_vel)
@@ -149,8 +152,8 @@ class Behavior(object):
         previous_velocity = 0
         previous_obstacle_detected = None
         
-        spawn()
-
+        spawn(self.vehicle_list)
+        
         while True:
             try:
 
@@ -189,7 +192,20 @@ class Behavior(object):
                 if right != None:
                     world.debug.draw_string(right.transform.location, '{}'.format(1), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
                 '''
-                
+
+                ego_vehicle = self.vehicle_list[0]
+                for vehicle in self.vehicle_list[1:]:
+
+                    loc = vehicle.get_location()
+                    ego_loc = ego_vehicle.get_location()
+                    distance_from_obstacle = ego_loc.distance(loc)
+
+                    ego_waypoint = self.map.get_waypoint(ego_loc)
+                    other_waypoint = self.map.get_waypoint(loc)
+                    
+                    if ego_waypoint.lane_id == other_waypoint.lane_id:
+                        break
+                    
                 # check for lane change
                 self.turn = self.turn_sub.get_turn()
 
@@ -230,14 +246,14 @@ class Behavior(object):
                     else:
                         control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
 
-                elif get_front_obstacle():
+                elif distance_from_obstacle < 15:
 
                     # set False in order to check if obstacle detector has triggered again
                     set_front_obstacle(False)
 
-                    obstacle_detected = get_other_actor().id
+                    obstacle_detected = vehicle.id
 
-                    if previous_obstacle_detected != obstacle_detected and "vehicle" in get_other_actor().type_id:
+                    if previous_obstacle_detected != obstacle_detected and "vehicle" in vehicle.type_id:
                         
                         print("New obstacle")
                         

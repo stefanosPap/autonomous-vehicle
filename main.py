@@ -62,11 +62,11 @@ def main():
     start_point = carla.Transform(carla.Location(x=20.551256, y=-197.809540, z=1),
                                   carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
     # start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
-
+    start_point = carla.Transform(carla.Location(x=20, y=-197.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+    
     start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
-
-    # print(start_waypoint)
-    # print(start_point)
+    vehicle_list = []
+    
     ##########################
     # create new ego vehicle #
     ##########################
@@ -75,6 +75,8 @@ def main():
     vehicle.choose_model('model3', blueprint, world)  # choose the model
     vehicle_actor = vehicle.get_vehicle_actor()  # return actor object of the vehicle
     vehicle_transform = vehicle.get_vehicle_transform()  # get vehicle's transform
+
+    vehicle_list.append(vehicle_actor)
 
     trajectory = Trajectory(world, map, vehicle_actor)
 
@@ -148,7 +150,7 @@ def main():
     #    if waypoint[1].is_junction:
     #        world.debug.draw_string(waypoint[1].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
     #    else:
-    #        world.debug.draw_string(waypoint.transform.location, '{}'.format(waypoint.lane_id), draw_shadow=False, color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
+    #        world.debug.draw_string(waypoint.transform.location, "{}".format(waypoint.lane_id), draw_shadow=False, color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
 
     #        world.debug.draw_string(waypoint[0].transform.location, 's', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
     #        world.debug.draw_string(waypoint[1].transform.location, 'e', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
@@ -336,7 +338,7 @@ def main():
 
                 # follow trajectory and stop to obstacles and traffic lights
         try:
-            behavior = Behavior(vehicle_actor, waypoints, trajectory, map, world)
+            behavior = Behavior(vehicle_actor, waypoints, trajectory, map, world, vehicle_list)
             behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle,
                                        sensors['obs'].set_front_obstacle, sensors['obs'].get_other_actor, 0)
             vel = vehicle_actor.get_velocity()

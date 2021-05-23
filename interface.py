@@ -94,8 +94,7 @@ class Interface(object):
                 break
         return end_waypoints
 
-        ###########################
-
+    ###########################
     # Handle forward decision #
     ###########################
     def handle_forward(self, start_waypoint):
