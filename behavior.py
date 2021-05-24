@@ -118,22 +118,32 @@ class Behavior(object):
                     self.slow_down(desired_velocity=desired_vel)
 
     def overtake(self):
+        
         if self.turn_obstacle != None:
             self.trajectory.change = False
             self.index += 5
             self.change_lane(self.turn_obstacle, self.index, self.velocity)
             self.turn_obstacle = None
             return True
+
         return False
     
     def manual_lane_change(self):
-        if self.turn != None and self.turn != self.current_state:
+        
+        # first check is for possible push button but not in the same direction as the current state is (self.turn != self.current_state),
+        # second check is for possible lane change, due to the path that has been created by the A*.
+          
+        if (self.turn != None and self.turn != self.current_state) or \ 
+           (self.turn == None and self.current_state == "INIT" and self.waypoints[self.index].lane_id != self.waypoints[self.index + 1].lane_id):
+           
             self.trajectory.change = False
             if self.index + 5 < len(self.waypoints):
                 self.index += 5
             else:
-                self.turn = None  
+                self.turn = None 
+                
         self.change_lane(self.turn, self.index, self.velocity)
+
     
     def check_obstacles(self):
 
@@ -184,7 +194,7 @@ class Behavior(object):
             rear_min_index = np.argmin(self.rear_distances)
             self.closest_rear_vehicle = self.rear_vehicles[rear_min_index]
             self.closest_distance_from_rear_vehicle = self.rear_distances[rear_min_index]
-
+        
     def cautious(self):
         self.velocity -= self.sub_caut.get_cautious()
 
@@ -239,6 +249,7 @@ class Behavior(object):
                 traffic_light_state = traffic.check_traffic_lights(vehicle_actor)
                 stop = self.sub.get_stop()
                 self.velocity = self.speed_sub.get_velocity()
+
                 '''
                 left = self.waypoints[self.index].get_left_lane()
                 right = self.waypoints[self.index].get_right_lane()
@@ -247,8 +258,7 @@ class Behavior(object):
                 if right != None:
                     world.debug.draw_string(right.transform.location, '{}'.format(1), draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
                 '''
- 
-                
+                 
                 # check for lane change
                 self.turn = self.turn_sub.get_turn()
 
