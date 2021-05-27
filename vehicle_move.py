@@ -28,20 +28,20 @@ def spawn(vehicle_list):
     control_signal = carla.VehicleControl(throttle=0.2)
     vehicle_actor = vehicle.get_vehicle_actor()
     vehicle_actor.apply_control(control_signal)
-
+    #vehicle_actor.set_autopilot(True)
     vehicle_list.append(vehicle_actor)
 
     start_point = carla.Transform(carla.Location(x=90.551256, y=-191.809540, z=1),
                                   carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
 
-    #vehicle = Vehicle()                                  
-    #vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
-    #vehicle.choose_model('model3', blueprint, world)
-    #control_signal = carla.VehicleControl(throttle=0.2)
-    #vehicle_actor = vehicle.get_vehicle_actor()
-    #vehicle_actor.apply_control(control_signal)
-    
-    #vehicle_list.append(vehicle_actor)
+    vehicle = Vehicle()                                  
+    vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
+    vehicle.choose_model('model3', blueprint, world)
+    control_signal = carla.VehicleControl(throttle=0.2)
+    vehicle_actor = vehicle.get_vehicle_actor()
+    vehicle_actor.apply_control(control_signal)
+    #vehicle_actor.set_autopilot(True)
+    vehicle_list.append(vehicle_actor)
     
     start_point = carla.Transform(carla.Location(x=54.551256, y=-191.809540, z=1),
                                   carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
