@@ -4,6 +4,8 @@ from agents.navigation.controller import VehiclePIDController
 from traffic import Traffic
 from vehicle_move import spawn
 from utilities import change_coordinate_system
+from vehicle import Vehicle
+from client import Client
 from communicationMQTT import VehiclePublisherMQTT, \
     VehicleSubscriberStartStopMQTT, \
     VehicleSubscriberVelocityMQTT, \
@@ -318,14 +320,32 @@ class Behavior(object):
         self.pub_vel.publish(vel)
 
         previous_velocity = 0
+        
         previous_obstacle_detected = None
+        client = Client()                                       
+        client.connect()                                        # connect the client 
+        [blueprint, world, map]= client.get_simulation()
         
-        spawn(self.vehicle_list)
-        
+        #spawn(self.vehicle_list)
+        '''
+        start_point = carla.Transform(carla.Location(x=60.551256, y=-195.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+        thr = 0.2
+        vehicle = Vehicle()                                  
+        vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
+        vehicle.choose_model('model3', blueprint, world)
+        vehicle_actor1 = vehicle.get_vehicle_actor()
+        control_signal1 = carla.VehicleControl(throttle=thr)
+        vehicle_actor1.apply_control(control_signal1)
+        self.vehicle_list.append(vehicle_actor1)
+        '''
         while True:
+            '''
+            thr += 0.001
+            control_signal1 = carla.VehicleControl(throttle=thr)
+            vehicle_actor1.apply_control(control_signal1)
+            '''
             try:
-
-                if self.index == len(self.waypoints):
+                if self.index == len(self.waypoints) - 1:
                     control_signal = self.custom_controller.run_step(0, self.waypoints[self.index - 1])
                     vehicle_actor.apply_control(control_signal)
                     break
