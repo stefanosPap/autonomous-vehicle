@@ -6,6 +6,7 @@ from vehicle_move import spawn
 from utilities import change_coordinate_system
 from vehicle import Vehicle
 from client import Client
+from obstacle_manager import ObstacleManager
 from communicationMQTT import VehiclePublisherMQTT, \
     VehicleSubscriberStartStopMQTT, \
     VehicleSubscriberVelocityMQTT, \
@@ -47,6 +48,8 @@ class Behavior(object):
         self.world = world
         self.vehicle_list = vehicle_list
 
+        self.obstacle_manager = ObstacleManager(map, vehicle_actor, vehicle_list)
+
     def slow_down(self, desired_velocity):
         if self.velocity > desired_velocity:
             self.velocity = desired_velocity
@@ -84,11 +87,11 @@ class Behavior(object):
                             
                     else:
                         self.current_state = "INIT"
-                    turn = self.turn_sub.set_turn(None)
+                    self.turn_sub.set_turn(None)
 
                 else:
                     self.current_state = "INIT"
-                    turn = self.turn_sub.set_turn(None)
+                    self.turn_sub.set_turn(None)
 
             elif self.current_state == "LEFT" or self.current_state == "RIGHT":
 
@@ -111,12 +114,12 @@ class Behavior(object):
                         self.current_state = "INIT"
                         self.pub_notify.publish({'value': self.current_state})
                         self.slow_down(desired_velocity=desired_vel)
-                    turn = self.turn_sub.set_turn(None)
+                    self.turn_sub.set_turn(None)
 
                 elif turn != self.current_state:
                     self.current_state = "INIT"
                     self.pub_notify.publish({'value': self.current_state})
-                    turn = self.turn_sub.set_turn(None)
+                    self.turn_sub.set_turn(None)
                     self.slow_down(desired_velocity=desired_vel)
 
     def overtake(self):
@@ -146,11 +149,11 @@ class Behavior(object):
         self.change_lane(self.turn, self.index, self.velocity)
     
     def check_tailgating(self):
-        if self.closest_distance_from_rear_vehicle < 10:
+        if self.obstacle_manager.closest_distance_from_rear_vehicle < 10:
             self.speed_up(20)
 
     def car_follow(self):
-        velocity_vec = self.closest_front_vehicle.get_velocity()
+        velocity_vec = self.obstacle_manager.closest_front_vehicle.get_velocity()
         velocity_obs_array = [velocity_vec.x, velocity_vec.y, velocity_vec.z]
         velocity_obstacle = np.linalg.norm(velocity_obs_array)
         velocity_obstacle = round(3.6 * velocity_obstacle, 1)
@@ -158,148 +161,7 @@ class Behavior(object):
             self.velocity = velocity_obstacle
             self.publish_velocity()
 
-    def check_side_obstacles(self):
-
-        self.front_location = self.vehicle_actor.get_location() + carla.Location(self.vehicle_actor.bounding_box.extent.x, 0, 0)
-        self.rear_location  = self.vehicle_actor.get_location() - carla.Location(self.vehicle_actor.bounding_box.extent.x, 0, 0)
-        self.ego_vehicle    = self.vehicle_list[0]
-        
-        self.vehicles_in_right_lane = []
-        self.front_right_vehicles   = []
-        self.front_right_distances  = []
-        self.rear_right_vehicles    = []
-        self.rear_right_distances   = []
-
-        self.vehicles_in_left_lane = []
-        self.front_left_vehicles   = []
-        self.front_left_distances  = []
-        self.rear_left_vehicles    = []
-        self.rear_left_distances   = []
-
-        self.closest_distance_from_front_right_vehicle = float('inf')
-        self.closest_distance_from_rear_right_vehicle  = float('inf')
-        
-        self.closest_distance_from_front_left_vehicle = float('inf')
-        self.closest_distance_from_rear_left_vehicle  = float('inf')
-        
-        for vehicle in self.vehicle_list[1:]:
-
-            ego_waypoint   = self.map.get_waypoint(self.ego_vehicle.get_location())
-            other_waypoint = self.map.get_waypoint(vehicle.get_location())
-            
-            # check if right lane exists 
-            if self.waypoints[self.index].get_right_lane() is not None:
-                right_lane_id = self.waypoints[self.index].get_right_lane().lane_id
-            
-            # check if left lane exists 
-            if self.waypoints[self.index].get_left_lane() is not None:
-                left_lane_id = self.waypoints[self.index].get_left_lane().lane_id
-            
-            # check for side obstacles 
-            if ego_waypoint.lane_id != other_waypoint.lane_id and ego_waypoint.road_id == other_waypoint.road_id: 
-
-                if right_lane_id == other_waypoint.lane_id: 
-                    self.vehicles_in_right_lane.append(vehicle)
-
-                if left_lane_id == other_waypoint.lane_id:
-                    self.vehicles_in_left_lane.append(vehicle)
-
-
-        for vehicle in self.vehicles_in_right_lane:
-            vehicle_location = vehicle.get_location()
-
-            ego_distance_front_right = vehicle_location.distance(self.front_location)
-            ego_distance_rear_right  = vehicle_location.distance(self.rear_location)
-            ego_distance             = vehicle_location.distance(self.ego_vehicle.get_location())
-
-            if ego_distance_front_right < ego_distance_rear_right:
-                self.front_right_vehicles.append(vehicle)
-                self.front_right_distances.append(ego_distance)
-            else:
-                self.rear_right_vehicles.append(vehicle)
-                self.rear_right_distances.append(ego_distance)
-
-        if len(self.front_right_distances) is not 0:
-            front_min_index = np.argmin(self.front_right_distances)
-            self.closest_front_right_vehicle = self.front_right_vehicles[front_min_index]
-            self.closest_distance_from_front_right_vehicle = self.front_right_distances[front_min_index]
-
-        if len(self.rear_right_distances) is not 0:
-            rear_min_index = np.argmin(self.rear_right_distances)
-            self.closest_rear_vehicle = self.rear_right_vehicles[rear_min_index]
-            self.closest_distance_from_rear_right_vehicle = self.rear_right_distances[rear_min_index]
-
-        for vehicle in self.vehicles_in_left_lane:
-            vehicle_location = vehicle.get_location()
-
-            ego_distance_front_left = vehicle_location.distance(self.front_location)
-            ego_distance_rear_left  = vehicle_location.distance(self.rear_location)
-            ego_distance             = vehicle_location.distance(self.ego_vehicle.get_location())
-
-            if ego_distance_front_left < ego_distance_rear_left:
-                self.front_left_vehicles.append(vehicle)
-                self.front_left_distances.append(ego_distance)
-            else:
-                self.rear_left_vehicles.append(vehicle)
-                self.rear_left_distances.append(ego_distance)
-
-        if len(self.front_left_distances) is not 0:
-            front_min_index = np.argmin(self.front_left_distances)
-            self.closest_front_left_vehicle = self.front_left_vehicles[front_min_index]
-            self.closest_distance_from_front_left_vehicle = self.front_left_distances[front_min_index]
-
-        if len(self.rear_left_distances) is not 0:
-            rear_min_index = np.argmin(self.rear_left_distances)
-            self.closest_rear_left_vehicle = self.rear_left_vehicles[rear_min_index]
-            self.closest_distance_from_rear_left_vehicle = self.rear_left_distances[rear_min_index]
-
-    def check_obstacles(self):
-
-        self.front_location = self.vehicle_actor.get_location() + carla.Location(self.vehicle_actor.bounding_box.extent.x, 0, 0)
-        self.rear_location  = self.vehicle_actor.get_location() - carla.Location(self.vehicle_actor.bounding_box.extent.x, 0, 0)
-        self.ego_vehicle    = self.vehicle_list[0]
-        
-        self.vehicles_in_lane = []
-        self.front_vehicles   = []
-        self.front_distances  = []
-        self.rear_vehicles    = []
-        self.rear_distances   = []
-
-        self.closest_distance_from_front_vehicle = float('inf')
-        self.closest_distance_from_rear_vehicle  = float('inf')
-        
-        for vehicle in self.vehicle_list[1:]:
-
-            ego_waypoint   = self.map.get_waypoint(self.ego_vehicle.get_location())
-            other_waypoint = self.map.get_waypoint(vehicle.get_location())
-            
-            if ego_waypoint.lane_id == other_waypoint.lane_id:
-                self.vehicles_in_lane.append(vehicle)
-       
-        for vehicle in self.vehicles_in_lane:
-            vehicle_location = vehicle.get_location()
-
-            ego_distance_front = vehicle_location.distance(self.front_location)
-            ego_distance_rear  = vehicle_location.distance(self.rear_location)
-            ego_distance       = vehicle_location.distance(self.ego_vehicle.get_location())
-
-            if ego_distance_front < ego_distance_rear:
-                self.front_vehicles.append(vehicle)
-                self.front_distances.append(ego_distance)
-            else:
-                self.rear_vehicles.append(vehicle)
-                self.rear_distances.append(ego_distance)
-
-        if len(self.front_distances) is not 0:
-            front_min_index = np.argmin(self.front_distances)
-            self.closest_front_vehicle = self.front_vehicles[front_min_index]
-            self.closest_distance_from_front_vehicle = self.front_distances[front_min_index]
-
-        if len(self.rear_distances) is not 0:
-            rear_min_index = np.argmin(self.rear_distances)
-            self.closest_rear_vehicle = self.rear_vehicles[rear_min_index]
-            self.closest_distance_from_rear_vehicle = self.rear_distances[rear_min_index]
-        
+    
     def cautious(self):
         self.velocity -= self.sub_caut.get_cautious()
 
@@ -318,16 +180,14 @@ class Behavior(object):
         
         vel = {'velocity': velocity}
         self.pub_vel.publish(vel)
-
-        previous_velocity = 0
         
         previous_obstacle_detected = None
         client = Client()                                       
         client.connect()                                        # connect the client 
-        [blueprint, world, map]= client.get_simulation()
+        [blueprint, world, _]= client.get_simulation()
         
         #spawn(self.vehicle_list)
-        '''
+        
         start_point = carla.Transform(carla.Location(x=60.551256, y=-195.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
         thr = 0.2
         vehicle = Vehicle()                                  
@@ -337,13 +197,13 @@ class Behavior(object):
         control_signal1 = carla.VehicleControl(throttle=thr)
         vehicle_actor1.apply_control(control_signal1)
         self.vehicle_list.append(vehicle_actor1)
-        '''
+        
         while True:
-            '''
+            
             thr += 0.001
             control_signal1 = carla.VehicleControl(throttle=thr)
             vehicle_actor1.apply_control(control_signal1)
-            '''
+            
             try:
                 if self.index == len(self.waypoints) - 1:
                     control_signal = self.custom_controller.run_step(0, self.waypoints[self.index - 1])
@@ -390,14 +250,14 @@ class Behavior(object):
                 if not success:
                     self.manual_lane_change()         
 
-                self.check_obstacles()
+                self.obstacle_manager.check_obstacles()
 
-                self.check_side_obstacles()
+                self.obstacle_manager.check_side_obstacles(self.waypoints, self.index)
                 
                 # check if rear obstacle is closely
                 #self.check_tailgating()
                 
-                if self.closest_distance_from_front_vehicle < 15:
+                if self.obstacle_manager.closest_distance_from_front_vehicle < 15:
                     self.car_follow()
                 
                 self.world.debug.draw_string(self.waypoints[self.index].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
@@ -405,7 +265,7 @@ class Behavior(object):
                 # change goal --need-change-topic 
                 behavior = self.sub_behavior.get_behavior()
                 if behavior == True:
-                    behavior = self.sub_behavior.set_behavior(False)
+                    self.sub_behavior.set_behavior(False)
                     self.emergency_stop()
 
                     control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
@@ -433,25 +293,23 @@ class Behavior(object):
                     else:
                         control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
 
-                elif self.closest_distance_from_front_vehicle < 15 and False:
+                elif  self.obstacle_manager.closest_distance_from_front_vehicle < 15 and False:
 
                     # set False in order to check if obstacle detector has triggered again
                     set_front_obstacle(False)
 
-                    obstacle_detected = self.closest_front_vehicle.id
+                    obstacle_detected = self.obstacle_manager.closest_front_vehicle.id
                   
 
-                    if previous_obstacle_detected != obstacle_detected and "vehicle" in self.closest_front_vehicle.type_id:
+                    if previous_obstacle_detected != obstacle_detected and "vehicle" in self.obstacle_manager.closest_front_vehicle.type_id:
                         
                         print("New obstacle")
                           
-                        velocity_vec = self.closest_front_vehicle.get_velocity()
+                        velocity_vec = self.obstacle_manager.closest_front_vehicle.get_velocity()
                         velocity_obs_array = [velocity_vec.x, velocity_vec.y, velocity_vec.z]
                         velocity_obstacle = np.linalg.norm(velocity_obs_array)
                         velocity_obstacle = round(3.6 * velocity_obstacle, 1)
                         
-                        current_waypoint = self.map.get_waypoint(self.vehicle_actor.get_location(), project_to_road=True)
-
                         if self.waypoints[self.index].get_left_lane() != None and "Solid" not in str(self.waypoints[self.index].left_lane_marking.type):
                             self.turn_obstacle = "LEFT"
                                                     
@@ -489,8 +347,6 @@ class Behavior(object):
                 if dist < 2:
                     self.index += 1
                     self.trajectory.change = False
-
-                previous_velocity = self.velocity
 
                 vehicle_actor.apply_control(control_signal)
                 world.tick()
