@@ -26,17 +26,41 @@ class VehicleSubscriberAggressiveMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):
         super().__init__(topic)
         self.aggressive = 0
+        self.change_aggressive = False
 
     def data_callback(self, msg):
-        if self.topic == 'aggressive':
+        if self.topic == 'aggressive' and self.change_aggressive == False:
             self.aggressive = msg['aggressive']
+            self.change_aggressive = True
 
     def get_aggressive(self):
         return self.aggressive
 
-    def set_aggressive(self):
-        self.aggressive = 0
+    def get_change_aggressive(self):
+        return self.change_aggressive
 
+    def set_change_aggressive(self, value):
+        self.change_aggressive = value
+
+class VehicleSubscriberCautiousMQTT(VehicleSubscriberMQTT):
+    def __init__(self, topic):
+        super().__init__(topic)
+        self.cautious = 0
+        self.change_cautious = False
+
+    def data_callback(self, msg):
+        if self.topic == 'cautious' and self.change_cautious == False:
+            self.cautious = msg['cautious']
+            self.change_cautious = True
+
+    def get_cautious(self):
+        return self.cautious
+
+    def get_change_cautious(self):
+        return self.change_cautious
+
+    def set_change_cautious(self, value):
+        self.change_cautious = value
 
 class VehicleSubscriberLogMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):
@@ -84,23 +108,6 @@ class VehicleSubscriberTurnMQTT(VehicleSubscriberMQTT):
 
     def set_turn(self, value):
         self.turn = value
-
-
-class VehicleSubscriberCautiousMQTT(VehicleSubscriberMQTT):
-    def __init__(self, topic):
-        super().__init__(topic)
-        self.cautious = 0
-
-    def data_callback(self, msg):
-        if self.topic == 'cautious':
-            self.cautious = msg['cautious']
-
-    def get_cautious(self):
-        return self.cautious
-
-    def set_cautious(self):
-        self.cautious = 0
-
 
 class VehicleSubscriberCoorMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):
