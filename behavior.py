@@ -134,11 +134,29 @@ class Behavior(object):
             self.trajectory.change = False
             self.index += 5
             self.change_lane(self.turn_obstacle, self.index, self.velocity)
+            self.overtake_direction = self.turn_obstacle
             self.turn_obstacle = None
+            self.return_to_the_initial_lane = True
             return True
-
+        
         return False
     
+    def complete_overtake(self):
+        if self.overtake_direction == "RIGHT":
+            overtaked_obstacle_distance = self.obstacle_manager.closest_distance_from_rear_left_vehicle
+            self.turn_obstacle = "LEFT"
+        
+        elif self.overtake_direction == "LEFT":
+            overtaked_obstacle_distance = self.obstacle_manager.closest_distance_from_rear_right_vehicle
+            self.turn_obstacle = "RIGHT"
+        
+        else:
+            return
+        
+        if 20 > overtaked_obstacle_distance > 10 and self.return_to_the_initial_lane == True:
+            self.overtake()
+            self.return_to_the_initial_lane = False
+
     def manual_lane_change(self):
         
         # first check is for possible push button but not in the same direction as the current state is (self.turn != self.current_state),
@@ -201,7 +219,9 @@ class Behavior(object):
         self.index = 0
         self.current_state = "INIT"
         success = False
-        
+        self.return_to_the_initial_lane = False 
+        self.overtake_direction = None
+
         self.turn = None
         self.turn_obstacle = None
         
@@ -220,8 +240,8 @@ class Behavior(object):
         client.connect()                                        # connect the client 
         [blueprint, world, _]= client.get_simulation()
         
-        #spawn(self.vehicle_list)
-        
+        spawn(self.vehicle_list)
+        '''
         start_point = carla.Transform(carla.Location(x=5.551256, y=-197.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
         thr = 0.2
         vehicle = Vehicle()                                  
@@ -231,13 +251,13 @@ class Behavior(object):
         control_signal1 = carla.VehicleControl(throttle=thr)
         vehicle_actor1.apply_control(control_signal1)
         self.vehicle_list.append(vehicle_actor1)
-        
+        '''
         while True:
-            
+            ''' 
             thr += 0.0001
             control_signal1 = carla.VehicleControl(throttle=thr)
             vehicle_actor1.apply_control(control_signal1)
-            
+            '''
             try:
                 
                 # corner case that is executed when the vehicle reaches the destination
@@ -258,7 +278,6 @@ class Behavior(object):
                 vel = {'velocity': round(3.6 * velocity_norm, 1)}
                 self.pub.publish(vel)
 
-
                 # initialize traffic manager in order to handle traffic lights and traffic signs 
                 traffic = Traffic(world, self.map)
                 traffic_sign = traffic.check_signs(self.waypoints[self.index])
@@ -268,7 +287,7 @@ class Behavior(object):
 
                 # check for lane change
                 self.turn = self.turn_sub.get_turn()
-                
+                '''
                 # check if rear obstacle is closely
                 tailgating = self.check_tailgating()
                 if self.behavior_score > 0:
@@ -284,14 +303,21 @@ class Behavior(object):
                         success = False
                     #if self.obstacle_manager.closest_distance_from_front_vehicle < 15:
                     #    self.car_follow()
-                    
+                '''
+                
+                #ATTENTION 
+                # Na ilopoiso tin epistrofi stin proigoumeni lorida 
+                                
+                success = self.overtake()
+                
                 if not success:
                     self.manual_lane_change()         
-                    success = False
+                
+                self.complete_overtake()
 
                 self.obstacle_manager.check_obstacles()
 
-                self.obstacle_manager.check_side_obstacles(self.waypoints, self.index)
+                self.obstacle_manager.check_side_obstacles()
                 
                 # print the route's trace in the simulator
                 self.world.debug.draw_string(self.waypoints[self.index].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
