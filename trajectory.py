@@ -53,8 +53,9 @@ class Trajectory():
                 next_waypoint = prev_waypoint.get_right_lane()
 
             if next_waypoint != None:
-                location = carla.Location(next_waypoint.transform.location.x, next_waypoint.transform.location.y, next_waypoint.transform.location.z)
-                w = self.map.get_waypoint(location, project_to_road=False)
+                #location = carla.Location(next_waypoint.transform.location.x, next_waypoint.transform.location.y, next_waypoint.transform.location.z)
+                #w = self.map.get_waypoint(location, project_to_road=False)
+                w = next_waypoint
                 if w != None:
                     self.waypoints[waypoint] = w
                     self.change = True 

@@ -19,7 +19,7 @@ def spawn(vehicle_list):
     start_point = carla.Transform(carla.Location(x=-6.5, y=-90, z=0.275307), carla.Rotation(pitch=0.000000, yaw=yaw, roll=0.000000))
     start_point = carla.Transform(carla.Location(x=30.551256, y=-197.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
     
-    start_point = carla.Transform(carla.Location(x=60.551256, y=-195.809540, z=1),
+    start_point = carla.Transform(carla.Location(x=40.551256, y=-195.809540, z=1),
                                   carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
 
     vehicle = Vehicle()                                  
@@ -33,7 +33,10 @@ def spawn(vehicle_list):
 
     start_point = carla.Transform(carla.Location(x=90.551256, y=-191.809540, z=1),
                                   carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
-    '''
+
+    start_point = carla.Transform(carla.Location(x=80.551256, y=-195, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+
+    
     vehicle = Vehicle()                                  
     vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
     vehicle.choose_model('model3', blueprint, world)
@@ -45,7 +48,7 @@ def spawn(vehicle_list):
     
     start_point = carla.Transform(carla.Location(x=54.551256, y=-191.809540, z=1),
                                   carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
-'''
+    
     #vehicle = Vehicle()
     #vehicle.choose_spawn_point(start_point)  # spawn the vehicle
     #vehicle.choose_model('model3', blueprint, world)  # choose the model

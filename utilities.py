@@ -357,7 +357,7 @@ def draw_waypoints(world, waypoints, col):
 
         if isinstance(waypoint, carla.libcarla.Waypoint):
             world.debug.draw_string(waypoint.transform.location, '{}'.format(m), draw_shadow=False, color=color, life_time=1000)
-            
+
         elif isinstance(waypoint, carla.libcarla.Transform):
             world.debug.draw_string(waypoint.location, '{}'.format(m), draw_shadow=False, color=color, life_time=1000)
         m += 1 

@@ -135,27 +135,34 @@ class Behavior(object):
             self.index += 5
             self.change_lane(self.turn_obstacle, self.index, self.velocity)
             self.overtake_direction = self.turn_obstacle
+            self.overtake_completed = False
             self.turn_obstacle = None
-            self.return_to_the_initial_lane = True
             return True
         
         return False
     
     def complete_overtake(self):
-        if self.overtake_direction == "RIGHT":
+        if self.overtake_direction == "RIGHT" and self.current_state != "INIT":
             overtaked_obstacle_distance = self.obstacle_manager.closest_distance_from_rear_left_vehicle
-            self.turn_obstacle = "LEFT"
         
-        elif self.overtake_direction == "LEFT":
+        elif self.overtake_direction == "LEFT" and self.current_state != "INIT":
             overtaked_obstacle_distance = self.obstacle_manager.closest_distance_from_rear_right_vehicle
-            self.turn_obstacle = "RIGHT"
         
         else:
             return
         
-        if 20 > overtaked_obstacle_distance > 10 and self.return_to_the_initial_lane == True:
+        if 20 > overtaked_obstacle_distance > 7:
+            
+            if self.overtake_direction == "RIGHT":
+                self.turn_obstacle = "LEFT"
+        
+            elif self.overtake_direction == "LEFT":
+                self.turn_obstacle = "RIGHT"
+            else:
+                return
             self.overtake()
-            self.return_to_the_initial_lane = False
+            self.overtake_direction == None
+            self.overtake_completed = True
 
     def manual_lane_change(self):
         
@@ -218,8 +225,8 @@ class Behavior(object):
     def follow_trajectory(self, world, vehicle_actor, spectator, get_front_obstacle, set_front_obstacle, get_other_actor, velocity):
         self.index = 0
         self.current_state = "INIT"
-        success = False
-        self.return_to_the_initial_lane = False 
+        self.overtake_started = False
+        self.overtake_completed = False
         self.overtake_direction = None
 
         self.turn = None
@@ -291,33 +298,33 @@ class Behavior(object):
                 # check if rear obstacle is closely
                 tailgating = self.check_tailgating()
                 if self.behavior_score > 0:
-                    #success = self.overtake()
+                    #self.overtake_started = self.overtake()
                     if tailgating:
                         self.speed_up(self.aggressive_score)
 
                 else:
                     if tailgating:
                         self.turn_obstacle = "RIGHT"
-                        success = self.overtake()
+                        self.overtake_started = self.overtake()
                     else:
-                        success = False
+                        self.overtake_started = False
                     #if self.obstacle_manager.closest_distance_from_front_vehicle < 15:
                     #    self.car_follow()
                 '''
                 
-                #ATTENTION 
-                # Na ilopoiso tin epistrofi stin proigoumeni lorida 
-                                
-                success = self.overtake()
-                
-                if not success:
-                    self.manual_lane_change()         
-                
-                self.complete_overtake()
-
                 self.obstacle_manager.check_obstacles()
 
-                self.obstacle_manager.check_side_obstacles()
+                self.obstacle_manager.check_side_obstacles(self.waypoints, self.index)
+                
+                
+                
+                self.overtake_started = self.overtake()
+                
+                if not self.overtake_completed:
+                    self.complete_overtake()
+
+                if not self.overtake_started:
+                    self.manual_lane_change()         
                 
                 # print the route's trace in the simulator
                 self.world.debug.draw_string(self.waypoints[self.index].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
@@ -359,7 +366,6 @@ class Behavior(object):
 
                     obstacle_detected = self.obstacle_manager.closest_front_vehicle.id
                   
-
                     if self.previous_front_obstacle_detected != obstacle_detected and "vehicle" in self.obstacle_manager.closest_front_vehicle.type_id:
                         
                         print("New obstacle")
@@ -374,7 +380,6 @@ class Behavior(object):
                                                     
                         elif self.waypoints[self.index].get_right_lane() != None and "Solid" not in str(self.waypoints[self.index].right_lane_marking.type):
                             self.turn_obstacle = "RIGHT"
-
                         self.previous_front_obstacle_detected = obstacle_detected
 
                     else:
