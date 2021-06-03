@@ -50,7 +50,7 @@ class Behavior(object):
         self.world = world
         self.vehicle_list = vehicle_list
 
-        self.obstacle_manager = ObstacleManager(map, vehicle_actor, vehicle_list)
+        self.obstacle_manager = ObstacleManager(map, vehicle_actor, vehicle_list, world)
         
         self.behavior_score = 0
         self.cautious_score = 0
@@ -142,24 +142,32 @@ class Behavior(object):
         return False
     
     def complete_overtake(self):
+
         if self.overtake_direction == "RIGHT" and self.current_state != "INIT":
             overtaked_obstacle_distance = self.obstacle_manager.closest_distance_from_rear_left_vehicle
-        
+            closest_front_side_obstacle_distance = self.obstacle_manager.closest_distance_from_front_left_vehicle
+
         elif self.overtake_direction == "LEFT" and self.current_state != "INIT":
             overtaked_obstacle_distance = self.obstacle_manager.closest_distance_from_rear_right_vehicle
-        
+            closest_front_side_obstacle_distance = self.obstacle_manager.closest_distance_from_front_right_vehicle
+
         else:
             return
         
-        if 20 > overtaked_obstacle_distance > 7:
+        # first condition is for checking is the the overtaked vehicle has been overtaked
+        # second condition is for checking if another vehicle exists, in front of the overtaked vehicle
+        condition_for_overtaked_vehicle = 20 > overtaked_obstacle_distance > 7 
+        condition_for_front_side_vehicle = (closest_front_side_obstacle_distance > 7 and closest_front_side_obstacle_distance != float('inf')) or closest_front_side_obstacle_distance == float('inf')
+        
+        if condition_for_overtaked_vehicle and condition_for_front_side_vehicle:
             
             if self.overtake_direction == "RIGHT":
                 self.turn_obstacle = "LEFT"
-        
             elif self.overtake_direction == "LEFT":
                 self.turn_obstacle = "RIGHT"
             else:
                 return
+
             self.overtake()
             self.overtake_direction == None
             self.overtake_completed = True
@@ -364,9 +372,9 @@ class Behavior(object):
                     # set False in order to check if obstacle detector has triggered again
                     set_front_obstacle(False)
 
-                    obstacle_detected = self.obstacle_manager.closest_front_vehicle.id
+                    self.obstacle_detected = self.obstacle_manager.closest_front_vehicle.id
                   
-                    if self.previous_front_obstacle_detected != obstacle_detected and "vehicle" in self.obstacle_manager.closest_front_vehicle.type_id:
+                    if self.previous_front_obstacle_detected != self.obstacle_detected and "vehicle" in self.obstacle_manager.closest_front_vehicle.type_id:
                         
                         print("New obstacle")
                           
@@ -375,12 +383,12 @@ class Behavior(object):
                         velocity_obstacle = np.linalg.norm(velocity_obs_array)
                         velocity_obstacle = round(3.6 * velocity_obstacle, 1)
                         
-                        if self.waypoints[self.index].get_left_lane() != None and "Solid" not in str(self.waypoints[self.index].left_lane_marking.type):
+                        if self.waypoints[self.index].get_left_lane() != None:# and "Solid" not in str(self.waypoints[self.index].left_lane_marking.type):
                             self.turn_obstacle = "LEFT"
                                                     
-                        elif self.waypoints[self.index].get_right_lane() != None and "Solid" not in str(self.waypoints[self.index].right_lane_marking.type):
+                        elif self.waypoints[self.index].get_right_lane() != None:# and "Solid" not in str(self.waypoints[self.index].right_lane_marking.type):
                             self.turn_obstacle = "RIGHT"
-                        self.previous_front_obstacle_detected = obstacle_detected
+                        self.previous_front_obstacle_detected = self.obstacle_detected
 
                     else:
                         pass
