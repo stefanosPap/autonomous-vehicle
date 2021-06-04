@@ -176,9 +176,10 @@ class Behavior(object):
         
         # first check is for possible push button but not in the same direction as the current state is (self.turn != self.current_state),
         # second check is for possible lane change, due to the path that has been created by the A*.
-          
-        if (self.turn != None and self.turn != self.current_state) or (self.turn == None and self.current_state == "INIT" and self.waypoints[self.index].lane_id != self.waypoints[self.index + 1].lane_id):
-           
+        loc1 = self.waypoints[self.index].transform.location
+        loc2 = self.waypoints[self.index + 1].transform.location
+        #print(self.index, self.index + 1, loc1.distance(loc2))
+        if (self.turn != None and self.turn != self.current_state) or (self.turn == None and self.current_state == "INIT" and (self.waypoints[self.index].lane_id != self.waypoints[self.index + 1].lane_id or loc1.distance(loc2) > 3)):
             self.trajectory.change = False
             if self.index + 5 < len(self.waypoints):
                 self.index += 5
@@ -255,7 +256,7 @@ class Behavior(object):
         client.connect()                                        # connect the client 
         [blueprint, world, _]= client.get_simulation()
         
-        spawn(self.vehicle_list)
+        #spawn(self.vehicle_list)
         '''
         start_point = carla.Transform(carla.Location(x=5.551256, y=-197.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
         thr = 0.2
@@ -274,7 +275,6 @@ class Behavior(object):
             vehicle_actor1.apply_control(control_signal1)
             '''
             try:
-                
                 # corner case that is executed when the vehicle reaches the destination
                 if self.index == len(self.waypoints) - 1:
                     control_signal = self.custom_controller.run_step(0, self.waypoints[self.index - 1])

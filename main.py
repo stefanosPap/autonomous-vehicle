@@ -150,6 +150,7 @@ def main():
     #    if waypoint[1].is_junction:
     #        world.debug.draw_string(waypoint[1].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
     #    else:
+    #    if waypoint.lane_id == -1:
     #        world.debug.draw_string(waypoint.transform.location, "{}".format(waypoint.road_id), draw_shadow=False, color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
 
     #        world.debug.draw_string(waypoint[0].transform.location, 's', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
