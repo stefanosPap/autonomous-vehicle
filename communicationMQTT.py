@@ -62,6 +62,26 @@ class VehicleSubscriberCautiousMQTT(VehicleSubscriberMQTT):
     def set_change_cautious(self, value):
         self.change_cautious = value
 
+class VehicleSubscriberLawfulMQTT(VehicleSubscriberMQTT):
+    def __init__(self, topic):
+        super().__init__(topic)
+        self.lawful = 0
+        self.change_lawful = False
+
+    def data_callback(self, msg):
+        if self.topic == 'lawful' and self.change_lawful == False:
+            self.lawful = msg['lawful']
+            self.change_lawful = True
+
+    def get_lawful(self):
+        return self.lawful
+
+    def get_change_lawful(self):
+        return self.change_lawful
+
+    def set_change_lawful(self, value):
+        self.change_lawful = value
+
 class VehicleSubscriberLogMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):
         super().__init__(topic)
