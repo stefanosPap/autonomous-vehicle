@@ -212,20 +212,20 @@ class VehicleSubscriberDoneMQTT(VehicleSubscriberMQTT):
         self.done = done
 
 
-class VehicleSubscriberBehaviorMQTT(VehicleSubscriberMQTT):
+class VehicleSubscriberChangeGoalMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):
         super().__init__(topic)
-        self.behavior = False
+        self.change_goal = False
 
     def data_callback(self, msg):
-        if self.topic == 'behavior':
-            self.behavior = msg['behavior']
+        if self.topic == 'change_goal':
+            self.change_goal = msg['change_goal']
 
-    def get_behavior(self):
-        return self.behavior
+    def get_change_goal(self):
+        return self.change_goal
 
-    def set_behavior(self, behavior):
-        self.behavior = behavior
+    def set_change_goal(self, change_goal):
+        self.change_goal = change_goal
 
 
 class VehicleSubscriberPositionMQTT(VehicleSubscriberMQTT):

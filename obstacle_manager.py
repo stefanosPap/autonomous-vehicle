@@ -4,48 +4,60 @@ import numpy as np
 class ObstacleManager(object):
     
     def __init__(self, map, vehicle_actor, vehicle_list, world):
-        self.map = map
+        self.map   = map
         self.world = world
-        self.vehicle_actor = vehicle_actor
-        self.vehicle_list = vehicle_list
-        self.closest_front_vehicle =  None
-        self.closest_rear_vehicle =  None
         
-        self.closest_distance_from_front_vehicle = float('inf')
-        self.closest_distance_from_rear_vehicle = float('inf')
-        self.closest_distance_from_rear_left_vehicle  = float('inf')
+        self.vehicle_actor = vehicle_actor
+        self.vehicle_list  = vehicle_list
+        
+        self.closest_front_vehicle      = None
+        self.closest_rear_vehicle       = None
+        self.closest_rear_left_vehicle  = None
+        self.closest_rear_right_vehicle = None
 
-        self.closest_front_left_vehicle = vehicle_list[0]
+        self.closest_distance_from_front_vehicle       = float('inf')
+        self.closest_distance_from_front_right_vehicle = float('inf')
+        self.closest_distance_from_rear_vehicle        = float('inf')
+        self.closest_distance_from_rear_left_vehicle   = float('inf')
+        self.closest_distance_from_rear_right_vehicle  = float('inf')
+
+        self.closest_front_left_vehicle  = vehicle_list[0]
         self.closest_front_right_vehicle = vehicle_list[0]
 
+        self.vehicles_in_lane       = []
+        self.vehicles_in_right_lane = []
+        
     def check_side_obstacles(self, waypoints, index):
 
             self.front_location = self.vehicle_actor.get_location() + carla.Location(self.vehicle_actor.bounding_box.extent.x, 0, 0)
             self.rear_location  = self.vehicle_actor.get_location() - carla.Location(self.vehicle_actor.bounding_box.extent.x, 0, 0)
             self.ego_vehicle    = self.vehicle_list[0]
-            
+
             self.vehicles_in_right_lane = []
             self.front_right_vehicles   = []
             self.front_right_distances  = []
             self.rear_right_vehicles    = []
             self.rear_right_distances   = []
 
-            self.vehicles_in_left_lane = []
-            self.front_left_vehicles   = []
-            self.front_left_distances  = []
-            self.rear_left_vehicles    = []
-            self.rear_left_distances   = []
+            self.vehicles_in_left_lane  = []
+            self.front_left_vehicles    = []
+            self.front_left_distances   = []
+            self.rear_left_vehicles     = []
+            self.rear_left_distances    = []
 
             self.closest_distance_from_front_right_vehicle = float('inf')
             self.closest_distance_from_rear_right_vehicle  = float('inf')
             
             self.closest_distance_from_front_left_vehicle = float('inf')
             self.closest_distance_from_rear_left_vehicle  = float('inf')
-            
+                    
             for vehicle in self.vehicle_list[1:]:
 
-                ego_waypoint   = self.map.get_waypoint(self.ego_vehicle.get_location())
-                other_waypoint = self.map.get_waypoint(vehicle.get_location())
+                ego_waypoint   = self.map.get_waypoint(self.ego_vehicle.get_location(), project_to_road=False)
+                other_waypoint = self.map.get_waypoint(vehicle.get_location(), project_to_road=False)
+                
+                if other_waypoint == None:
+                    continue
                 
                 # check if right lane exists 
                 if waypoints[index].get_right_lane() is not None:
@@ -90,7 +102,7 @@ class ObstacleManager(object):
 
             if len(self.rear_right_distances) is not 0:
                 rear_min_index = np.argmin(self.rear_right_distances)
-                self.closest_rear_vehicle = self.rear_right_vehicles[rear_min_index]
+                self.closest_rear_right_vehicle = self.rear_right_vehicles[rear_min_index]
                 self.closest_distance_from_rear_right_vehicle = self.rear_right_distances[rear_min_index]
 
             for vehicle in self.vehicles_in_left_lane:
@@ -131,11 +143,14 @@ class ObstacleManager(object):
 
         self.closest_distance_from_front_vehicle = float('inf')
         self.closest_distance_from_rear_vehicle  = float('inf')
-        
+
         for vehicle in self.vehicle_list[1:]:
 
-            ego_waypoint   = self.map.get_waypoint(self.ego_vehicle.get_location())
-            other_waypoint = self.map.get_waypoint(vehicle.get_location())
+            ego_waypoint   = self.map.get_waypoint(self.ego_vehicle.get_location(), project_to_road=False)
+            other_waypoint = self.map.get_waypoint(vehicle.get_location(), project_to_road=False)
+            
+            if ego_waypoint == None or other_waypoint == None:
+                continue
             
             if ego_waypoint.lane_id == other_waypoint.lane_id:
                 self.vehicles_in_lane.append(vehicle)
