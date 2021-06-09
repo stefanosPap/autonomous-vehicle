@@ -25,6 +25,9 @@ class ObstacleManager(object):
         self.closest_front_right_vehicle = vehicle_list[0]
 
         self.vehicles_in_lane       = []
+        self.rear_right_vehicles    = []
+        self.rear_right_distances   = []
+        self.front_right_distances  = []
         self.vehicles_in_right_lane = []
         
     def check_side_obstacles(self, waypoints, index):
@@ -110,7 +113,7 @@ class ObstacleManager(object):
 
                 ego_distance_front_left = vehicle_location.distance(self.front_location)
                 ego_distance_rear_left  = vehicle_location.distance(self.rear_location)
-                ego_distance             = vehicle_location.distance(self.ego_vehicle.get_location())
+                ego_distance            = vehicle_location.distance(self.ego_vehicle.get_location())
 
                 if ego_distance_front_left < ego_distance_rear_left:
                     self.front_left_vehicles.append(vehicle)
