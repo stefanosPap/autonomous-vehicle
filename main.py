@@ -62,7 +62,7 @@ def main():
     start_point = carla.Transform(carla.Location(x=20.551256, y=-197.809540, z=1),
                                   carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
     # start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
-    start_point = carla.Transform(carla.Location(x=20, y=-195.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+    start_point = carla.Transform(carla.Location(x=-5, y=-197.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
     
     start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
     vehicle_list = []
@@ -163,26 +163,22 @@ def main():
     # client.add_actor(ped_actor)
 
     # generate random trajectory for the vehicle 
-    sub_coor = VehicleSubscriberCoorMQTT(topic='coordinates')
-    sub_enter = VehicleSubscriberEnterMQTT(topic='enter')
+    sub_coor     = VehicleSubscriberCoorMQTT  (topic='coordinates'       )
+    sub_enter    = VehicleSubscriberEnterMQTT (topic='enter'             )  
+    sub_done     = VehicleSubscriberDoneMQTT  (topic='done'              )
+    sub_log      = VehicleSubscriberLogMQTT   (topic='log'               )
+    sub_turn     = VehicleSubscriberTurnMQTT  (topic='turn_junction'     )
 
-    sub_done = VehicleSubscriberDoneMQTT(topic='done')
-    sub_log = VehicleSubscriberLogMQTT(topic='log')
-    sub_turn = VehicleSubscriberTurnMQTT(topic='turn_junction')
-
-    pub = VehiclePublisherMQTT(topic='clean')
-    pub_vel = VehiclePublisherMQTT(topic='speed_topic')
-    pub_vel_conf = VehiclePublisherMQTT(topic='speed_configure')
-    pub_waypoint = VehiclePublisherMQTT(topic='waypoint_choose')
-    pub_enter = VehiclePublisherMQTT(topic='enter_info')
-    pub_done = VehiclePublisherMQTT(topic='done_info')
-    pub_start = VehiclePublisherMQTT(topic='start notification')
-
-    msg = {'value': 'Press ENTER for inserting new waypoint'}
-    pub_enter.publish(msg)
-
-    msg = {'value': 'Press DONE for finishing waypoint selection'}
-    pub_done.publish(msg)
+    pub          = VehiclePublisherMQTT       (topic='clean'             )
+    pub_vel      = VehiclePublisherMQTT       (topic='speed_topic'       )
+    pub_vel_conf = VehiclePublisherMQTT       (topic='speed_configure'   )
+    pub_waypoint = VehiclePublisherMQTT       (topic='waypoint_choose'   )
+    pub_enter    = VehiclePublisherMQTT       (topic='enter_info'        )
+    pub_done     = VehiclePublisherMQTT       (topic='done_info'         )
+    pub_start    = VehiclePublisherMQTT       (topic='start notification')
+    
+    pub_enter.publish({'value': 'Press ENTER for inserting new waypoint'     })
+    pub_done. publish({'value': 'Press DONE for finishing waypoint selection'})
 
     # custom_point = carla.Transform(carla.Location(x=-125.793716, y=-4 , z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
     # custom_waypoint = map.get_waypoint(custom_point.location, project_to_road=False, lane_type=carla.LaneType.Any)
@@ -211,8 +207,8 @@ def main():
     
     pub.publish({'value': " "})
 
-    msg = {'value': ''}
-    pub_waypoint.publish(msg)
+    
+    pub_waypoint.publish({'value': ''})
 
     msg = {'velocity': 0}
     #pub_vel_conf.publish(msg)

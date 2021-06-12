@@ -135,7 +135,7 @@ class VehicleSubscriberCoorMQTT(VehicleSubscriberMQTT):
         self.location = None
 
     def data_callback(self, msg):
-        if self.topic == "coordinates":
+        if self.topic == 'coordinates':
             self.location = msg['location']
 
     def get_location(self):
@@ -149,7 +149,7 @@ class VehicleSubscriberCoorForwardMQTT(VehicleSubscriberMQTT):
         self.location = None
 
     def data_callback(self, msg):
-        if self.topic == "coordinates_forward":
+        if self.topic == 'coordinates_forward':
             self.coordinates = msg['coordinates_forward']
             self.location = msg['location']
 

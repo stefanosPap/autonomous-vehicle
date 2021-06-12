@@ -57,9 +57,9 @@ class Behavior(object):
         self.turn_sub        = VehicleSubscriberLeftRightMQTT (topic='turn'             )
         self.sub_pos         = VehicleSubscriberPositionMQTT  (topic='position'         )
         self.sub_change_goal = VehicleSubscriberChangeGoalMQTT(topic='change_goal'      )
-        self.sub_agg         = VehicleSubscriberAggressiveMQTT(topic="aggressive"       )
-        self.sub_caut        = VehicleSubscriberCautiousMQTT  (topic="cautious"         )
-        self.sub_law         = VehicleSubscriberLawfulMQTT    (topic="lawful"           )
+        self.sub_agg         = VehicleSubscriberAggressiveMQTT(topic='aggressive'       )
+        self.sub_caut        = VehicleSubscriberCautiousMQTT  (topic='cautious'         )
+        self.sub_law         = VehicleSubscriberLawfulMQTT    (topic='lawful'           )
                 
         self.behavior_score       =  0
         self.cautious_score       =  0
@@ -129,8 +129,8 @@ class Behavior(object):
                     if w != None:
                         self.waypoints[self.index] = w
                         if w == prev:
-                            self.waypoints[self.index] = self.waypoints[self.index + 5]
-                            self.index += 5
+                            self.waypoints[self.index] = self.waypoints[self.index + 10]
+                            self.index += self.lane_change_offset
                             self.current_state = "INIT"
                             self.pub_notify.publish({'value': self.current_state})
                             self.slow_down(desired_velocity=desired_vel)
@@ -150,7 +150,7 @@ class Behavior(object):
         
         if self.turn_obstacle != None:
             self.trajectory.change = False
-            self.index += 5
+            self.index += self.lane_change_offset
             self.change_lane(self.turn_obstacle, self.index, self.velocity)
             self.overtake_direction = self.turn_obstacle
             self.overtake_completed = False
@@ -196,7 +196,7 @@ class Behavior(object):
         #print("------")
         
         if condition_for_overtaked_vehicle and condition_for_front_side_vehicle:
-            print(overtaked_obstacle_distance, self.overtaked_obstacle_distance_threshold )
+            print(overtaked_obstacle_distance, self.overtaked_obstacle_distance_threshold)
             print("Done")
             if self.overtake_direction == "RIGHT":
                 self.turn_obstacle = "LEFT"
@@ -221,15 +221,16 @@ class Behavior(object):
         if (self.turn != None and self.turn != self.current_state) or (self.turn == None and self.current_state == "INIT" and loc1.distance(loc2) > 4):
             
             self.trajectory.change = False
-            if self.index + 5 < len(self.waypoints):
-                self.index += 5
+            if self.index + self.lane_change_offset < len(self.waypoints):
+                self.index += self.lane_change_offset
             else:
                 self.turn = None 
                 
         self.change_lane(self.turn, self.index, self.velocity)
     
     def check_tailgating(self):
-        if self.obstacle_manager.closest_distance_from_rear_vehicle < 10:
+        
+        if self.obstacle_manager.closest_distance_from_rear_vehicle < self.rear_obstacle_distance_threshold:
             
             #obstacle_detected = self.obstacle_manager.closest_rear_vehicle.id
 
@@ -248,15 +249,30 @@ class Behavior(object):
         return False
 
     def car_follow(self):
+
         if self.obstacle_manager.closest_front_vehicle is None:
             return
+        
+        self.get_front_obstacle_velocity()
+
+        if self.front_obstacle_velocity != self.velocity:
+            self.velocity = self.front_obstacle_velocity
+            self.publish_velocity()
+
+    def get_front_obstacle_velocity(self):
+
         velocity_vec = self.obstacle_manager.closest_front_vehicle.get_velocity()
         velocity_obs_array = [velocity_vec.x, velocity_vec.y, velocity_vec.z]
-        velocity_obstacle = np.linalg.norm(velocity_obs_array)
-        velocity_obstacle = round(3.6 * velocity_obstacle, 1)
-        if velocity_obstacle != self.velocity:
-            self.velocity = velocity_obstacle
-            self.publish_velocity()
+        self.front_obstacle_velocity = np.linalg.norm(velocity_obs_array)
+        self.front_obstacle_velocity = round(3.6 * self.front_obstacle_velocity, 1)
+
+
+    def get_rear_obstacle_velocity(self):
+
+        velocity_vec = self.obstacle_manager.closest_rear_vehicle.get_velocity()
+        velocity_obs_array = [velocity_vec.x, velocity_vec.y, velocity_vec.z]
+        self.rear_obstacle_velocity = np.linalg.norm(velocity_obs_array)
+        self.rear_obstacle_velocity = round(3.6 * self.rear_obstacle_velocity, 1)
     
     def stop(self):
     
@@ -278,8 +294,9 @@ class Behavior(object):
             self.obstacle_detected = self.obstacle_manager.closest_front_vehicle.id
             
             if self.previous_front_obstacle_detected != self.obstacle_detected and "vehicle" in self.obstacle_manager.closest_front_vehicle.type_id:
-                print(self.obstacle_manager.closest_distance_from_front_vehicle, self.front_obstacle_distance_threshold)
+
                 print("New obstacle in front")
+
                 self.previous_front_obstacle_detected = self.obstacle_detected
                 
                 return True
@@ -290,20 +307,20 @@ class Behavior(object):
         
         self.cautious_score = self.sub_caut.get_cautious()
         
-        self.calculate_overall_score()
+        #self.calculate_overall_score()
 
     def lawful(self):
 
         self.lawful_score = self.sub_law.get_lawful()
 
-        self.calculate_overall_score()
+        #self.calculate_overall_score()
 
     def aggressive(self):
         
         self.aggressive_score = self.sub_agg.get_aggressive()
         
-        self.calculate_overall_score()
-    
+        #self.calculate_overall_score()
+    '''
     def define_behavior_parameters(self, aggressive_parameter, cautious_parameter, lawful_parameter):
         
         self.aggressive_parameter = aggressive_parameter
@@ -312,23 +329,57 @@ class Behavior(object):
 
     def calculate_overall_score(self):
         self.behavior_score = self.aggressive_parameter * self.aggressive_score + self.cautious_parameter * self.cautious_score + self.lawful_parameter * self.lawful_score
-
+    '''
     def turn_decision(self):
+
+        self.turn_obstacle = None 
         
-        if self.lawful_score > 0:
-            condition_for_right_lane = ("Solid" not in str(self.waypoints[self.index].right_lane_marking.type) and  ("Right" in str(self.waypoints[self.index].lane_change) or "Both" in str(self.waypoints[self.index].lane_change)))
-            condition_for_left_lane  = ("Solid" not in str(self.waypoints[self.index].left_lane_marking.type)  and  ("Left"  in str(self.waypoints[self.index].lane_change) or "Both" in str(self.waypoints[self.index].lane_change)))
+        self.turn_law()
         
-        else: 
-            condition_for_right_lane = ("Right" in str(self.waypoints[self.index].lane_change) or "Both" in str(self.waypoints[self.index].lane_change))
-            condition_for_left_lane  = ("Left"  in str(self.waypoints[self.index].lane_change) or "Both" in str(self.waypoints[self.index].lane_change))
-            
-        if self.waypoints[self.index].get_left_lane() != None and condition_for_left_lane:
+        self.is_right_lane_safe()
+        self.is_left_lane_safe()
+        
+        if self.waypoints[self.index].get_left_lane() != None and self.condition_for_left_lane and self.rear_left_is_safe and self.front_left_is_safe:
             self.turn_obstacle = "LEFT"
                                                     
-        elif self.waypoints[self.index].get_right_lane() != None and condition_for_right_lane:
+        elif self.waypoints[self.index].get_right_lane() != None and self.condition_for_right_lane and self.rear_right_is_safe and self.front_right_is_safe:
             self.turn_obstacle = "RIGHT"
-                        
+
+    def turn_law(self):
+        if self.lawful_score > 0:
+            self.condition_for_right_lane = ("Solid" not in str(self.waypoints[self.index].right_lane_marking.type) and  ("Right" in str(self.waypoints[self.index].lane_change) or "Both" in str(self.waypoints[self.index].lane_change)))
+            self.condition_for_left_lane  = ("Solid" not in str(self.waypoints[self.index].left_lane_marking.type)  and  ("Left"  in str(self.waypoints[self.index].lane_change) or "Both" in str(self.waypoints[self.index].lane_change)))
+
+        else: 
+            self.condition_for_right_lane = ("Right" in str(self.waypoints[self.index].lane_change) or "Both" in str(self.waypoints[self.index].lane_change))
+            self.condition_for_left_lane  = ("Left"  in str(self.waypoints[self.index].lane_change) or "Both" in str(self.waypoints[self.index].lane_change))
+    
+    def is_right_lane_safe(self):
+        
+        self.rear_right_is_safe  = True
+        self.front_right_is_safe = True
+
+        if self.obstacle_manager.closest_distance_from_rear_right_vehicle  < self.rear_right_vehicle_threshold:
+            self.rear_right_is_safe  = False
+
+        if self.obstacle_manager.closest_distance_from_front_right_vehicle < self.front_right_vehicle_threshold:
+            self.front_right_is_safe = False
+
+    def is_left_lane_safe(self):
+        
+        self.rear_left_is_safe  = True
+        self.front_left_is_safe = True
+
+        if self.obstacle_manager.closest_distance_from_rear_left_vehicle  < self.rear_left_vehicle_threshold:
+            self.rear_left_is_safe  = False
+
+        if self.obstacle_manager.closest_distance_from_front_left_vehicle < self.front_left_vehicle_threshold:
+            self.front_left_is_safe = False
+
+    def wait(self, reps):
+        for _ in range(reps):
+            self.world.tick()
+       
     def follow_trajectory(self, world, vehicle_actor, spectator, get_front_obstacle, set_front_obstacle, get_other_actor, velocity):
         
         self.index         = 0
@@ -342,17 +393,16 @@ class Behavior(object):
         self.turn_obstacle = None
         
         self.previous_front_obstacle_detected = None
-        self.previous_back_obstacle_detected  = None 
-        
-        velocity = 30
-        self.pub_vel.publish ({'velocity'  : velocity})
-        self.pub_agg.publish ({'aggressive': 30      })
-        self.pub_caut.publish({'cautious'  : 0       })
-        self.pub_law.publish ({'lawful'    : 0       })
+        self.previous_back_obstacle_detected  = None     
 
         self.action_performed = False
-        convert_value = interp1d([0, 30],[20, 10])
-
+        car_follow_behavior   = False
+        
+        convert_aggressive_value = interp1d([0, 30 ], [30, 15])
+        convert_cautious_value   = interp1d([0, 30 ], [0 , 10])
+        convert_offset_value     = interp1d([0, 100], [5 , 20])
+        
+     
         #spawn(self.vehicle_list)
 
         '''
@@ -367,19 +417,9 @@ class Behavior(object):
 
         pedestrian_location = walker_list[0].get_location()
         '''
-        
-        start_point = carla.Transform(carla.Location(x=45.551256, y=-195.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
-        thr = 0.2
-        vehicle = Vehicle()                                  
-        vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
-        vehicle.choose_model('model3', self.blueprint, world)
-        vehicle_actor1 = vehicle.get_vehicle_actor()
-        control_signal1 = carla.VehicleControl(throttle=thr)
-        vehicle_actor1.apply_control(control_signal1)
-        self.vehicle_list.append(vehicle_actor1)
-        
-        start_point = carla.Transform(carla.Location(x=55.551256, y=-195.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
-        thr = 0.2
+        start_point = carla.Transform(carla.Location(x=25.551256, y=-193.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+
+        thr = 0.25
         vehicle = Vehicle()                                  
         vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
         vehicle.choose_model('model3', self.blueprint, world)
@@ -388,6 +428,17 @@ class Behavior(object):
         vehicle_actor1.apply_control(control_signal1)
         self.vehicle_list.append(vehicle_actor1)
 
+        start_point = carla.Transform(carla.Location(x=30.551256, y=-197.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+
+        thr = 0.2
+        vehicle = Vehicle()                                  
+        vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
+        vehicle.choose_model('model3', self.blueprint, world)
+        vehicle_actor1 = vehicle.get_vehicle_actor()
+        control_signal1 = carla.VehicleControl(throttle=thr)
+        vehicle_actor1.apply_control(control_signal1)
+        self.vehicle_list.append(vehicle_actor1)
+        '''
         start_point = carla.Transform(carla.Location(x=65.551256, y=-195.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
         thr = 0.2
         vehicle = Vehicle()                                  
@@ -397,13 +448,21 @@ class Behavior(object):
         control_signal1 = carla.VehicleControl(throttle=thr)
         vehicle_actor1.apply_control(control_signal1)
         self.vehicle_list.append(vehicle_actor1)
-
+        '''
+        
+        velocity = 20
+        self.pub_vel. publish ({'velocity'  : velocity})
+        self.pub_agg. publish ({'aggressive': 30      })
+        self.pub_caut.publish ({'cautious'  : 10      })
+        self.pub_law. publish ({'lawful'    : 10      })
+        self.wait(10)
+        
         while True:
-            '''
-            thr += 0.0001
+            
+            thr += 0.001
             control_signal1 = carla.VehicleControl(throttle=thr)
             vehicle_actor1.apply_control(control_signal1)
-            '''
+            
             try:
                     
                 # spectator method is called in order to place the view of the simulator exactly above the vehicle 
@@ -451,10 +510,23 @@ class Behavior(object):
                     self.lawful()
                     self.sub_law.set_change_lawful(False)  
 
-                self.front_obstacle_distance_threshold = convert_value(self.aggressive_score)
-                self.overtaked_obstacle_distance_threshold = convert_value(self.aggressive_score) / 4
+                self.front_obstacle_distance_threshold = convert_aggressive_value(self.aggressive_score) + convert_cautious_value(self.cautious_score)
+                self.overtaked_obstacle_distance_threshold = convert_aggressive_value(self.aggressive_score) / 2
                 self.closest_front_side_obstacle_distance_threshold = 20
+                self.lane_change_offset = int(convert_offset_value(self.velocity))
+                self.rear_obstacle_distance_threshold = convert_aggressive_value(self.aggressive_score)
+                
+                self.rear_right_vehicle_threshold  = 10 #convert_aggressive_value(self.aggressive_score)
+                self.front_right_vehicle_threshold = 15 #convert_aggressive_value(self.aggressive_score)
+                self.rear_left_vehicle_threshold   = convert_aggressive_value(self.aggressive_score)
+                self.front_left_vehicle_threshold  = convert_aggressive_value(self.aggressive_score)
 
+                self.is_right_lane_safe()
+                print("----")
+                print(self.rear_right_is_safe , self.obstacle_manager.closest_rear_right_vehicle )
+                print(self.front_right_is_safe, self.obstacle_manager.closest_front_right_vehicle)
+                print(self.obstacle_manager.closest_distance_from_front_right_vehicle, self.front_right_vehicle_threshold)
+                print("----")
                 # --------------------------------------------------------------------------- #
                 # |                                                                         | #
                 # |                           Vehicle's Perception                          | #
@@ -483,7 +555,7 @@ class Behavior(object):
                 self.obstacle_manager.check_side_obstacles(self.waypoints, self.index)
 
                 # check if rear obstacle is closely - tailgating 
-                #tailgating = self.check_tailgating()
+                tailgating = self.check_tailgating()
                 
                 vehicle_in_front_closely = self.vehicle_in_front()
                 
@@ -513,12 +585,35 @@ class Behavior(object):
                 #    if self.obstacle_manager.closest_distance_from_front_vehicle < 15:
                 #        self.car_follow()
                 #        print(2)
+                
+                #if vehicle_in_front_closely and not car_follow_behavior:
+                #    car_follow_behavior = True
+                    
+                #if car_follow_behavior:
+                #    self.car_follow()
+                
+                '''
+                if tailgating:
+                
+                    self.action_performed = True
+                
+                    self.get_rear_obstacle_velocity()
+                    
+                    if self.rear_obstacle_velocity != self.velocity:
+                        desired_velocity = int(self.rear_obstacle_velocity + 3 * self.rear_obstacle_velocity / 4)
+                        self.speed_up(desired_velocity)
+                '''
 
                 
-                
                 if vehicle_in_front_closely:
+                    
                     self.turn_decision()
-                    self.overtake_started = self.overtake()
+                    
+                    if self.turn_obstacle != None:    
+                        self.overtake_started = self.overtake()
+                    else:
+                        car_follow_behavior = True
+                        self.car_follow()
                 else:
                     self.overtake_started = False
                 
