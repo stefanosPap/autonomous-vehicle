@@ -228,23 +228,24 @@ class Behavior(object):
                 
         self.change_lane(self.turn, self.index, self.velocity)
     
-    def check_tailgating(self):
+    def vehicle_in_back(self):
         
         if self.obstacle_manager.closest_distance_from_rear_vehicle < self.rear_obstacle_distance_threshold:
             
-            #obstacle_detected = self.obstacle_manager.closest_rear_vehicle.id
+            obstacle_detected = self.obstacle_manager.closest_rear_vehicle.id
 
-            #if self.previous_back_obstacle_detected != obstacle_detected and "vehicle" in self.obstacle_manager.closest_rear_vehicle.type_id
-            if not self.action_performed:
+            if self.previous_back_obstacle_detected != obstacle_detected and "vehicle" in self.obstacle_manager.closest_rear_vehicle.type_id:
+            
+                self.previous_back_obstacle_detected = obstacle_detected
+
+        #    if not self.action_performed:
                 
                 print("New back obstacle")
             
-                #self.previous_back_obstacle_detected = obstacle_detected
-
                 return True
             
-        else:
-            self.action_performed = False
+        #else:
+        #    self.action_performed = False
 
         return False
 
@@ -307,20 +308,20 @@ class Behavior(object):
         
         self.cautious_score = self.sub_caut.get_cautious()
         
-        #self.calculate_overall_score()
+        self.calculate_overall_score()
 
     def lawful(self):
 
         self.lawful_score = self.sub_law.get_lawful()
 
-        #self.calculate_overall_score()
+        self.calculate_overall_score()
 
     def aggressive(self):
         
         self.aggressive_score = self.sub_agg.get_aggressive()
         
-        #self.calculate_overall_score()
-    '''
+        self.calculate_overall_score()
+    
     def define_behavior_parameters(self, aggressive_parameter, cautious_parameter, lawful_parameter):
         
         self.aggressive_parameter = aggressive_parameter
@@ -329,7 +330,7 @@ class Behavior(object):
 
     def calculate_overall_score(self):
         self.behavior_score = self.aggressive_parameter * self.aggressive_score + self.cautious_parameter * self.cautious_score + self.lawful_parameter * self.lawful_score
-    '''
+    
     def turn_decision(self):
 
         self.turn_obstacle = None 
@@ -398,10 +399,10 @@ class Behavior(object):
         self.action_performed = False
         car_follow_behavior   = False
         
-        convert_aggressive_value = interp1d([0, 30 ], [30, 15])
-        convert_cautious_value   = interp1d([0, 30 ], [0 , 10])
+        convert_aggressive_value = interp1d([0, 10 ], [30, 15])
+        convert_cautious_value   = interp1d([0, 10 ], [0 , 10])
         convert_offset_value     = interp1d([0, 100], [5 , 20])
-        
+        convert_aggressive_value_for_behaviors = interp1d([0, 10 ], [0, 1])
      
         #spawn(self.vehicle_list)
 
@@ -417,6 +418,7 @@ class Behavior(object):
 
         pedestrian_location = walker_list[0].get_location()
         '''
+        '''
         start_point = carla.Transform(carla.Location(x=25.551256, y=-193.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
 
         thr = 0.25
@@ -427,10 +429,10 @@ class Behavior(object):
         control_signal1 = carla.VehicleControl(throttle=thr)
         vehicle_actor1.apply_control(control_signal1)
         self.vehicle_list.append(vehicle_actor1)
+        '''
+        start_point = carla.Transform(carla.Location(x=15.551256, y=-197, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
 
-        start_point = carla.Transform(carla.Location(x=30.551256, y=-197.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
-
-        thr = 0.2
+        thr = 0.3
         vehicle = Vehicle()                                  
         vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
         vehicle.choose_model('model3', self.blueprint, world)
@@ -450,19 +452,21 @@ class Behavior(object):
         self.vehicle_list.append(vehicle_actor1)
         '''
         
-        velocity = 20
+        velocity = 8
         self.pub_vel. publish ({'velocity'  : velocity})
-        self.pub_agg. publish ({'aggressive': 30      })
+        self.pub_agg. publish ({'aggressive':  6      })
         self.pub_caut.publish ({'cautious'  : 10      })
         self.pub_law. publish ({'lawful'    : 10      })
         self.wait(10)
         
+        self.action = False
+
         while True:
-            
+            """
             thr += 0.001
             control_signal1 = carla.VehicleControl(throttle=thr)
             vehicle_actor1.apply_control(control_signal1)
-            
+            """
             try:
                     
                 # spectator method is called in order to place the view of the simulator exactly above the vehicle 
@@ -514,7 +518,7 @@ class Behavior(object):
                 self.overtaked_obstacle_distance_threshold = convert_aggressive_value(self.aggressive_score) / 2
                 self.closest_front_side_obstacle_distance_threshold = 20
                 self.lane_change_offset = int(convert_offset_value(self.velocity))
-                self.rear_obstacle_distance_threshold = convert_aggressive_value(self.aggressive_score)
+                self.rear_obstacle_distance_threshold = 5 #convert_aggressive_value(self.aggressive_score)
                 
                 self.rear_right_vehicle_threshold  = 10 #convert_aggressive_value(self.aggressive_score)
                 self.front_right_vehicle_threshold = 15 #convert_aggressive_value(self.aggressive_score)
@@ -522,11 +526,11 @@ class Behavior(object):
                 self.front_left_vehicle_threshold  = convert_aggressive_value(self.aggressive_score)
 
                 self.is_right_lane_safe()
-                print("----")
-                print(self.rear_right_is_safe , self.obstacle_manager.closest_rear_right_vehicle )
-                print(self.front_right_is_safe, self.obstacle_manager.closest_front_right_vehicle)
-                print(self.obstacle_manager.closest_distance_from_front_right_vehicle, self.front_right_vehicle_threshold)
-                print("----")
+                #print("----")
+                #print(self.rear_right_is_safe , self.obstacle_manager.closest_rear_right_vehicle )
+                #print(self.front_right_is_safe, self.obstacle_manager.closest_front_right_vehicle)
+                #print(self.obstacle_manager.closest_distance_from_front_right_vehicle, self.front_right_vehicle_threshold)
+                #print("----")
                 # --------------------------------------------------------------------------- #
                 # |                                                                         | #
                 # |                           Vehicle's Perception                          | #
@@ -555,8 +559,9 @@ class Behavior(object):
                 self.obstacle_manager.check_side_obstacles(self.waypoints, self.index)
 
                 # check if rear obstacle is closely - tailgating 
-                tailgating = self.check_tailgating()
+                vehicle_in_back_closely = self.vehicle_in_back()
                 
+                # check if front vehicle is closely 
                 vehicle_in_front_closely = self.vehicle_in_front()
                 
                 # --------------------------------------------------------------------------- #
@@ -570,12 +575,12 @@ class Behavior(object):
                 #    self.overtake_started = self.overtake()
                 #    if self.overtake_started:
                 #        print(1)
-                    #if tailgating:
+                    #if vehicle_in_back_closely:
                     #    self.speed_up(self.aggressive_score)
                     #    self.action_performed = True
                     
                 #else:
-                    #if tailgating:
+                    #if vehicle_in_back_closely:
                     #    self.speed_up(self.cautious_score)
                     #    self.turn_decision()
                     #    self.overtake_started = self.overtake()
@@ -593,7 +598,7 @@ class Behavior(object):
                 #    self.car_follow()
                 
                 '''
-                if tailgating:
+                if vehicle_in_back_closely:
                 
                     self.action_performed = True
                 
@@ -604,7 +609,7 @@ class Behavior(object):
                         self.speed_up(desired_velocity)
                 '''
 
-                
+                '''
                 if vehicle_in_front_closely:
                     
                     self.turn_decision()
@@ -621,8 +626,49 @@ class Behavior(object):
                     self.complete_overtake()
 
                 if not self.overtake_started:
-                    self.manual_lane_change()         
+                   self.manual_lane_change()         
+                '''
+                #simperifores:
+                #               1 - car follow 
+                #               2 - lane change 
+                #               3 - speed up 
+                #               4 - slow down
+                #  
+                behaviors = {"CAR_FOLLOW_BEHAVIOR" : 0, 
+                             "LANE_CHANGE_BEHAVIOR": 0, 
+                             "SPEED_UP_BEHAVIOR"   : 0, 
+                             "SLOW_DOWN_BEHAVIOR"  : 0}
+
+                self.car_follow_behavior  = 0
+                self.lane_change_behavior = 0
+                self.speed_up_behavior    = 0
+                self.slow_down_behavior   = 0
+
+                if vehicle_in_back_closely and self.action == False:
+                    
+                    self.car_follow_behavior += -1
+                    self.slow_down_behavior  += -1
                 
+                    if self.aggressive_score > 5:
+                        self.speed_up_behavior    +=  convert_aggressive_value_for_behaviors(self.aggressive_score) 
+                        self.slow_down_behavior   += -1
+                        self.lane_change_behavior += -convert_aggressive_value_for_behaviors(self.aggressive_score)
+                    
+                    else:
+                        self.speed_up_behavior    += -convert_aggressive_value_for_behaviors(self.aggressive_score) 
+                        self.slow_down_behavior   += -1
+                        self.lane_change_behavior +=  convert_aggressive_value_for_behaviors(self.aggressive_score)
+
+                    behaviors["CAR_FOLLOW_BEHAVIOR"]  = self.car_follow_behavior
+                    behaviors["LANE_CHANGE_BEHAVIOR"] = self.lane_change_behavior
+                    behaviors["SPEED_UP_BEHAVIOR"]    = self.speed_up_behavior
+                    behaviors["SLOW_DOWN_BEHAVIOR"]   = self.slow_down_behavior
+                    
+                    self.action == True
+                    
+                    max_key = max(behaviors, key=behaviors.get)
+                    print(max_key, behaviors[max_key])
+
                 # print the route's trace in the simulator
                 self.world.debug.draw_string(self.waypoints[self.index].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
                 

@@ -59,10 +59,10 @@ def main():
         if start_waypoint.get_junction() == None:  # spawn vehicles only on roads, not junctions
             break
 
-    start_point = carla.Transform(carla.Location(x=20.551256, y=-197.809540, z=1),
+    start_point = carla.Transform(carla.Location(x=40.551256, y=-197.809540, z=1),
                                   carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
     # start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
-    start_point = carla.Transform(carla.Location(x=-5, y=-197.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+    start_point = carla.Transform(carla.Location(x=50, y=-197.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
     
     start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
     vehicle_list = []
