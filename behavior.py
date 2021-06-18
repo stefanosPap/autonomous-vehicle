@@ -1,5 +1,6 @@
 import carla
 import numpy as np
+import pandas as pd 
 from scipy.interpolate import interp1d
 from agents.navigation.controller import VehiclePIDController
 from traffic import Traffic
@@ -36,6 +37,8 @@ class Behavior(object):
         self.custom_controller = VehiclePIDController(vehicle_actor, 
                                                       args_lateral      = {'K_P': 1, 'K_D': 0, 'K_I': 0},
                                                       args_longitudinal = {'K_P': 1, 'K_D': 0, 'K_I': 0})
+
+        self.safe_distances = {0: 2.0, 5: 4.22, 10: 6.72, 15: 9.49, 20: 12.54, 25: 15.86, 30: 19.46, 35: 23.33, 40: 27.49, 45: 31.91}
 
         # obstacle manager initialization 
         self.obstacle_manager = ObstacleManager(map, vehicle_actor, vehicle_list, world)
@@ -377,6 +380,25 @@ class Behavior(object):
         if self.obstacle_manager.closest_distance_from_front_left_vehicle < self.front_left_vehicle_threshold:
             self.front_left_is_safe = False
 
+    def calculate_safe_distance(self):
+        
+        self.safe_distance = float("inf")
+        
+        if self.obstacle_manager.closest_front_vehicle != None:
+            velocity_vector = self.obstacle_manager.closest_front_vehicle.get_velocity()
+            velocity_array = [velocity_vector.x, velocity_vector.y, velocity_vector.z]
+            other_velocity = np.linalg.norm(velocity_array)
+            other_velocity = round(3.6 * other_velocity, 1)
+
+            diff = self.velocity - other_velocity
+            
+            if 0 < diff < 45:
+                keys = list(self.safe_distances.keys())
+                values = list(self.safe_distances.values())
+
+                inter_function = interp1d(keys, values)
+                self.safe_distance = float(inter_function(diff))
+
     def wait(self, reps):
         for _ in range(reps):
             self.world.tick()
@@ -430,7 +452,7 @@ class Behavior(object):
         vehicle_actor1.apply_control(control_signal1)
         self.vehicle_list.append(vehicle_actor1)
         '''
-        start_point = carla.Transform(carla.Location(x=15.551256, y=-197, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+        start_point = carla.Transform(carla.Location(x=40.551256, y=-196, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
 
         thr = 0.3
         vehicle = Vehicle()                                  
@@ -525,7 +547,9 @@ class Behavior(object):
                 self.rear_left_vehicle_threshold   = convert_aggressive_value(self.aggressive_score)
                 self.front_left_vehicle_threshold  = convert_aggressive_value(self.aggressive_score)
 
-                self.is_right_lane_safe()
+                self.is_right_lane_safe()                    
+                self.calculate_safe_distance()
+                
                 #print("----")
                 #print(self.rear_right_is_safe , self.obstacle_manager.closest_rear_right_vehicle )
                 #print(self.front_right_is_safe, self.obstacle_manager.closest_front_right_vehicle)
@@ -628,7 +652,7 @@ class Behavior(object):
                 if not self.overtake_started:
                    self.manual_lane_change()         
                 '''
-                #simperifores:
+                # behaviors:
                 #               1 - car follow 
                 #               2 - lane change 
                 #               3 - speed up 
