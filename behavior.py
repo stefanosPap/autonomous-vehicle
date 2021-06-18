@@ -150,8 +150,8 @@ class Behavior(object):
                     self.slow_down(desired_velocity=desired_vel)
 
     def overtake(self):
-        
-        if self.turn_obstacle != None:
+
+        if self.turn_obstacle != None:     
             self.trajectory.change = False
             self.index += self.lane_change_offset
             self.change_lane(self.turn_obstacle, self.index, self.velocity)
@@ -192,15 +192,9 @@ class Behavior(object):
 
         condition_for_overtaked_vehicle = overtaked_obstacle_distance > self.overtaked_obstacle_distance_threshold and overtaked_obstacle_distance != float('inf')
         condition_for_front_side_vehicle = (closest_front_side_obstacle_distance > self.closest_front_side_obstacle_distance_threshold and closest_front_side_obstacle_distance != float('inf')) or closest_front_side_obstacle_distance == float('inf')
-        
-        #print("------")
-        #print(overtaked_obstacle_distance, condition_for_overtaked_vehicle)
-        #print(closest_front_side_obstacle_distance, condition_for_front_side_vehicle)
-        #print("------")
-        
+
         if condition_for_overtaked_vehicle and condition_for_front_side_vehicle:
-            print(overtaked_obstacle_distance, self.overtaked_obstacle_distance_threshold)
-            print("Done")
+          
             if self.overtake_direction == "RIGHT":
                 self.turn_obstacle = "LEFT"
             elif self.overtake_direction == "LEFT":
@@ -382,7 +376,7 @@ class Behavior(object):
 
     def calculate_safe_distance(self):
         
-        self.safe_distance = float("inf")
+        self.safe_distance = -float("inf")
         
         if self.obstacle_manager.closest_front_vehicle != None:
             velocity_vector = self.obstacle_manager.closest_front_vehicle.get_velocity()
@@ -424,7 +418,7 @@ class Behavior(object):
         convert_aggressive_value = interp1d([0, 10 ], [30, 15])
         convert_cautious_value   = interp1d([0, 10 ], [0 , 10])
         convert_offset_value     = interp1d([0, 100], [5 , 20])
-        convert_aggressive_value_for_behaviors = interp1d([0, 10 ], [0, 1])
+        convert_aggressive_value_for_behaviors = interp1d([0, 10 ], [1, 2])
      
         #spawn(self.vehicle_list)
 
@@ -452,9 +446,9 @@ class Behavior(object):
         vehicle_actor1.apply_control(control_signal1)
         self.vehicle_list.append(vehicle_actor1)
         '''
-        start_point = carla.Transform(carla.Location(x=40.551256, y=-196, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+        start_point = carla.Transform(carla.Location(x=60.551256, y=-196, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
 
-        thr = 0.3
+        thr = 0.2
         vehicle = Vehicle()                                  
         vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
         vehicle.choose_model('model3', self.blueprint, world)
@@ -462,6 +456,7 @@ class Behavior(object):
         control_signal1 = carla.VehicleControl(throttle=thr)
         vehicle_actor1.apply_control(control_signal1)
         self.vehicle_list.append(vehicle_actor1)
+       
         '''
         start_point = carla.Transform(carla.Location(x=65.551256, y=-195.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
         thr = 0.2
@@ -474,14 +469,36 @@ class Behavior(object):
         self.vehicle_list.append(vehicle_actor1)
         '''
         
-        velocity = 8
+        velocity = 0
         self.pub_vel. publish ({'velocity'  : velocity})
-        self.pub_agg. publish ({'aggressive':  6      })
+        self.pub_agg. publish ({'aggressive':  5      })
         self.pub_caut.publish ({'cautious'  : 10      })
         self.pub_law. publish ({'lawful'    : 10      })
         self.wait(10)
         
         self.action = False
+        
+
+        behaviors = {
+                        "OVERTAKE"          : [ 0.4,  0.7],
+                        "CAR_FOLLOW"        : [-0.3, -0.3], 
+
+                        "LEFT_LANE_CHANGE"  : [ 0.2,  0.5],
+                        "RIGHT_LANE_CHANGE" : [ 0.2,  0.5], 
+                        "KEEP_STRAIGHT"     : [-0.2, -0.2],
+                        
+                        "SPEED_UP"          : [-0.1, -0.1], 
+                        "SLOW_DOWN"         : [ 0.8,  0.8],
+                        "KEEP_VELOCITY"     : [-0.1, -0.8],
+                        "STOP"              : [ 0.5,  0.6]
+                        
+                        }
+
+        behaviors = pd.DataFrame(behaviors, index=[
+                                                   "higher velocity than obstacle's velocity",
+                                                   "close front vehicle"
+                                                   ])
+        max_behavior = "KEEP_STRAIGHT"
 
         while True:
             """
@@ -517,7 +534,6 @@ class Behavior(object):
                 velocity_norm = np.linalg.norm(velocity_array)
                 self.pub.publish({'velocity': round(3.6 * velocity_norm, 1)})
 
-
                 # --------------------------------------------------------------------------- #
                 # |                                                                         | #
                 # |                        Vehicle's Behavior Definition                    | #
@@ -536,7 +552,12 @@ class Behavior(object):
                     self.lawful()
                     self.sub_law.set_change_lawful(False)  
 
-                self.front_obstacle_distance_threshold = convert_aggressive_value(self.aggressive_score) + convert_cautious_value(self.cautious_score)
+
+                self.calculate_safe_distance()
+
+                #self.front_obstacle_distance_threshold = convert_aggressive_value(self.aggressive_score) + convert_cautious_value(self.cautious_score)
+                self.front_obstacle_distance_threshold = self.safe_distance
+                
                 self.overtaked_obstacle_distance_threshold = convert_aggressive_value(self.aggressive_score) / 2
                 self.closest_front_side_obstacle_distance_threshold = 20
                 self.lane_change_offset = int(convert_offset_value(self.velocity))
@@ -548,7 +569,6 @@ class Behavior(object):
                 self.front_left_vehicle_threshold  = convert_aggressive_value(self.aggressive_score)
 
                 self.is_right_lane_safe()                    
-                self.calculate_safe_distance()
                 
                 #print("----")
                 #print(self.rear_right_is_safe , self.obstacle_manager.closest_rear_right_vehicle )
@@ -654,20 +674,59 @@ class Behavior(object):
                 '''
                 # behaviors:
                 #               1 - car follow 
-                #               2 - lane change 
-                #               3 - speed up 
-                #               4 - slow down
-                #  
-                behaviors = {"CAR_FOLLOW_BEHAVIOR" : 0, 
-                             "LANE_CHANGE_BEHAVIOR": 0, 
-                             "SPEED_UP_BEHAVIOR"   : 0, 
-                             "SLOW_DOWN_BEHAVIOR"  : 0}
+                #               2 - overtake
+                
+                #               3 - right lane change 
+                #               4 - left lane change 
+                #               5 - keep going straight              
+                
+                #               6 - speed up 
+                #               7 - slow down
+                #               8 - keep velocity 
+                #               9 - stop
+         
+                if vehicle_in_front_closely:
+                    
+                    aggressive_param = convert_aggressive_value_for_behaviors(self.aggressive_score)
+                    
+                    behaviors["OVERTAKE"         ][:] = behaviors["OVERTAKE"         ][:] * aggressive_param
+                    behaviors["LEFT_LANE_CHANGE" ][:] = behaviors["LEFT_LANE_CHANGE" ][:] * aggressive_param
+                    behaviors["RIGHT_LANE_CHANGE"][:] = behaviors["RIGHT_LANE_CHANGE"][:] * aggressive_param
+                    behaviors["SPEED_UP"         ][:] = behaviors["SPEED_UP"         ][:] * aggressive_param
+                    
+                    values = behaviors.loc[:].values
+                    sum_values = values.sum(0)
+                    
+                    max_value = max(sum_values)
+                    
+                    max_key = np.argmax(sum_values, 0)
+                    max_behavior = behaviors.columns[max_key]
+                    
+                    print(max_behavior)
 
+                if (max_behavior == "OVERTAKE"):
+                    print(self.index)
+                    if self.action_performed == False:                    
+                        self.turn_obstacle = "LEFT"  
+                        self.action_performed = True
+
+                    else:
+                        self.turn_obstacle = None
+
+                    self.overtake_started = self.overtake()
+                
+                    if not self.overtake_completed:
+                        self.complete_overtake()
+                    
+                    if not self.overtake_started:
+                        self.manual_lane_change()    
+
+                '''
                 self.car_follow_behavior  = 0
                 self.lane_change_behavior = 0
                 self.speed_up_behavior    = 0
                 self.slow_down_behavior   = 0
-
+                
                 if vehicle_in_back_closely and self.action == False:
                     
                     self.car_follow_behavior += -1
@@ -683,16 +742,16 @@ class Behavior(object):
                         self.slow_down_behavior   += -1
                         self.lane_change_behavior +=  convert_aggressive_value_for_behaviors(self.aggressive_score)
 
-                    behaviors["CAR_FOLLOW_BEHAVIOR"]  = self.car_follow_behavior
+                    behaviors["CAR_FOLLOW_BEHAVIOR" ] = self.car_follow_behavior
                     behaviors["LANE_CHANGE_BEHAVIOR"] = self.lane_change_behavior
-                    behaviors["SPEED_UP_BEHAVIOR"]    = self.speed_up_behavior
-                    behaviors["SLOW_DOWN_BEHAVIOR"]   = self.slow_down_behavior
+                    behaviors["SPEED_UP_BEHAVIOR"   ] = self.speed_up_behavior
+                    behaviors["SLOW_DOWN_BEHAVIOR"  ] = self.slow_down_behavior
                     
                     self.action == True
                     
                     max_key = max(behaviors, key=behaviors.get)
                     print(max_key, behaviors[max_key])
-
+                '''
                 # print the route's trace in the simulator
                 self.world.debug.draw_string(self.waypoints[self.index].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
                 
