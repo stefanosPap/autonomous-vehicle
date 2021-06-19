@@ -113,7 +113,6 @@ def main():
     y_smooth=f(x_new)
     '''
 
-    
     # vehicle.set_spectator()
     client.add_actor(vehicle_actor)
 
