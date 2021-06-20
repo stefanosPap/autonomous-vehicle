@@ -6,7 +6,7 @@ class Traffic(object):
     # Constructor #
     ###############
     def __init__(self, world, map):
-        self.traffic_state = "GREEN"
+        self.traffic_state = None
         self.world = world
         self.lane_info = {}
         self.map = map
@@ -14,8 +14,10 @@ class Traffic(object):
     ######################################
     # Method for checking traffic lights #
     ######################################
-    def check_traffic_lights(self, vehicle_actor):
+    def check_traffic_lights(self, vehicle_actor, waypoint):
+        
         if vehicle_actor.is_at_traffic_light():
+        
             traffic_light = vehicle_actor.get_traffic_light()
         
             if traffic_light != None:
@@ -27,7 +29,7 @@ class Traffic(object):
 
                 elif traffic_light.get_state() == carla.TrafficLightState.Green:
                     self.traffic_state = "GREEN"
-    
+
         return self.traffic_state
 
     ######################################
@@ -40,13 +42,13 @@ class Traffic(object):
             del waypoint
             waypoint = self.map.get_waypoint(loc)
 
-        landmarks = waypoint.get_landmarks(distance=3)
+        landmarks = waypoint.get_landmarks(distance=25)
         landmark_names = []
         if len(landmarks) != 0:
             for j in range(len(landmarks)):
                 self.world.debug.draw_box(carla.BoundingBox(landmarks[j].transform.location, carla.Vector3D(0.5,0.5,2)), landmarks[j].transform.rotation, 0.05, carla.Color(255,0,0,0),100)
                 landmark_names.append(landmarks[j].name)
-                print(landmarks[j].name)
+                #print(landmarks[j].name, landmarks[j].type)
 
         return landmarks
     
