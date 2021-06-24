@@ -54,6 +54,11 @@ class ObstacleManager(object):
             self.closest_distance_from_front_left_vehicle = float('inf')
             self.closest_distance_from_rear_left_vehicle  = float('inf')
                     
+            self.closest_front_left_vehicle  = None
+            self.closest_front_right_vehicle = None
+            self.closest_rear_left_vehicle   = None
+            self.closest_rear_right_vehicle  = None
+
             for vehicle in self.vehicle_list[1:]:
 
                 ego_waypoint   = self.map.get_waypoint(self.ego_vehicle.get_location(), project_to_road=False)
@@ -102,7 +107,7 @@ class ObstacleManager(object):
                 front_min_index = np.argmin(self.front_right_distances)
                 self.closest_front_right_vehicle = self.front_right_vehicles[front_min_index]
                 self.closest_distance_from_front_right_vehicle = self.front_right_distances[front_min_index]
-
+            
             if len(self.rear_right_distances) is not 0:
                 rear_min_index = np.argmin(self.rear_right_distances)
                 self.closest_rear_right_vehicle = self.rear_right_vehicles[rear_min_index]
@@ -132,6 +137,7 @@ class ObstacleManager(object):
                 self.closest_rear_left_vehicle = self.rear_left_vehicles[rear_min_index]
                 self.closest_distance_from_rear_left_vehicle = self.rear_left_distances[rear_min_index]
 
+            
     def check_obstacles(self):
 
         self.front_location = self.vehicle_actor.get_location() + carla.Location(self.vehicle_actor.bounding_box.extent.x, 0, 0)
@@ -147,6 +153,9 @@ class ObstacleManager(object):
         self.closest_distance_from_front_vehicle = float('inf')
         self.closest_distance_from_rear_vehicle  = float('inf')
 
+        self.closest_front_vehicle = None
+        self.closest_rear_vehicle  = None
+        
         for vehicle in self.vehicle_list[1:]:
 
             ego_waypoint   = self.map.get_waypoint(self.ego_vehicle.get_location(), project_to_road=False)
@@ -181,4 +190,3 @@ class ObstacleManager(object):
             rear_min_index = np.argmin(self.rear_distances)
             self.closest_rear_vehicle = self.rear_vehicles[rear_min_index]
             self.closest_distance_from_rear_vehicle = self.rear_distances[rear_min_index]
-        
