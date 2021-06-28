@@ -61,10 +61,11 @@ class ObstacleManager(object):
 
             for vehicle in self.vehicle_list[1:]:
 
-                ego_waypoint   = self.map.get_waypoint(self.ego_vehicle.get_location(), project_to_road=False)
-                other_waypoint = self.map.get_waypoint(vehicle.get_location(), project_to_road=False)
+                ego_waypoint   = self.map.get_waypoint(self.ego_vehicle.get_location(), project_to_road=False, lane_type=carla.LaneType.Any)
+                other_waypoint = self.map.get_waypoint(vehicle.get_location(), project_to_road=False, lane_type=carla.LaneType.Any)
                 
                 if other_waypoint == None:
+        
                     continue
                 
                 # check if right lane exists 
@@ -87,7 +88,6 @@ class ObstacleManager(object):
 
                 if left_lane_id == other_waypoint.lane_id:
                     self.vehicles_in_left_lane.append(vehicle)
-
 
             for vehicle in self.vehicles_in_right_lane:
                 vehicle_location = vehicle.get_location()
