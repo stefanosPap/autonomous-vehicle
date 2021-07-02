@@ -10,11 +10,33 @@ from vehicle import Vehicle
 from client import Client
 from utilities import plot_axis, rotate, scale, expanded_bounding, rectangle_bounding
 from communicationMQTT import VehiclePublisherMQTT
+import random
 
-def spawn(vehicle_list):
+def spawn(vehicle_list, number_of_vehicles):
     client = Client()                                       
     client.connect()                                        # connect the client 
     [blueprint, world, map]= client.get_simulation()
+
+    spawn_points = world.get_map().get_spawn_points()
+    
+    # --------------
+    # Spawn vehicles
+    # --------------        
+    print(spawn_points)
+    start_point = random.choice(spawn_points)
+    blueprint = random.choice(world.get_blueprint_library().filter("vehicle.*"))
+
+    vehicle_actor = world.spawn_actor(blueprint, start_point)
+    vehicle_actor.set_autopilot(True)
+    vehicle_list.append(vehicle_actor)
+    world.tick()
+    world.tick()
+    world.tick()
+    world.tick()
+    world.tick()
+    
+    
+    '''
     yaw = 90
     start_point = carla.Transform(carla.Location(x=-6.5, y=-90, z=0.275307), carla.Rotation(pitch=0.000000, yaw=yaw, roll=0.000000))
     start_point = carla.Transform(carla.Location(x=30.551256, y=-197.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
@@ -56,6 +78,7 @@ def spawn(vehicle_list):
     #control_signal = carla.VehicleControl(throttle=0.19)
     #vehicle_actor.apply_control(control_signal)
     # pub = VehiclePublisherMQTT(topic='position')
+    '''
 
     '''
     for k in range(1,10,10):

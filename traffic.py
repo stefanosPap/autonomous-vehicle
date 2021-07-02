@@ -48,7 +48,7 @@ class Traffic(object):
             for j in range(len(landmarks)):
                 self.world.debug.draw_box(carla.BoundingBox(landmarks[j].transform.location, carla.Vector3D(0.5,0.5,2)), landmarks[j].transform.rotation, 0.05, carla.Color(255,0,0,0),100)
                 landmark_names.append(landmarks[j].name)
-                #print(landmarks[j].name, landmarks[j].type)
+                #print(landmarks[j].name, landmarks[j].type, landmarks[j].value)
 
         return landmarks
     
