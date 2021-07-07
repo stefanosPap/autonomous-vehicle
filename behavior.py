@@ -113,13 +113,13 @@ class Behavior(object):
 
     def slow_down(self, desired_velocity):
         
-        if self.velocity > desired_velocity:
+        if self.current_velocity > desired_velocity:
             self.velocity = desired_velocity
             self.publish_velocity()
 
     def speed_up(self, desired_velocity):
         
-        if self.velocity < desired_velocity:
+        if self.current_velocity < desired_velocity:
             self.velocity = desired_velocity
             self.publish_velocity()
 
@@ -129,7 +129,14 @@ class Behavior(object):
         self.publish_velocity()
 
     def publish_velocity(self):
+        self.wait(5)
         self.pub_vel.publish({'velocity': self.velocity})
+
+    def get_current_velocity(self):
+        velocity_vector = self.vehicle_actor.get_velocity()
+        velocity_array = [velocity_vector.x, velocity_vector.y, velocity_vector.z]
+        velocity_norm = np.linalg.norm(velocity_array)
+        self.current_velocity = 3.6 * velocity_norm
 
     def change_lane(self, turn, i, desired_vel):
 
@@ -233,7 +240,6 @@ class Behavior(object):
         if condition_for_overtaked_vehicle and condition_for_front_side_vehicle:
             if (self.index + self.lane_change_offset >= len(self.waypoints)):
                 return
-            print(1)
             if self.overtake_direction == "RIGHT":
                 self.turn_obstacle = "LEFT"
             elif self.overtake_direction == "LEFT":
@@ -300,13 +306,13 @@ class Behavior(object):
         
         delay_t = 3.5
         delta_d = ego_loc.distance(other_loc)
-        delta_u = self.velocity - self.front_obstacle_velocity
+        delta_u = self.current_velocity - self.front_obstacle_velocity
 
         acc = kd * delta_d + ku * delta_u
         
-        target_speed = self.velocity + acc * delay_t
+        target_speed = self.current_velocity + acc * delay_t
 
-        if target_speed != self.velocity:
+        if target_speed != self.current_velocity:
             self.velocity = target_speed / 3.6 
             self.publish_velocity()
 
@@ -338,7 +344,7 @@ class Behavior(object):
             return False
 
         self.get_front_obstacle_velocity()
-        if self.velocity > self.front_obstacle_velocity:
+        if self.current_velocity > self.front_obstacle_velocity:
             return True
         
         return False
@@ -382,6 +388,7 @@ class Behavior(object):
     
         return False
     
+    
     # 4th rule
     def exists_stop(self):
 
@@ -400,14 +407,33 @@ class Behavior(object):
                         self.stop_sign = True
         
         # check for stop sign closely 
-        if self.stop_sign:
+        if self.stop_sign and self.exists_intersection(2):
             return True
     
         return False
+    
 
-    # 5th rule 
-    def exists_traffic_light(self):
+    # 5th rule
+    def is_end_location_closely(self):
+        current_loc = self.waypoints[self.index].transform.location
+        end_location = self.waypoints[len(self.waypoints) - 1].transform.location
+        end_distance = current_loc.distance(end_location)
+        if end_distance < 15:
+            return True 
+        return False
 
+    # 6th rule
+    def is_front_free_for_a_while(self):
+        
+        if self.end_trigger_waypoint_number - self.start_trigger_waypoint_number > 20 and not self.vehicle_in_front(): 
+            self.start_trigger_waypoint_number = self.index
+            return True
+        return False
+
+    # 7th rule
+    def red_traffic_light(self):
+
+        red_traffic_light = False
         self.traffic_light = False        
         self.traffic_light_object = None 
         values = list(self.traffic_signs_active.values())[0] 
@@ -426,51 +452,28 @@ class Behavior(object):
                     elif self.waypoints[self.index].lane_id < 0 and (orientation == "Negative" or orientation == "Both"):
                         self.traffic_light = True         
                         self.traffic_light_object = self.world.get_traffic_light(values[i])
-                    
-        # check for traffic light closely 
-        if self.traffic_light:
-            return True
-        return False
-
-    # 6th rule
-    def is_end_location_closely(self):
-        current_loc = self.waypoints[self.index].transform.location
-        end_location = self.waypoints[len(self.waypoints) - 1].transform.location
-        end_distance = current_loc.distance(end_location)
-        if end_distance < 15:
-            return True 
-        return False
-
-    # 7th rule
-    def is_front_free_for_a_while(self):
         
-        if self.end_trigger_waypoint_number - self.start_trigger_waypoint_number > 20 and not self.vehicle_in_front(): 
-            self.start_trigger_waypoint_number = self.index
-            return True
-        return False
-
-    # 8th rule
-    def red_traffic_light(self):
-        red_traffic_light = False
-        if self.exists_traffic_light():
-            if self.traffic_light_object.get_state() == carla.TrafficLightState.Red and self.exists_intersection(5):
+        
+        if self.traffic_light:
+            if self.traffic_light_object.get_state() == carla.TrafficLightState.Red and self.exists_intersection(3):
                 red_traffic_light = True
 
         if self.traffic_light_state == "RED" or red_traffic_light:
             return True
         return False
 
-    # 9th rule
+    # 8th rule
     def check_zero_velocity(self):
         velocity_vector = self.vehicle_actor.get_velocity()
         velocity_array = [velocity_vector.x, velocity_vector.y, velocity_vector.z]
         velocity_norm = np.linalg.norm(velocity_array)
         
         if round(3.6 * velocity_norm, 1) < 0.001 and self.index > 2:
+            self.start_trigger_waypoint_number = self.index
             return True
         return False
 
-    # 10th rule
+    # 9th rule
     def is_right_lane_safe(self):
         
         self.rear_right_is_safe  = True
@@ -494,7 +497,7 @@ class Behavior(object):
             return True
         return False
 
-    # 11th rule
+    # 10th rule
     def is_left_lane_safe(self):
         
         self.rear_left_is_safe  = True
@@ -518,7 +521,7 @@ class Behavior(object):
             return True
         return False
 
-    # 12th rule
+    # 11th rule
     def has_left_lane_same_direction(self):
 
         if self.waypoints[self.index].get_left_lane() != None:
@@ -527,44 +530,44 @@ class Behavior(object):
                 return True
         return False
     
-    # 13th rule 
+    # 12th rule 
     def is_right_lane_denser_than_left(self):
         if len(self.obstacle_manager.vehicles_in_right_lane) > len(self.obstacle_manager.vehicles_in_left_lane):
             return True
         return False
 
-    # 14th rule
+    # 13th rule
     def is_left_lane_denser_than_right(self):
         if len(self.obstacle_manager.vehicles_in_left_lane) > len(self.obstacle_manager.vehicles_in_right_lane):
             return True
         return False
 
-    # 15th rule 
+    # 14th rule 
     def is_right_pedestrian_closely(self):
         if self.walker_manager.closest_distance_from_front_right_walker < 10:
             return True
         return False
 
-    # 16th rule
+    # 15th rule
     def is_left_pedestrian_closely(self):
         if self.walker_manager.closest_distance_from_front_left_walker  < 10:
             return True
         return False
 
-    # 17th rule
+    # 16th rule
     def is_front_pedestrian_closely(self):
         if self.walker_manager.closest_distance_from_front_walker  < 10:
             return True
         return False
     
-    # 18th rule    
+    # 17th rule    
     def is_right_lane_marking_legal(self):
         self.legal_right_lane_marking = ("Solid" not in str(self.waypoints[self.index].right_lane_marking.type) and  ("Right" in str(self.waypoints[self.index].lane_change) or "Both" in str(self.waypoints[self.index].lane_change)))
         if self.legal_right_lane_marking:
             return True
         return False
 
-    # 19th rule    
+    # 18th rule    
     def is_left_lane_marking_legal(self):
         self.legal_left_lane_marking = ("Solid" not in str(self.waypoints[self.index].left_lane_marking.type) and  ("Left" in str(self.waypoints[self.index].lane_change) or "Both" in str(self.waypoints[self.index].lane_change)))
         if self.legal_left_lane_marking:
@@ -572,7 +575,7 @@ class Behavior(object):
         return False
 
     
-    # 20th rule
+    # 19th rule
     def is_in_bidirectional_lane_for_long_time(self):
         if self.bidirectional_end_trigger_waypoint_number - self.bidirectional_start_trigger_waypoint_number > 10000: 
             self.bidirectional_start_trigger_waypoint_number = self.index
@@ -580,7 +583,7 @@ class Behavior(object):
             return True
         return False
 
-    # 21th rule
+    # 20th rule
     def is_left_lane_bidirectional(self):
         if self.waypoints[self.index].get_left_lane() == None:
             return False
@@ -589,7 +592,7 @@ class Behavior(object):
             return True
         return False
 
-    # 22th rule
+    # 21th rule
     def speed_is_above_the_limit(self):
 
         self.speed_limit_sign = False
@@ -620,7 +623,7 @@ class Behavior(object):
 
         if self.speed_limit_sign:
             if self.waypoints[self.index].lane_id >= 0 and (orientation == "Positive" or orientation == "Both"):
-                if self.velocity > value:
+                if self.current_velocity > value:
                     return True
 
             elif self.waypoints[self.index].lane_id < 0 and (orientation == "Negative" or orientation == "Both"):
@@ -689,7 +692,7 @@ class Behavior(object):
             other_velocity = np.linalg.norm(velocity_array)
             other_velocity = round(3.6 * other_velocity, 1)
 
-            diff = self.velocity - other_velocity
+            diff = self.current_velocity - other_velocity
             if 0 <= diff <= 100: 
                 keys = list(self.safe_distances.keys())
                 values = list(self.safe_distances.values())
@@ -768,7 +771,7 @@ class Behavior(object):
         if self.max_speed_behavior == "SLOW_DOWN":
             if not self.action_performed:
 
-                speed = self.convert_aggressive_value_for_behaviors_2(self.aggressive_score) * self.velocity
+                speed = self.convert_aggressive_value_for_behaviors_2(self.aggressive_score) * self.current_velocity
                 speed = max(10, speed)    
                 
                 #if self.max_behavior == "KEEP_STRAIGHT":
@@ -784,8 +787,9 @@ class Behavior(object):
         
         if self.max_speed_behavior == "SPEED_UP":
             if not self.action_performed:
-                if self.velocity != 0:
-                    speed = min(2 * self.velocity, 70)
+                if self.current_velocity > 1:
+                    speed = min(2 * self.current_velocity, 70)
+                    
                 else:
                     speed = 12
 
@@ -903,17 +907,17 @@ class Behavior(object):
         
 
         behaviors = {
-                    "OVERTAKE"          : [ 0.4,  0.7, -0.1, -0.1, -0.1, -0.9,  0.0,  0.0,  0.0,  0.0,  0.6,  0.3,  0.0, -0.5,  0.0, -0.5,  0.0,  0.0,  0.4,  0.0, -0.1,  0.0],
-                    "CAR_FOLLOW"        : [-0.3, -0.3,  0.9,  0.9,  0.9,  0.2,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.4,  0.0], 
+                    "OVERTAKE"          : [ 0.4,  0.7, -0.1, -0.1, -0.9,  0.0,  0.0,  0.0,  0.0,  0.6,  0.3,  0.0, -0.5,  0.0, -0.5,  0.0,  0.0,  0.4,  0.0, -0.1,  0.0],
+                    "CAR_FOLLOW"        : [-0.3, -0.3,  0.9,  0.1,  0.2,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.4,  0.0], 
 
-                    "LEFT_LANE_CHANGE"  : [ 0.2,  0.5, -0.2, -0.2, -0.2, -0.1,  0.0,  0.0,  0.0,  0.0,  0.5,  0.5,  0.5, -0.2,  0.4, -0.5,  0.2,  0.0,  0.4,  0.0, -0.1,  0.0],
-                    "RIGHT_LANE_CHANGE" : [ 0.2,  0.5, -0.2, -0.2, -0.2, -0.1,  0.0,  0.0,  0.0,  0.7,  0.0,  0.0, -0.2,  0.5, -0.5,  0.4,  0.2,  0.4,  0.0,  0.7,  0.3,  0.0], 
-                    "KEEP_STRAIGHT"     : [-0.2, -0.2,  0.7,  0.7,  0.7,  0.5,  0.5, -0.5,  0.0,  0.0,  0.0,  0.0,  0.4,  0.4,  0.2,  0.2,  0.1,  0.0,  0.0,  0.5,  0.2,  0.0],
+                    "LEFT_LANE_CHANGE"  : [ 0.2,  0.5, -0.2, -0.2, -0.1,  0.0,  0.0,  0.0,  0.0,  0.5,  0.5,  0.5, -0.2,  0.4, -0.5,  0.2,  0.0,  0.4,  0.0, -0.1,  0.0],
+                    "RIGHT_LANE_CHANGE" : [ 0.2,  0.5, -0.2, -0.2, -0.1,  0.0,  0.0,  0.0,  0.7,  0.0,  0.0, -0.2,  0.5, -0.5,  0.4,  0.2,  0.4,  0.0,  0.7,  0.3,  0.0], 
+                    "KEEP_STRAIGHT"     : [-0.2, -0.2,  0.7,  0.7,  0.5,  0.5, -0.5,  0.0,  0.0,  0.0,  0.0,  0.4,  0.4,  0.2,  0.2,  0.1,  0.0,  0.0,  0.5,  0.2,  0.0],
                         
-                    "SPEED_UP"          : [-0.5, -0.1, -0.2, -0.2, -0.2, -0.2,  0.8, -0.7,  0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.1,  0.1, -0.5,  0.0,  0.0,  0.2,  0.0, -0.3], 
-                    "SLOW_DOWN"         : [ 0.8,  0.8,  0.7,  0.7,  0.7,  0.9, -0.5,  0.2, -0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.2,  0.2,  0.5,  0.0,  0.0,  0.1,  0.0,  0.4],
-                    "KEEP_VELOCITY"     : [-0.1, -0.8,  0.4,  0.4,  0.4,  0.5,  0.5, -0.4, -0.3,  0.0,  0.0,  0.0,  0.0,  0.0,  0.3,  0.3,  0.4,  0.0,  0.0,  0.3,  0.0,  0.1],
-                    "STOP"              : [ 0.5,  0.6,  0.6,  0.6,  0.6, -0.1, -0.5,  0.9, -0.6, -0.1, -0.1,  0.0,  0.0,  0.0,  0.1,  0.1,  0.6,  0.0,  0.0, -0.4,  0.0,  0.0]
+                    "SPEED_UP"          : [-0.5, -0.1, -0.2, -0.2, -0.2,  0.8, -0.7,  0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.1,  0.1, -0.5,  0.0,  0.0,  0.2,  0.0, -0.3], 
+                    "SLOW_DOWN"         : [ 0.8,  0.8,  0.7,  0.4,  0.9, -0.5,  0.2, -0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.2,  0.2,  0.5,  0.0,  0.0,  0.1,  0.0,  0.4],
+                    "KEEP_VELOCITY"     : [-0.1, -0.8,  0.4,  0.3,  0.5,  0.5, -0.4, -0.3,  0.0,  0.0,  0.0,  0.0,  0.0,  0.3,  0.3,  0.4,  0.0,  0.0,  0.3,  0.0,  0.1],
+                    "STOP"              : [ 0.5,  0.6,  0.6,  0.5, -0.1, -0.5,  0.9, -0.6, -0.1, -0.1,  0.0,  0.0,  0.0,  0.1,  0.1,  0.6,  0.0,  0.0, -0.4,  0.0,  0.0]
                        
                     }
 
@@ -931,7 +935,6 @@ class Behavior(object):
                   "close front vehicle exists", 
                   "close distance from intersection",
                   "close distance from stop sign",
-                  "close distance from traffic light",
                   "close distance from the end", 
                   "front area is free",
                   "red light", 
@@ -976,7 +979,7 @@ class Behavior(object):
             vehicle_actor1.apply_control(control_signal1)
             '''
             try:
-                
+                self.get_current_velocity()
                 # spectator method is called in order to place the view of the simulator exactly above the vehicle 
                 # spectator()
 
@@ -1026,7 +1029,7 @@ class Behavior(object):
 
                 self.overtaked_obstacle_distance_threshold = self.convert_aggressive_value(self.aggressive_score) 
                 self.closest_front_side_obstacle_distance_threshold = self.convert_aggressive_value(self.aggressive_score)
-                self.lane_change_offset = int(self.convert_offset_value(self.velocity))
+                self.lane_change_offset = int(self.convert_offset_value(self.current_velocity))
                 self.rear_obstacle_distance_threshold = self.convert_aggressive_value(self.aggressive_score) / 2
                 
                 self.rear_right_vehicle_threshold  = self.convert_aggressive_value(self.aggressive_score) / 2
@@ -1099,68 +1102,64 @@ class Behavior(object):
                 # check if intersection exists - 3rd criterion 
                 intersection_closely = self.exists_intersection(15)
 
-                # check if stop exists - 4th criterion 
+                # check if stop sign exists closely - 4th criterion
                 stop_closely = self.exists_stop()
 
-                # check if traffic light exists - 5th criterion 
-                traffic_light_closely = self.exists_traffic_light()
-
-                # check if destination is close - 6th criterion 
+                # check if destination is close - 5th criterion 
                 destination_close = self.is_end_location_closely()
 
-                # check if front side is free for a while - 7th criterion 
+                # check if front side is free for a while - 6th criterion 
                 is_front_free = self.is_front_free_for_a_while()
                
-                # check if light is red - 8th criterion
+                # check if light is red - 7th criterion
                 red_light = self.red_traffic_light()
 
-                # check if velocity is equal to zero - 9th criterion
+                # check if velocity is equal to zero - 8th criterion
                 zero_velocity = self.check_zero_velocity()
 
-                # check if right lane is safe - 10th criterion 
+                # check if right lane is safe - 9th criterion 
                 safe_right_lane = self.is_right_lane_safe()                    
 
-                # check if left lane is safe - 11th criterion 
+                # check if left lane is safe - 10th criterion 
                 safe_left_lane = self.is_left_lane_safe()  
 
-                # check if left lane has the same direction - 12th criterion 
+                # check if left lane has the same direction - 11th criterion 
                 left_lane_same_direction = self.has_left_lane_same_direction()
 
-                # check if right lane is denser than the left - 13th criterion
+                # check if right lane is denser than the left - 12th criterion
                 right_lane_denser_than_left = self.is_right_lane_denser_than_left()
                 
-                # check if left lane is denser than the right - 14th criterion
+                # check if left lane is denser than the right - 13th criterion
                 left_lane_denser_than_right = self.is_left_lane_denser_than_right()
 
-                # check if right pedestrian is closely - 15th criterion
+                # check if right pedestrian is closely - 14th criterion
                 right_pedestrian_closely = self.is_right_pedestrian_closely()
 
-                # check if right pedestrian is closely - 16th criterion
+                # check if right pedestrian is closely - 15th criterion
                 left_pedestrian_closely  = self.is_left_pedestrian_closely()
 
-                # check if right pedestrian is closely - 17th criterion
+                # check if right pedestrian is closely - 16th criterion
                 front_pedestrian_closely = self.is_front_pedestrian_closely()
 
-                # check if right lane marking is legal - 18th criterion
+                # check if right lane marking is legal - 17th criterion
                 right_lane_marking_legal = self.is_right_lane_marking_legal()
          
-                # check if left lane marking is legal - 19th criterion
+                # check if left lane marking is legal - 18th criterion
                 left_lane_marking_legal = self.is_left_lane_marking_legal()
                 
-                # check if vehicle is in bidirectional for long time - 20th criterion
+                # check if vehicle is in bidirectional for long time - 19th criterion
                 in_bidirectional_lane_for_long_time = self.is_in_bidirectional_lane_for_long_time()
 
-                # check if left lane is bidirectional lane - 21th criterion
+                # check if left lane is bidirectional lane - 20th criterion
                 left_lane_bidirectional = self.is_left_lane_bidirectional()
                 
-                # check if speed limit is above the acceptable - 22th criterion 
+                # check if speed limit is above the acceptable - 21th criterion 
                 speed_above_the_limit = self.speed_is_above_the_limit()
 
                 self.row_filter    = np.array([[1 * higher_velocity_than_front_obstacle and 1 * vehicle_in_front_closely, 
                                                 1 * vehicle_in_front_closely, 
-                                                1 * intersection_closely,
+                                                1 * intersection_closely, 
                                                 1 * stop_closely,
-                                                1 * traffic_light_closely, 
                                                 1 * destination_close,
                                                 1 * is_front_free,
                                                 1 * red_light,
