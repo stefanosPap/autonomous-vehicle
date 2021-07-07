@@ -42,13 +42,11 @@ class Traffic(object):
             del waypoint
             waypoint = self.map.get_waypoint(loc)
 
-        landmarks = waypoint.get_landmarks(distance=25)
-        landmark_names = []
+        landmarks = waypoint.get_landmarks(distance=30)
         if len(landmarks) != 0:
             for j in range(len(landmarks)):
                 self.world.debug.draw_box(carla.BoundingBox(landmarks[j].transform.location, carla.Vector3D(0.5,0.5,2)), landmarks[j].transform.rotation, 0.05, carla.Color(255,0,0,0),100)
-                landmark_names.append(landmarks[j].name)
-                #print(landmarks[j].name, landmarks[j].type, landmarks[j].value)
+                #print(landmarks[j].name, landmarks[j].type, landmarks[j].value, landmarks[j].orientation)
 
         return landmarks
     
