@@ -2,6 +2,7 @@
 from scipy.interpolate import interp1d
 from vehicle import Vehicle
 from client import Client
+from vehicle_move import spawn
 
 from utilities import plot_axis, \
     configure_sensor, \
@@ -38,7 +39,6 @@ try:
 except IndexError:
     pass
 
-
 def main():
     #################
     # create client #
@@ -46,7 +46,9 @@ def main():
     client = Client()
     client.connect()  # connect the client
     [blueprint, world, map] = client.get_simulation()
-
+    
+    vehicle_list = []
+    walker_list = []
     # world = client.get_client().load_world('Town02')
     # world = client.get_client().reload_world()
     # print(client.get_client().get_available_maps())
@@ -65,7 +67,6 @@ def main():
     start_point = carla.Transform(carla.Location(x=7.116180, y=-197.809540, z=1), carla.Rotation(pitch=0.0, yaw=0.0, roll=0.0))
     
     start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
-    vehicle_list = []
     
     ##########################
     # create new ego vehicle #
@@ -77,6 +78,9 @@ def main():
     vehicle_transform = vehicle.get_vehicle_transform()  # get vehicle's transform
 
     vehicle_list.append(vehicle_actor)
+
+    spawn(vehicle_list, walker_list, 5, 5)
+    print(1, len(vehicle_list), len(walker_list))
 
     trajectory = Trajectory(world, map, vehicle_actor)
 
@@ -334,7 +338,7 @@ def main():
 
                 # follow trajectory and stop to obstacles and traffic lights
         try:
-            behavior = Behavior(vehicle_actor, waypoints, trajectory, map, world, blueprint, vehicle_list)
+            behavior = Behavior(vehicle_actor, waypoints, trajectory, map, world, blueprint, vehicle_list, walker_list)
             
             behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle,
                                        sensors['obs'].set_front_obstacle, sensors['obs'].get_other_actor, 0)
