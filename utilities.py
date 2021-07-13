@@ -170,9 +170,9 @@ def plot_axis(world, origin):
 ###################################################
 # Function for drawing bounding boxes to vehicles #
 ###################################################
-def draw_vehicle_box(world, vehicle_actor, location, rotation, life_time):
+def draw_vehicle_box(world, actor, location, rotation, life_time):
 
-    bb = vehicle_actor.bounding_box
+    bb = actor.bounding_box
     bbox = carla.BoundingBox(location, bb.extent)
     world.debug.draw_box(bbox, rotation, 0.1, carla.Color(255,0,0), life_time)
     return bbox

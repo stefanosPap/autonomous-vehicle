@@ -64,7 +64,7 @@ def main():
     start_point = carla.Transform(carla.Location(x=40.551256, y=-197.809540, z=1),
                                   carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
     # start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
-    start_point = carla.Transform(carla.Location(x=7.116180, y=-197.809540, z=1), carla.Rotation(pitch=0.0, yaw=0.0, roll=0.0))
+    start_point = carla.Transform(carla.Location(x=100.116180, y=-196, z=1), carla.Rotation(pitch=0.0, yaw=0.0, roll=0.0))
     
     start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
     
@@ -79,8 +79,8 @@ def main():
 
     vehicle_list.append(vehicle_actor)
 
-    spawn(vehicle_list, walker_list, 5, 5)
-    print(1, len(vehicle_list), len(walker_list))
+    #spawn(vehicle_list, walker_list, 5, 5)
+    #print(1, len(vehicle_list), len(walker_list))
 
     trajectory = Trajectory(world, map, vehicle_actor)
 
@@ -154,7 +154,7 @@ def main():
     #        world.debug.draw_string(waypoint[1].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
     #    else:
     #    if waypoint.lane_id == 6:
-    #        world.debug.draw_string(waypoint.transform.location, "{}".format(waypoint.lane_id), draw_shadow=False, color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
+    #        world.debug.draw_string(waypoint.transform.location, "{}".format(waypoint.road_id), draw_shadow=False, color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
 
     #        world.debug.draw_string(waypoint[0].transform.location, 's', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)
     #        world.debug.draw_string(waypoint[1].transform.location, 'e', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000, persistent_lines=True)

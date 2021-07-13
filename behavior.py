@@ -6,7 +6,7 @@ from scipy.interpolate import interp1d
 from agents.navigation.controller import VehiclePIDController
 from traffic import Traffic
 from vehicle_move import spawn
-from utilities import change_coordinate_system, plot_axis
+from utilities import change_coordinate_system, plot_axis, draw_vehicle_box
 from vehicle import Vehicle
 from client import Client
 from obstacle_manager import ObstacleManager
@@ -37,7 +37,7 @@ class Behavior(object):
         self.vehicle_list  = vehicle_list
         self.walker_list   = walker_list
         self.start_time    = 0
-
+        self.stop_time     = float("inf")
         # controller initialization
         self.custom_controller = VehiclePIDController(vehicle_actor, 
                                                       args_lateral      = {'K_P': 1, 'K_D': 0, 'K_I': 0},
@@ -353,7 +353,11 @@ class Behavior(object):
 
     # 2nd rule
     def vehicle_in_front(self):
+        self.still_front = False
         if self.obstacle_manager.closest_distance_from_front_vehicle < self.front_obstacle_distance_threshold:
+            if abs(self.vehicle_actor.get_transform().rotation.yaw - self.obstacle_manager.closest_front_vehicle.get_transform().rotation.yaw) > 10:
+                self.still_front = False
+                return False
 
             self.obstacle_detected = self.obstacle_manager.closest_front_vehicle.id
             
@@ -364,9 +368,10 @@ class Behavior(object):
                 self.previous_front_obstacle_detected = self.obstacle_detected
                 
                 return True
-            
+            elif self.previous_front_obstacle_detected == self.obstacle_detected:
+                self.still_front = True 
 
-        if self.obstacle_manager.closest_front_vehicle == None or time.time() - self.start_time > 15:
+        if self.obstacle_manager.closest_front_vehicle == None or time.time() - self.start_time > 38:
             self.previous_front_obstacle_detected = None
         
         return False
@@ -396,21 +401,28 @@ class Behavior(object):
     def exists_stop(self):
 
         self.stop_sign = False
+        distance = float("inf")
         if len(self.traffic_signs) is not 0:
         
             for i in range(len(self.traffic_signs)):
                 
                 #check for stop sign
                 if self.traffic_signs[i].type == "206":
-                    
+
+                    self.stop_detected = self.traffic_signs[i].id
+
                     orientation = str(self.traffic_signs[i].orientation)
+                    distance = self.traffic_signs[i].distance
                     if self.waypoints[self.index].lane_id >= 0 and (orientation == "Positive" or orientation == "Both"):
                         self.stop_sign = True
                     elif self.waypoints[self.index].lane_id < 0 and (orientation == "Negative" or orientation == "Both"):
                         self.stop_sign = True
-        
+                
         # check for stop sign closely 
-        if self.stop_sign and self.exists_intersection(2):
+        if self.stop_sign and distance < 5:    
+            if self.previous_stop_detected != self.stop_detected:
+                self.stop_time = time.time()
+                self.previous_stop_detected = self.stop_detected
             return True
     
         return False
@@ -421,14 +433,14 @@ class Behavior(object):
         current_loc = self.waypoints[self.index].transform.location
         end_location = self.waypoints[len(self.waypoints) - 1].transform.location
         end_distance = current_loc.distance(end_location)
-        if end_distance < 15:
+        if end_distance < 7:
             return True 
         return False
 
     # 6th rule
     def is_front_free_for_a_while(self):
         
-        if self.end_trigger_waypoint_number - self.start_trigger_waypoint_number > 20 and not self.vehicle_in_front(): 
+        if self.end_trigger_waypoint_number - self.start_trigger_waypoint_number > 25 and not self.vehicle_in_front(): 
             self.start_trigger_waypoint_number = self.index
             return True
         return False
@@ -467,11 +479,9 @@ class Behavior(object):
 
     # 8th rule
     def check_zero_velocity(self):
-        velocity_vector = self.vehicle_actor.get_velocity()
-        velocity_array = [velocity_vector.x, velocity_vector.y, velocity_vector.z]
-        velocity_norm = np.linalg.norm(velocity_array)
+        self.get_current_velocity()
         
-        if round(3.6 * velocity_norm, 1) < 0.001 and self.index > 2:
+        if self.current_velocity < 0.001 and self.index > 2:
             self.start_trigger_waypoint_number = self.index
             return True
         return False
@@ -637,7 +647,7 @@ class Behavior(object):
         if self.current_state == "RIGHT":
             return False
         
-        final_point = change_coordinate_system(self.waypoints[self.index].transform, self.waypoints[self.index + 1].transform.location)
+        final_point = change_coordinate_system(self.waypoints[self.index].transform, self.waypoints[self.index + self.lane_change_offset].transform.location)
         
         loc1 = self.waypoints[self.index].transform.location
         loc2 = self.waypoints[self.index + 1].transform.location
@@ -652,7 +662,7 @@ class Behavior(object):
         if self.current_state == "LEFT":
             return False
         
-        final_point = change_coordinate_system(self.waypoints[self.index].transform, self.waypoints[self.index + 1].transform.location)
+        final_point = change_coordinate_system(self.waypoints[self.index].transform, self.waypoints[self.index + self.lane_change_offset].transform.location)
         
         loc1 = self.waypoints[self.index].transform.location
         loc2 = self.waypoints[self.index + 1].transform.location
@@ -661,7 +671,36 @@ class Behavior(object):
             if (final_point.x > 0 and final_point.y < 0) or (final_point.x < 0 and final_point.y > 0):
                 return True
         return False
-        
+    
+    # 24th rule 
+    def is_vehicle_still_front(self):
+        if self.still_front == True:
+            return True 
+        return False
+
+    # 25th rule
+    def is_junction_in_front_of_stop_free(self):
+        self.free_junction = True
+        if self.exists_stop():
+            junction = None
+            for waypoint in self.waypoints[self.index:]:
+                if waypoint.is_junction:
+                    junction = waypoint.get_junction()
+                    break
+
+            for vehicle in self.obstacle_manager.front_general_vehicles:
+                if junction != None:
+                    loc = vehicle.get_location()
+                    wp = self.map.get_waypoint(loc, project_to_road=False, lane_type=carla.LaneType.Any)
+                    if wp.is_junction:
+                        junction2 = wp.get_junction()
+                        if junction.id == junction2.id:
+                            self.free_junction = False
+
+        if self.exists_stop() and time.time() - self.stop_time > 10 and self.free_junction:
+            return True 
+        return False
+
     # --------------------------------------------------------------------------- #
     # |                                                                         | #
     # |              Help functions for calculating the rules                   | #
@@ -808,7 +847,7 @@ class Behavior(object):
                 speed = self.convert_aggressive_value_for_behaviors_2(self.aggressive_score) * self.current_velocity
                 speed = max(10, speed)    
                 
-                if self.vehicle_in_front():
+                if self.vehicle_in_front() or self.still_front and self.max_behavior == "KEEP_STRAIGHT":
                     self.get_front_obstacle_velocity()
                     speed = self.front_obstacle_velocity
                 
@@ -841,7 +880,9 @@ class Behavior(object):
                 self.action_performed = True
 
         if self.max_speed_behavior == "KEEP_VELOCITY":
-            pass
+            self.get_current_velocity() 
+            if self.current_velocity < 0.5:
+                self.speed_up(10)
 
     def wait(self, reps):
         for _ in range(reps):
@@ -883,8 +924,8 @@ class Behavior(object):
         
         self.walker_actor.apply_control(walker_control)
         '''
-        '''
-        start_point = carla.Transform(carla.Location(x=24.551256, y=-200, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
+    
+        start_point = carla.Transform(carla.Location(x=156.617218, y=-20.668285, z=0.980615), carla.Rotation(pitch=-5.188444, yaw=91.1591, roll=0.288564))
 
         thr = 0.2
         vehicle = Vehicle()                                  
@@ -895,10 +936,10 @@ class Behavior(object):
         #vehicle_actor1.apply_control(control_signal1)
         self.vehicle_list.append(vehicle_actor1)
         self.wait(10)
-        vehicle_actor1.set_autopilot(True)
+        #vehicle_actor1.set_autopilot(True)
         self.wait(10)
         
-        
+        '''
         start_point = carla.Transform(carla.Location(x=44.551256, y=-193, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
 
         thr = 0.2
@@ -938,17 +979,17 @@ class Behavior(object):
         
 
         behaviors = {
-                    "OVERTAKE"          : [ 0.4,  0.7, -0.3, -0.4, -0.9,  0.0,  0.0,  0.0,  0.0,  0.6,  0.3,  0.0, -0.5,  0.0, -0.5,  0.0,  0.0,  0.4,  0.0, -0.1,  0.0,  0.0,  0.0],
-                    "CAR_FOLLOW"        : [-0.3, -0.3,  0.9,  0.1,  0.2,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.4,  0.0,  0.0,  0.0], 
+                    "OVERTAKE"          : [ 0.4,  0.7, -0.3, -0.4, -0.9,  0.0,  0.0,  0.0,  0.0,  0.6,  0.3,  0.0, -0.5,  0.0, -0.5,  0.0,  0.0,  0.4,  0.0, -0.1,  0.0,  0.0,  0.0,  0.0,   0.0,  0.0,  0.0],
+                    "CAR_FOLLOW"        : [-0.3, -0.3,  0.9,  0.1,  0.2,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.4,  0.0,  0.0,  0.0,  0.0,   0.0,  0.0,  0.0], 
 
-                    "LEFT_LANE_CHANGE"  : [ 0.2,  0.4, -0.2, -0.3, -0.1,  0.0,  0.0,  0.0,  0.0,  0.7,  0.5,  0.5, -0.2,  0.4, -0.5,  0.1,  0.0,  0.4,  0.0, -0.2,  0.0,  0.0, -0.3],
-                    "RIGHT_LANE_CHANGE" : [ 0.2,  0.4, -0.2, -0.3, -0.1,  0.0,  0.0,  0.0,  0.7,  0.0,  0.0, -0.2,  0.5, -0.5,  0.4,  0.1,  0.4,  0.0,  0.7,  0.3,  0.0, -0.3,  0.0], 
-                    "KEEP_STRAIGHT"     : [-0.1, -0.1,  0.8,  0.7,  0.5,  0.5,  0.5,  0.0,  0.0,  0.0,  0.0,  0.4,  0.4,  0.2,  0.2,  0.2,  0.0,  0.0,  0.5,  0.3,  0.0,  0.5,  0.5],
+                    "LEFT_LANE_CHANGE"  : [ 0.2,  0.4, -0.2, -0.3, -0.2,  0.0,  0.0,  0.0,  0.0,  0.7,  0.5,  0.5, -0.2,  0.4, -0.5,  0.1,  0.0,  0.4,  0.0, -0.3,  0.0,  0.0, -0.3,  0.1,   0.2, -0.5,  0.0],
+                    "RIGHT_LANE_CHANGE" : [ 0.2,  0.4, -0.2, -0.3, -0.2,  0.0,  0.0,  0.0,  0.7,  0.0,  0.0, -0.2,  0.5, -0.5,  0.4,  0.1,  0.4,  0.0,  0.7,  0.4,  0.0, -0.3,  0.0,  0.1,  -0.5,  0.2,  0.0], 
+                    "KEEP_STRAIGHT"     : [-0.1, -0.1,  0.8,  0.7,  0.5,  0.5,  0.5,  0.0,  0.0,  0.0,  0.0,  0.4,  0.4,  0.2,  0.2,  0.2,  0.0,  0.0,  0.5,  0.4,  0.0,  0.5,  0.5,  0.2,   0.4,  0.4,  0.3],
                         
-                    "SPEED_UP"          : [-0.5, -0.1, -0.2, -0.3, -0.2,  0.8, -0.7,  0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.1,  0.1, -0.5,  0.0,  0.0,  0.2,  0.0, -0.3, -0.1, -0.1], 
-                    "SLOW_DOWN"         : [ 0.8,  0.8,  0.7,  0.4,  0.9, -0.5,  0.2, -0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.2,  0.2,  0.5,  0.0,  0.0,  0.1,  0.0,  0.4,  0.3,  0.3],
-                    "KEEP_VELOCITY"     : [-0.1, -0.8,  0.4,  0.3,  0.5,  0.5, -0.4, -0.3,  0.0,  0.0,  0.0,  0.0,  0.0,  0.3,  0.3,  0.4,  0.0,  0.0,  0.3,  0.0,  0.1,  0.1,  0.1],
-                    "STOP"              : [ 0.5,  0.6,  0.6,  0.5, -0.1, -0.5,  0.9, -0.6, -0.2, -0.2,  0.0,  0.0,  0.0,  0.1,  0.1,  0.6,  0.0,  0.0, -0.4,  0.0,  0.0,  0.4,  0.4]
+                    "SPEED_UP"          : [-0.5, -0.1, -0.2, -0.3, -0.2,  0.8, -0.7,  0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.1,  0.1, -0.5,  0.0,  0.0,  0.2,  0.0, -0.3, -0.1, -0.1, -0.1,  -0.2, -0.1,  0.4], 
+                    "SLOW_DOWN"         : [ 0.8,  0.8,  0.7,  0.4,  0.9, -0.5,  0.2, -0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.2,  0.2,  0.5,  0.0,  0.0,  0.1,  0.0,  0.4,  0.3,  0.3,  0.3,   0.2,  0.2, -0.1],
+                    "KEEP_VELOCITY"     : [-0.1, -0.8,  0.4,  0.3,  0.5,  0.5, -0.4, -0.3,  0.0,  0.0,  0.0,  0.0,  0.0,  0.3,  0.3,  0.4,  0.0,  0.0,  0.3,  0.0,  0.1,  0.1,  0.1,  0.2,   0.1,  0.1,  0.0],
+                    "STOP"              : [ 0.5,  0.6,  0.6,  0.6, -0.1, -0.5,  0.9, -0.6, -0.2, -0.2,  0.0,  0.0,  0.0,  0.1,  0.1,  0.6,  0.0,  0.0, -0.4,  0.0,  0.0,  0.4,  0.4,  0.1,   0.1,  0.1, -0.2]
                        
                     }
 
@@ -984,7 +1025,11 @@ class Behavior(object):
                         "is left lane bidirectional",
                         "speed above the limit",
                         "make automatic right lane change",
-                        "make automatic left lane change"]
+                        "make automatic left lane change",
+                        "still front vehicle",
+                        "right lane not safe",
+                        "left lane not safe",
+                        "junction in stop is free"]
    
         behaviors = pd.DataFrame(behaviors, index=self.indexes)
         self.max_behavior = "KEEP_STRAIGHT"
@@ -1003,7 +1048,8 @@ class Behavior(object):
 
         self.check_if_junction_exists()
         self.traffic_signs_active = dict()
-
+        self.still_front = False
+        self.previous_stop_detected = None 
         while True:
             
             '''
@@ -1012,8 +1058,22 @@ class Behavior(object):
             vehicle_actor1.apply_control(control_signal1)
             '''
             try:
-                
-                #print(len(self.world.get_actors()))
+                junction = None
+                for waypoint in self.waypoints[self.index:]:
+                    if waypoint.is_junction:
+                        junction = waypoint.get_junction()
+                        self.world.debug.draw_string(waypoint.transform.location, "KKKKKKKKK", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+                        break
+                        #for vehicle in self.obstacle_manager.front_general_vehicles:
+                if junction != None:
+                    loc = self.vehicle_actor.get_location()
+                    bb = junction.bounding_box
+                    #transform = self.vehicle_actor.get_transform()
+                    transform = carla.Transform(bb.location, bb.rotation)
+                    self.world.debug.draw_box(bb, bb.rotation, 0.1, carla.Color(255,0,0), 30)
+                    if (bb.contains(loc, transform)):
+                        print(222222222)
+                    #print(len(self.world.get_actors()))
                 #alive_actors = [i for i in self.world.get_actors() if i.is_alive]
                 #print(len(alive_actors))
 
@@ -1089,7 +1149,8 @@ class Behavior(object):
                 if self.waypoints[self.index].lane_id not in list(self.lane_limit.keys()):
                     self.lane_limit[self.waypoints[self.index].lane_id] = float("inf")
                     self.lane_orientation[self.waypoints[self.index].lane_id] = None
-
+                
+                #print(len(self.obstacle_manager.vehicles_in_left_lane), len(self.obstacle_manager.vehicles_in_lane), len(self.obstacle_manager.vehicles_in_right_lane))
 
                 # --------------------------------------------------------------------------- #
                 # |                                                                         | #
@@ -1123,6 +1184,8 @@ class Behavior(object):
                 
                 # call obstacle manager for checking front and rear obstacles                                         
                 self.obstacle_manager.check_obstacles()
+
+                self.obstacle_manager.check_general_closest_obstacles()
 
                 # call obstacle manager for checking side front and side rear obstacles 
                 self.obstacle_manager.check_side_obstacles(self.waypoints, self.index, self.current_state)
@@ -1202,6 +1265,12 @@ class Behavior(object):
                 # check if necessary right lane change may happen - 23th criterion 
                 make_automatic_left_lane_change = self.automatic_left_lane_change()
 
+                # check if vehicle is still front - 24th criterion
+                vehicle_still_front = self.is_vehicle_still_front()
+
+                # check if junction in front of stop sign is free - 25th criterion 
+                junction_free = self.is_junction_in_front_of_stop_free()
+
                 self.row_filter    = np.array([[1 * higher_velocity_than_front_obstacle and 1 * vehicle_in_front_closely, 
                                                 1 * vehicle_in_front_closely, 
                                                 1 * intersection_closely, 
@@ -1224,7 +1293,11 @@ class Behavior(object):
                                                 1 * left_lane_bidirectional and 1 * vehicle_in_front_closely,
                                                 1 * speed_above_the_limit,
                                                 1 * make_automatic_right_lane_change,
-                                                1 * make_automatic_left_lane_change]])
+                                                1 * make_automatic_left_lane_change,
+                                                1 * vehicle_still_front,
+                                                1 * (not safe_right_lane) and (1 * vehicle_in_front_closely or 1 * make_automatic_right_lane_change),
+                                                1 * (not safe_left_lane) and (1 * vehicle_in_front_closely or make_automatic_left_lane_change),
+                                                1 * junction_free]])
                 
                 self.row_filter_for_lawful_values = np.array([[     1 ,
                                                                     1 , 
@@ -1341,8 +1414,9 @@ class Behavior(object):
 
                     if not self.action_performed:                    
                         self.turn_obstacle = "RIGHT"  
+                        self.still_front = False
                         self.action_performed = True
-
+                        self.wait(2)
 
                     self.regulate_speed()
                     self.overtake_started = self.overtake()
@@ -1356,8 +1430,10 @@ class Behavior(object):
 
                     if not self.action_performed:                    
                         self.turn_obstacle = "LEFT"  
+                        self.still_front = False
                         self.action_performed = True
-
+                        self.wait(2)
+                    
                     self.regulate_speed()
                     self.overtake_started = self.overtake()
                     self.turn_obstacle = None
@@ -1378,7 +1454,7 @@ class Behavior(object):
 
 
                 # print the route's trace in the simulator
-                self.world.debug.draw_string(self.waypoints[self.index].transform.location, "{}".format(self.waypoints[self.index].lane_type), draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+                self.world.debug.draw_string(self.waypoints[self.index].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
                 
                 self.control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
                                 
