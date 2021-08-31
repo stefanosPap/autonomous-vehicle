@@ -42,26 +42,6 @@ class VehicleSubscriberAggressiveMQTT(VehicleSubscriberMQTT):
     def set_change_aggressive(self, value):
         self.change_aggressive = value
 
-class VehicleSubscriberCautiousMQTT(VehicleSubscriberMQTT):
-    def __init__(self, topic):
-        super().__init__(topic)
-        self.cautious = 0
-        self.change_cautious = False
-
-    def data_callback(self, msg):
-        if self.topic == 'cautious' and self.change_cautious == False:
-            self.cautious = msg['cautious']
-            self.change_cautious = True
-
-    def get_cautious(self):
-        return self.cautious
-
-    def get_change_cautious(self):
-        return self.change_cautious
-
-    def set_change_cautious(self, value):
-        self.change_cautious = value
-
 class VehicleSubscriberLawfulMQTT(VehicleSubscriberMQTT):
     def __init__(self, topic):
         super().__init__(topic)

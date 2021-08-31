@@ -38,7 +38,7 @@ class ObstacleManager(object):
         self.front_general_distances = []
         
     def check_general_closest_obstacles(self): 
-        
+
         self.front_general_vehicles  = []
         self.front_general_distances = []
 
@@ -55,7 +55,7 @@ class ObstacleManager(object):
 
           
     def check_side_obstacles(self, waypoints, index, state):
-
+    
             self.front_location = self.vehicle_actor.get_location() + carla.Location(self.vehicle_actor.bounding_box.extent.x, 0, 0)
             self.rear_location  = self.vehicle_actor.get_location() - carla.Location(self.vehicle_actor.bounding_box.extent.x, 0, 0)
             self.ego_vehicle    = self.vehicle_list[0]
@@ -194,7 +194,8 @@ class ObstacleManager(object):
 
         self.closest_front_vehicle = None
         self.closest_rear_vehicle  = None
-        
+
+
         for vehicle in self.vehicle_list[1:]:
 
             ego_waypoint   = self.map.get_waypoint(self.ego_vehicle.get_location(), project_to_road=False)
@@ -202,8 +203,10 @@ class ObstacleManager(object):
             
             if ego_waypoint == None or other_waypoint == None:
                 continue
+    
+            diff = abs(self.vehicle_actor.get_transform().rotation.yaw - vehicle.get_transform().rotation.yaw) 
             
-            if ego_waypoint.lane_id == other_waypoint.lane_id:
+            if ego_waypoint.lane_id == other_waypoint.lane_id and diff < 4:
                 self.vehicles_in_lane.append(vehicle)
        
         for vehicle in self.vehicles_in_lane:

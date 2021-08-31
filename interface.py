@@ -9,7 +9,6 @@ from communicationMQTT import VehicleSubscriberCoorMQTT, \
     VehicleSubscriberCoorForwardMQTT
 from town import Town
 
-
 class Interface(object):
     def __init__(self, world, map, vehicle_actor):
         self.world = world
@@ -52,7 +51,7 @@ class Interface(object):
         prev_point = []
         num_of_locations = 1
 
-        town = Town()
+        town = Town(self.world)
 
         while True:
             self.world.tick()
@@ -147,7 +146,10 @@ class Interface(object):
                     else:
                         waypoint = waypoint[0]
                 break
-
+        
+        for j in range(len(waypoints) - 2):
+            self.world.debug.draw_line(waypoints[j].transform.location, waypoints[j + 1].transform.location, thickness=1, color=carla.Color(r=0, g=200, b=0), life_time=1000, persistent_lines=True)        
+             
         return waypoints
 
     ########################
@@ -208,8 +210,9 @@ class Interface(object):
 
         for i in range(len(paths)):
 
-            ways = paths[i].next_until_lane_end(1.5)
-
+            ways = paths[i].next_until_lane_end(1.0)
+            #ways = paths[i].next_until_lane_end(1.5)
+              
             angle = calculate_angle(ways)
 
             final_point = change_coordinate_system(paths[i].transform, ways[len(ways) - 1].transform.location)
@@ -217,8 +220,8 @@ class Interface(object):
 
             if round(angle, 1) == 0.8 and turn == "STRAIGHT":
 
-                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False,
-                                             color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
+                #self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False,
+                #                             color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
                 self.pub_waypoint.publish({'value': 'Going STRAIGHT at the next junction'})
                 self.pub.publish({'value': ''})
                 for i in range(len(ways)):
@@ -264,8 +267,8 @@ class Interface(object):
                     for i in range(len(ways)):
                         waypoints.append(ways[i])
 
-                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False,
-                                             color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
+                #self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False,
+                #                             color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
                 self.pub_waypoint.publish({'value': 'Turn RIGHT at the next junction'})
                 self.pub.publish({'value': ''})
                 break
@@ -311,8 +314,8 @@ class Interface(object):
                     for i in range(len(ways)):
                         waypoints.append(ways[i])
 
-                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False,
-                                             color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
+                #self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False,
+                #                             color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
                 self.pub_waypoint.publish({'value': 'Turn LEFT at the next junction'})
                 self.pub.publish({'value': ''})
                 break
@@ -321,7 +324,9 @@ class Interface(object):
                 self.pub_waypoint.publish({'value': 'Unable to go {} at the next junction'.format(turn)})
                 self.pub.publish({'value': ''})
                 return []
-
+        for j in range(len(waypoints) - 2):
+            self.world.debug.draw_line(waypoints[j].transform.location, waypoints[j + 1].transform.location, thickness=1, color=carla.Color(r=0, g=0, b=200), life_time=1000, persistent_lines=True)        
+         
         return waypoints
 
     ####################################################
@@ -426,7 +431,7 @@ class Interface(object):
         for i in range(len(paths)):
 
             ways = paths[i].next_until_lane_end(1.0)
-
+            
             # calculate angle between first and last waypoint of the path in order to check if 
             # it is a STRAIGHT direction. After experiments it is estimated that the rounded value between them is 0.8
             angle = calculate_angle(ways)
@@ -445,7 +450,11 @@ class Interface(object):
                     self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw, draw_shadow=False,
                                                  color=carla.Color(r=0, g=0, b=250), life_time=1000,
                                                  persistent_lines=True)
-
+                '''
+                if not check_duplicates:
+                    for j in range(len(ways) - 2):
+                        self.world.debug.draw_line(ways[j].transform.location, ways[j + 1].transform.location, thickness=0.3, color=carla.Color(r=0, g=200, b=0), life_time=1000, persistent_lines=True)        
+                '''
             elif (final_point.x < 0 and final_point.y < 0) or (final_point.x > 0 and final_point.y > 0):
 
                 # check in order to avoid creating double RIGHT directions in the same road 
@@ -461,7 +470,12 @@ class Interface(object):
                 self.world.debug.draw_string(ways[len(ways) - 1].transform.location, self.turn_draw_right,
                                              draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000,
                                              persistent_lines=True)
-
+                '''
+                if not check_duplicates:
+                    for j in range(len(ways) - 2):
+                        self.world.debug.draw_line(ways[j].transform.location, ways[j + 1].transform.location, thickness=0.3, color=carla.Color(r=0, g=200, b=0), life_time=1000, persistent_lines=True)        
+                '''
+          
             elif (final_point.x > 0 and final_point.y < 0) or (final_point.x < 0 and final_point.y > 0):
 
                 # check in order to avoid creating double LEFT directions in the same road 
@@ -477,3 +491,8 @@ class Interface(object):
                 self.world.debug.draw_string(ways[len(ways) - 1].transform.location, self.turn_draw_left,
                                              draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000,
                                              persistent_lines=True)
+                '''
+                if not check_duplicates:
+                    for j in range(len(ways) - 2):
+                        self.world.debug.draw_line(ways[j].transform.location, ways[j + 1].transform.location, thickness=0.3, color=carla.Color(r=0, g=200, b=0), life_time=1000, persistent_lines=True)        
+                '''

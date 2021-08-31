@@ -355,10 +355,10 @@ def draw_waypoints(world, waypoints, col):
     for waypoint in waypoints:
 
         if isinstance(waypoint, carla.libcarla.Waypoint):
-            if waypoint.is_junction:
-                world.debug.draw_string(waypoint.transform.location, 'J', draw_shadow=False, color=color, life_time=1000)
-            else:
-                world.debug.draw_string(waypoint.transform.location, '{}'.format(m), draw_shadow=False, color=color, life_time=1000)
+            #if waypoint.is_junction:
+            #    world.debug.draw_string(waypoint.transform.location, 'J', draw_shadow=False, color=color, life_time=1000)
+            #else:
+            world.debug.draw_string(waypoint.transform.location, '{}'.format(m), draw_shadow=False, color=color, life_time=1000)
         elif isinstance(waypoint, carla.libcarla.Transform):
             world.debug.draw_string(waypoint.location, '{}'.format(m), draw_shadow=False, color=color, life_time=1000)
         m += 1 
