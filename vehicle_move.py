@@ -180,10 +180,6 @@ def spawn(vehicle_list, walkers_list, number_of_vehicles, number_of_walkers):
             # spawn the cars and set their autopilot and light state all together
             vehicle_list.append(vehicle_actor)
 
-        start_point = carla.Transform(carla.Location(x=48.551256, y=-196.809540, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
-        vehicle_actor = world.spawn_actor(blueprint, start_point)
-        vehicle_list.append(vehicle_actor)
-
         # -------------
         # Spawn Walkers
         # -------------

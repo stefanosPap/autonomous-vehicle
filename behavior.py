@@ -105,13 +105,14 @@ class Behavior(object):
         self.lawful_parameter     =  0 
         
 
-        self.convert_aggressive_value                 = interp1d([0, 10 ], [20 ,  10])
-        self.convert_cautious_value                   = interp1d([0, 10 ], [0  ,  10])
-        self.convert_lawful_value                     = interp1d([0, 10 ], [1 ,   2 ])
+        self.convert_aggressive_value                         = interp1d([0, 10 ], [20 ,  10])
+        self.convert_cautious_value                           = interp1d([0, 10 ], [0  ,  10])
+        self.convert_lawful_value                             = interp1d([0, 10 ], [1 ,   2 ])
 
-        self.convert_offset_value                     = interp1d([0, 100], [1  ,  20])
-        self.convert_aggressive_value_for_behaviors_1 = interp1d([0, 10 ], [1  ,   2])
-        self.convert_aggressive_value_for_behaviors_2 = interp1d([0, 10 ], [0.8, 0.2])
+        self.convert_offset_value                             = interp1d([0, 100], [1  ,  20])
+        self.convert_aggressive_value_for_behaviors_1         = interp1d([0, 10 ], [1  ,   2])
+        self.convert_aggressive_value_for_behaviors_slow_down = interp1d([0, 10 ], [0.2, 0.8])
+        self.convert_aggressive_value_for_behaviors_speed_up  = interp1d([0, 10 ], [1.1,   2])
 
     def slow_down(self, desired_velocity):
         
@@ -402,7 +403,7 @@ class Behavior(object):
 
         self.stop_sign = False
         distance = float("inf")
-        if len(self.traffic_signs) is not 0:
+        if len(self.traffic_signs) != 0:
         
             for i in range(len(self.traffic_signs)):
                 
@@ -459,7 +460,7 @@ class Behavior(object):
             
                 #check for traffic light
                 if values[i].type == "1000001":
-                            
+
                     orientation = str(values[i].orientation)
                     if self.waypoints[self.index].lane_id >= 0 and (orientation == "Positive" or orientation == "Both"):
                         self.traffic_light = True 
@@ -470,7 +471,7 @@ class Behavior(object):
         
         
         if self.traffic_light:
-            if self.traffic_light_object.get_state() == carla.TrafficLightState.Red and self.exists_intersection(3):
+            if self.traffic_light_object.get_state() == carla.TrafficLightState.Red:
                 red_traffic_light = True
 
         if self.traffic_light_state == "RED" or red_traffic_light:
@@ -682,6 +683,7 @@ class Behavior(object):
     def is_junction_in_front_of_stop_free(self):
         self.free_junction = True
         if self.exists_stop():
+
             junction = None
             for waypoint in self.waypoints[self.index:]:
                 if waypoint.is_junction:
@@ -844,10 +846,10 @@ class Behavior(object):
         if self.max_speed_behavior == "SLOW_DOWN":
             if not self.action_performed:
 
-                speed = self.convert_aggressive_value_for_behaviors_2(self.aggressive_score) * self.current_velocity
+                speed = self.convert_aggressive_value_for_behaviors_slow_down(self.aggressive_score) * self.current_velocity
                 speed = max(10, speed)    
                 
-                if self.vehicle_in_front() or self.still_front and self.max_behavior == "KEEP_STRAIGHT":
+                if (self.vehicle_in_front() or self.still_front) and self.max_behavior == "KEEP_STRAIGHT":
                     self.get_front_obstacle_velocity()
                     speed = self.front_obstacle_velocity
                 
@@ -860,7 +862,8 @@ class Behavior(object):
         if self.max_speed_behavior == "SPEED_UP":
             if not self.action_performed:
                 if self.current_velocity > 1:
-                    speed = min(2 * self.current_velocity, 70)
+                    speed = self.convert_aggressive_value_for_behaviors_speed_up(self.aggressive_score) * self.current_velocity
+                    speed = min(speed, 70)
                     
                 else:
                     speed = 12
@@ -924,7 +927,7 @@ class Behavior(object):
         
         self.walker_actor.apply_control(walker_control)
         '''
-    
+        '''
         start_point = carla.Transform(carla.Location(x=156.617218, y=-20.668285, z=0.980615), carla.Rotation(pitch=-5.188444, yaw=91.1591, roll=0.288564))
 
         thr = 0.2
@@ -938,7 +941,7 @@ class Behavior(object):
         self.wait(10)
         #vehicle_actor1.set_autopilot(True)
         self.wait(10)
-        
+        '''
         '''
         start_point = carla.Transform(carla.Location(x=44.551256, y=-193, z=1), carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
 
@@ -986,10 +989,10 @@ class Behavior(object):
                     "RIGHT_LANE_CHANGE" : [ 0.2,  0.4, -0.2, -0.3, -0.2,  0.0,  0.0,  0.0,  0.7,  0.0,  0.0, -0.2,  0.5, -0.5,  0.4,  0.1,  0.4,  0.0,  0.7,  0.4,  0.0, -0.3,  0.0,  0.1,  -0.5,  0.2,  0.0], 
                     "KEEP_STRAIGHT"     : [-0.1, -0.1,  0.8,  0.7,  0.5,  0.5,  0.5,  0.0,  0.0,  0.0,  0.0,  0.4,  0.4,  0.2,  0.2,  0.2,  0.0,  0.0,  0.5,  0.4,  0.0,  0.5,  0.5,  0.2,   0.4,  0.4,  0.3],
                         
-                    "SPEED_UP"          : [-0.5, -0.1, -0.2, -0.3, -0.2,  0.8, -0.7,  0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.1,  0.1, -0.5,  0.0,  0.0,  0.2,  0.0, -0.3, -0.1, -0.1, -0.1,  -0.2, -0.1,  0.4], 
+                    "SPEED_UP"          : [-0.5, -0.1, -0.2, -0.3, -0.2,  0.8, -0.7,  0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.1,  0.1, -0.5,  0.0,  0.0,  0.2,  0.0, -0.3, -0.1, -0.1, -0.1,  -0.2, -0.2,  0.4], 
                     "SLOW_DOWN"         : [ 0.8,  0.8,  0.7,  0.4,  0.9, -0.5,  0.2, -0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.2,  0.2,  0.5,  0.0,  0.0,  0.1,  0.0,  0.4,  0.3,  0.3,  0.3,   0.2,  0.2, -0.1],
                     "KEEP_VELOCITY"     : [-0.1, -0.8,  0.4,  0.3,  0.5,  0.5, -0.4, -0.3,  0.0,  0.0,  0.0,  0.0,  0.0,  0.3,  0.3,  0.4,  0.0,  0.0,  0.3,  0.0,  0.1,  0.1,  0.1,  0.2,   0.1,  0.1,  0.0],
-                    "STOP"              : [ 0.5,  0.6,  0.6,  0.6, -0.1, -0.5,  0.9, -0.6, -0.2, -0.2,  0.0,  0.0,  0.0,  0.1,  0.1,  0.6,  0.0,  0.0, -0.4,  0.0,  0.0,  0.4,  0.4,  0.1,   0.1,  0.1, -0.2]
+                    "STOP"              : [ 0.5,  0.6,  0.6,  0.6, -0.1, -0.5,  0.9, -0.6, -0.2, -0.2,  0.0,  0.0,  0.0,  0.1,  0.1,  0.6,  0.0,  0.0, -0.4,  0.0,  0.0,  0.4,  0.4,  0.1,   0.2,  0.2, -0.2]
                        
                     }
 
@@ -1050,59 +1053,27 @@ class Behavior(object):
         self.traffic_signs_active = dict()
         self.still_front = False
         self.previous_stop_detected = None 
+
         while True:
             
-            '''
-            thr += 0.001
-            control_signal1 = carla.VehicleControl(throttle=thr)
-            vehicle_actor1.apply_control(control_signal1)
-            '''
-            try:
-                junction = None
-                for waypoint in self.waypoints[self.index:]:
-                    if waypoint.is_junction:
-                        junction = waypoint.get_junction()
-                        self.world.debug.draw_string(waypoint.transform.location, "KKKKKKKKK", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
-                        break
-                        #for vehicle in self.obstacle_manager.front_general_vehicles:
-                if junction != None:
-                    loc = self.vehicle_actor.get_location()
-                    bb = junction.bounding_box
-                    #transform = self.vehicle_actor.get_transform()
-                    transform = carla.Transform(bb.location, bb.rotation)
-                    self.world.debug.draw_box(bb, bb.rotation, 0.1, carla.Color(255,0,0), 30)
-                    if (bb.contains(loc, transform)):
-                        print(222222222)
-                    #print(len(self.world.get_actors()))
+            if True:
+               
                 #alive_actors = [i for i in self.world.get_actors() if i.is_alive]
-                #print(len(alive_actors))
-
+                #self.vehicle_list = [i for i in self.vehicle_list if i.is_alive]
+                
                 self.get_current_velocity()
+
                 # spectator method is called in order to place the view of the simulator exactly above the vehicle 
                 # spectator()
 
                 # corner case that is being executed, when the vehicle reaches its destination
                 if self.index == len(self.waypoints) - 1:
-                    self.control_signal = self.custom_controller.run_step(0, self.waypoints[self.index - 1])
+                    self.control_signal = self.custom_controller.run_step(0, self.waypoints[self.index])
                     vehicle_actor.apply_control(self.control_signal)
-                    break
-
-                # change goal - stop and change the final goal  
-                change_goal = self.sub_change_goal.get_change_goal()
-                if change_goal == True:
-                    self.sub_change_goal.set_change_goal(False)
-                    self.emergency_stop()
-
-                    self.control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
-                    self.vehicle_actor.apply_control(self.control_signal)
-
-                    break                
+                    break               
                 
-                # velocity's norm in km/h - publish the current velocity in the speedometer 
-                velocity_vector = self.vehicle_actor.get_velocity()
-                velocity_array = [velocity_vector.x, velocity_vector.y, velocity_vector.z]
-                velocity_norm = np.linalg.norm(velocity_array)
-                self.pub.publish({'velocity': round(3.6 * velocity_norm, 1)})
+                # velocity's norm in km/h - publish the current velocity in the speedometer
+                self.pub.publish({'velocity': round(self.current_velocity, 1)})
 
                 # --------------------------------------------------------------------------- #
                 # |                                                                         | #
@@ -1150,8 +1121,6 @@ class Behavior(object):
                     self.lane_limit[self.waypoints[self.index].lane_id] = float("inf")
                     self.lane_orientation[self.waypoints[self.index].lane_id] = None
                 
-                #print(len(self.obstacle_manager.vehicles_in_left_lane), len(self.obstacle_manager.vehicles_in_lane), len(self.obstacle_manager.vehicles_in_right_lane))
-
                 # --------------------------------------------------------------------------- #
                 # |                                                                         | #
                 # |                           Vehicle's Perception                          | #
@@ -1173,18 +1142,21 @@ class Behavior(object):
                 self.traffic_light_state = traffic.check_traffic_lights(vehicle_actor, self.waypoints[self.index])
                 #traffic.get_lane_info(self.waypoints[self.index])
 
-                # read stop and start buttons in case of stopping the vehicle                  
-                self.stop_signal = self.sub.get_stop()
-                
-                # check if button for lane change has been pushed 
-                self.turn = self.turn_sub.get_turn()
+                #----------------------------#
+                #|                          |#
+                #|      check obstacles     |#
+                #|                          |# 
+                #----------------------------#
 
-                # read velocity from the slider 
-                self.velocity = self.speed_sub.get_velocity()
-                
                 # call obstacle manager for checking front and rear obstacles                                         
                 self.obstacle_manager.check_obstacles()
+                if self.obstacle_manager.closest_front_vehicle != None:
+                    loc = self.obstacle_manager.closest_front_vehicle.get_location()
+                    trans = self.obstacle_manager.closest_front_vehicle.get_transform()
+                    rot = trans.rotation
 
+                    draw_vehicle_box(self.world, self.obstacle_manager.closest_front_vehicle, loc, rot, 1)
+                # call obstacle manager for checking general obstacles obstacles                                         
                 self.obstacle_manager.check_general_closest_obstacles()
 
                 # call obstacle manager for checking side front and side rear obstacles 
@@ -1195,7 +1167,46 @@ class Behavior(object):
 
                 # check if rear obstacle is closely - tailgating 
                 vehicle_in_back_closely = self.vehicle_in_back()
+
+                #----------------------------#
+                #|                          |#
+                #|      check buttons       |#
+                #|                          |# 
+                #----------------------------#
+
+                # read stop and start buttons in case of stopping the vehicle                  
+                self.stop_signal = self.sub.get_stop()
+
+                # check if button for stopping has been pressed  
+                if self.stop_signal:
+                    self.emergency_stop()
+                    self.control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
+                    self.vehicle_actor.apply_control(self.control_signal)
+
+                    while not self.sub.get_start():
+                        self.world.tick()
+                                        
+                # check if button for lane change has been pushed 
+                self.turn = self.turn_sub.get_turn()
                 
+                # change goal - stop and change the final goal  
+                change_goal = self.sub_change_goal.get_change_goal()
+                if change_goal == True :
+                    self.sub_change_goal.set_change_goal(False)
+                    self.emergency_stop()
+                    self.control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
+                    self.vehicle_actor.apply_control(self.control_signal)
+                    break
+
+                # read velocity from the slider 
+                self.velocity = self.speed_sub.get_velocity()
+
+                #-----------------------------------#
+                #|                                 |#
+                #|      check trigger criteria     |#
+                #|                                 |# 
+                #-----------------------------------#
+
                 #check if ego vehicle has higher velocity than the front vehicle - 1st criterion 
                 higher_velocity_than_front_obstacle = self.has_ego_higher_velocity_than_front_obstacle() 
                 
@@ -1222,19 +1233,19 @@ class Behavior(object):
 
                 # check if right lane is safe - 9th criterion 
                 safe_right_lane = self.is_right_lane_safe()                    
-
+                
                 # check if left lane is safe - 10th criterion 
                 safe_left_lane = self.is_left_lane_safe()  
-
+                
                 # check if left lane has the same direction - 11th criterion 
                 left_lane_same_direction = self.has_left_lane_same_direction()
-
+                
                 # check if right lane is denser than the left - 12th criterion
                 right_lane_denser_than_left = self.is_right_lane_denser_than_left()
                 
                 # check if left lane is denser than the right - 13th criterion
                 left_lane_denser_than_right = self.is_left_lane_denser_than_right()
-
+                
                 # check if right pedestrian is closely - 14th criterion
                 right_pedestrian_closely = self.is_right_pedestrian_closely()
 
@@ -1243,7 +1254,7 @@ class Behavior(object):
 
                 # check if right pedestrian is closely - 16th criterion
                 front_pedestrian_closely = self.is_front_pedestrian_closely()
-
+                
                 # check if right lane marking is legal - 17th criterion
                 right_lane_marking_legal = self.is_right_lane_marking_legal()
          
@@ -1252,7 +1263,7 @@ class Behavior(object):
                 
                 # check if vehicle is in bidirectional for long time - 19th criterion
                 in_bidirectional_lane_for_long_time = self.is_in_bidirectional_lane_for_long_time()
-
+                
                 # check if left lane is bidirectional lane - 20th criterion
                 left_lane_bidirectional = self.is_left_lane_bidirectional()
                 
@@ -1267,9 +1278,10 @@ class Behavior(object):
 
                 # check if vehicle is still front - 24th criterion
                 vehicle_still_front = self.is_vehicle_still_front()
-
+                
                 # check if junction in front of stop sign is free - 25th criterion 
                 junction_free = self.is_junction_in_front_of_stop_free()
+                               
 
                 self.row_filter    = np.array([[1 * higher_velocity_than_front_obstacle and 1 * vehicle_in_front_closely, 
                                                 1 * vehicle_in_front_closely, 
@@ -1363,6 +1375,7 @@ class Behavior(object):
                 #               7 - SLOW_DOWN
                 #               8 - KEEP_VELOCITY 
                 #               9 - STOP
+               
                 
                 self.check_new_triggers()
 
@@ -1381,6 +1394,8 @@ class Behavior(object):
 
 
                 self.evaluate()
+
+                
 
 
                 if self.max_behavior == "OVERTAKE":
@@ -1448,9 +1463,6 @@ class Behavior(object):
                 
                     self.manual_lane_change()
                 
-                
-
-
 
 
                 # print the route's trace in the simulator
@@ -1472,11 +1484,9 @@ class Behavior(object):
                 #print('Distance from waypoint {}'.format(i), dist) 
 
                 if dist < 2:
+                    #print(len(self.vehicle_list))
                     self.index += 1
                     self.trajectory.change = False
 
                 vehicle_actor.apply_control(self.control_signal)
                 world.tick()
-
-            except KeyboardInterrupt:
-                break

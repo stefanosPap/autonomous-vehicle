@@ -9,7 +9,6 @@ from communicationMQTT import VehicleSubscriberCoorMQTT, \
     VehicleSubscriberCoorForwardMQTT
 from town import Town
 
-
 class Interface(object):
     def __init__(self, world, map, vehicle_actor):
         self.world = world
@@ -208,7 +207,8 @@ class Interface(object):
 
         for i in range(len(paths)):
 
-            ways = paths[i].next_until_lane_end(1.5)
+            ways = paths[i].next_until_lane_end(1.0)
+            #ways = paths[i].next_until_lane_end(1.5)
 
             angle = calculate_angle(ways)
 
