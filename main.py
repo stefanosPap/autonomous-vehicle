@@ -4,9 +4,12 @@ from vehicle import Vehicle
 from client import Client
 from vehicle_move import spawn
 from interface import Interface
+<<<<<<< HEAD
 from experiments import Experiment 
 import sys 
 from town import Town
+=======
+>>>>>>> 36d9783927d49527a1f04db1603fdf80f9f58634
 
 from utilities import plot_axis, \
     configure_sensor, \
@@ -77,6 +80,7 @@ def main():
 
     vehicle_list.append(vehicle_actor)
 
+<<<<<<< HEAD
     # define experiment parameters
     if len(sys.argv) > 2:
         experiment_execution = int(sys.argv[1])
@@ -104,6 +108,9 @@ def main():
 
 
     spawn(vehicle_list, walker_list, vehicles, pedestrians)
+=======
+    #spawn(vehicle_list, walker_list, 50, 50)
+>>>>>>> 36d9783927d49527a1f04db1603fdf80f9f58634
 
     trajectory = Trajectory(world, map, vehicle_actor)
 
