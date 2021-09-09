@@ -4,12 +4,9 @@ from vehicle import Vehicle
 from client import Client
 from vehicle_move import spawn
 from interface import Interface
-<<<<<<< HEAD
 from experiments import Experiment 
 import sys 
 from town import Town
-=======
->>>>>>> 36d9783927d49527a1f04db1603fdf80f9f58634
 
 from utilities import plot_axis, \
     configure_sensor, \
@@ -80,7 +77,6 @@ def main():
 
     vehicle_list.append(vehicle_actor)
 
-<<<<<<< HEAD
     # define experiment parameters
     if len(sys.argv) > 2:
         experiment_execution = int(sys.argv[1])
@@ -108,9 +104,6 @@ def main():
 
 
     spawn(vehicle_list, walker_list, vehicles, pedestrians)
-=======
-    #spawn(vehicle_list, walker_list, 50, 50)
->>>>>>> 36d9783927d49527a1f04db1603fdf80f9f58634
 
     trajectory = Trajectory(world, map, vehicle_actor)
 
@@ -128,8 +121,9 @@ def main():
     # vehicle.wander() 
 
     #waypoints = map.generate_waypoints(1.0)
-    #for waypoint in waypoints:
-    #   world.debug.draw_string(waypoint.transform.location, "{}".format(round(waypoint.transform.location.z)), draw_shadow=False, color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
+    #waypoints = map.get_topology()
+    #for pair_wayoints in waypoints:
+    #   world.debug.draw_arrow(pair_wayoints[0].transform.location, pair_wayoints[1].transform.location, thickness=0.2, arrow_size=0.1, color=carla.Color(r=0, g=250, b=0), life_time=1000)
 
     # generate random trajectory for the vehicle 
     sub_coor     = VehicleSubscriberCoorMQTT  (topic='coordinates'       )

@@ -15,13 +15,16 @@ def metrics(data_file):
     Ri = []
     Pi = []
     N  = 10
+    k = 1
     for route in routes:
         
         first_part = route.replace(",", " ").split()[3:5]   # The first two elements contain route_completion and off_road_event_time accordingly
-        second_part = route.replace(",", " ").split()[5:]   # The last elements are the defined penalties 
+        second_part = route.replace(",", " ").split()[5:11] # The second part has the elements that are the defined penalties 
+        third_part = route.replace(",", " ").split()[11:]  # The last elements are the right, left turns and the average speed 
 
         route_info = list(map(float , first_part))          # convert to list with floats 
         violations = list(map(float , second_part))         # convert to list with floats
+        turns_speed = list(map(float , third_part))         # convert to list with floats
 
         violations_dict = dict(zip(penalties_dict.keys(), violations))  # create violations dictionary match violations with penalties dictionary 
         
@@ -34,11 +37,15 @@ def metrics(data_file):
         # save the value of each route in two arrays 
         Pi.append(product)
         Ri.append(route_info[0])
-    
+        k += 1
+
     # calculate the metrics
     route_completion = sum(Pi) / N
     infraction_penalty = sum(Ri) / N
     driving_score = sum((np.array(Pi) * np.array(Ri))) / N
-    
+
+def generate_diagramms(data_file):
+    pass
+    data_file = open(data_file, 'r')
 if __name__ == '__main__':
     metrics('data.txt')
