@@ -880,25 +880,12 @@ class Behavior(object):
     def wait(self, reps):
         for _ in range(reps):
             self.world.tick() 
-        
-    def evaluate_node(self):
-        
-        data = {'route_completion'         : route_completion, \
-                'off_road_event_time'      : off_road_event_time, \
-                'pedestrian_collision'     : pedestrian_collision,\
-                'vehicle_collision'        : vehicle_collision,\
-                'static_obstacle_collision': static_obstacle_collision,\
-                'red_light_violations'     : red_light_violations,\
-                'stop_sign_violations'     : stop_sign_violations,\
-                'speed_limit_violations'   : speed_limit_violations}
-        
-        self.experiment_object.save_experiment_data(data)
     
     def follow_trajectory(self, world, vehicle_actor, spectator, get_front_obstacle, set_front_obstacle, get_other_actor, velocity):
         
         self.index         = 0
         self.current_state = "INIT"
-
+        
         self.overtake_started   = False
         self.overtake_completed = False
         self.overtake_direction = None
@@ -1060,6 +1047,10 @@ class Behavior(object):
         self.still_front = False
         self.previous_stop_detected = None 
 
+        self.right_turns    = 0
+        self.left_turns     = 0 
+        self.average_speed  = 0 
+        
         while True:
             
             if True:
@@ -1438,6 +1429,7 @@ class Behavior(object):
 
                     if not self.action_performed:                    
                         self.turn_obstacle = "RIGHT"  
+                        self.right_turns += 1
                         self.still_front = False
                         self.action_performed = True
                         self.wait(2)
@@ -1454,6 +1446,7 @@ class Behavior(object):
 
                     if not self.action_performed:                    
                         self.turn_obstacle = "LEFT"  
+                        self.left_turns += 1
                         self.still_front = False
                         self.action_performed = True
                         self.wait(2)
@@ -1496,6 +1489,35 @@ class Behavior(object):
                     #print(len(self.vehicle_list))
                     self.index += 1
                     self.trajectory.change = False
-
+                    self.get_current_velocity()
+                    self.average_speed += self.current_velocity
+                    if self.index == len(self.waypoints) - 1:
+                        self.average_speed = self.average_speed / (len(self.waypoints) - 1)
                 vehicle_actor.apply_control(self.control_signal)
                 world.tick()
+
+    def evaluate_node(self):
+        
+
+        self.route_completion = 0 
+        self.off_road_event_time = 0 
+        self.pedestrian_collision = 0
+        self.vehicle_collision = 0 
+        self.static_obstacle_collision = 0
+        self.red_light_violations = 0
+        self.stop_sign_violations = 0
+        self.speed_limit_violations = 0
+
+        data = {    'route_completion'         : self.route_completion, \
+                    'off_road_event_time'      : self.off_road_event_time, \
+                    'pedestrian_collision'     : self.pedestrian_collision,\
+                    'vehicle_collision'        : self.vehicle_collision,\
+                    'static_obstacle_collision': self.static_obstacle_collision,\
+                    'red_light_violations'     : self.red_light_violations,\
+                    'stop_sign_violations'     : self.stop_sign_violations,\
+                    'speed_limit_violations'   : self.speed_limit_violations,\
+                    'right_turns'              : self.right_turns,\
+                    'left_turns'               : self.left_turns,\
+                    'average_speed'            : self.average_speed}
+        
+        self.experiment_object.save_experiment_data(data)

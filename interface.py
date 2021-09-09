@@ -146,10 +146,10 @@ class Interface(object):
                     else:
                         waypoint = waypoint[0]
                 break
-        
+        '''
         for j in range(len(waypoints) - 2):
             self.world.debug.draw_line(waypoints[j].transform.location, waypoints[j + 1].transform.location, thickness=1, color=carla.Color(r=0, g=200, b=0), life_time=1000, persistent_lines=True)        
-             
+        '''  
         return waypoints
 
     ########################
@@ -324,9 +324,10 @@ class Interface(object):
                 self.pub_waypoint.publish({'value': 'Unable to go {} at the next junction'.format(turn)})
                 self.pub.publish({'value': ''})
                 return []
+        '''
         for j in range(len(waypoints) - 2):
             self.world.debug.draw_line(waypoints[j].transform.location, waypoints[j + 1].transform.location, thickness=1, color=carla.Color(r=0, g=0, b=200), life_time=1000, persistent_lines=True)        
-         
+        '''
         return waypoints
 
     ####################################################
