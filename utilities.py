@@ -358,15 +358,15 @@ def draw_waypoints(world, waypoints, col):
             #if waypoint.is_junction:
             #    world.debug.draw_string(waypoint.transform.location, 'J', draw_shadow=False, color=color, life_time=1000)
             #else:
-            #world.debug.draw_string(waypoint.transform.location, 'w_{}'.format(m), draw_shadow=False, color=color, life_time=1000)
+            world.debug.draw_string(waypoint.transform.location, '{}'.format(m), draw_shadow=False, color=color, life_time=1000)
             pass
         elif isinstance(waypoint, carla.libcarla.Transform):
-            #world.debug.draw_string(waypoint.location, '{}'.format(m), draw_shadow=False, color=color, life_time=1000)
+            world.debug.draw_string(waypoint.location, '{}'.format(m), draw_shadow=False, color=color, life_time=1000)
             pass
         m += 1 
     
-    for j in range(len(waypoints) - 2):
-        self.world.debug.draw_line(waypoints[j].transform.location, waypoints[j + 1].transform.location, thickness=0.3, color=carla.Color(r=0, g=200, b=0), life_time=1000, persistent_lines=True)        
+    #for j in range(len(waypoints) - 2):
+    #    self.world.debug.draw_line(waypoints[j].transform.location, waypoints[j + 1].transform.location, thickness=0.3, color=carla.Color(r=0, g=200, b=0), life_time=1000, persistent_lines=True)        
                 
 #################################
 # Class for canceling a process #

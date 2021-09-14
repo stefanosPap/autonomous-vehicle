@@ -220,8 +220,8 @@ class Interface(object):
 
             if round(angle, 1) == 0.8 and turn == "STRAIGHT":
 
-                #self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False,
-                #                             color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
+                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False,
+                                             color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
                 self.pub_waypoint.publish({'value': 'Going STRAIGHT at the next junction'})
                 self.pub.publish({'value': ''})
                 for i in range(len(ways)):
@@ -267,8 +267,8 @@ class Interface(object):
                     for i in range(len(ways)):
                         waypoints.append(ways[i])
 
-                #self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False,
-                #                             color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
+                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False,
+                                             color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
                 self.pub_waypoint.publish({'value': 'Turn RIGHT at the next junction'})
                 self.pub.publish({'value': ''})
                 break
@@ -314,8 +314,8 @@ class Interface(object):
                     for i in range(len(ways)):
                         waypoints.append(ways[i])
 
-                #self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False,
-                #                             color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
+                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, "XXXXXXX", draw_shadow=False,
+                                             color=carla.Color(r=0, g=250, b=0), life_time=1000, persistent_lines=True)
                 self.pub_waypoint.publish({'value': 'Turn LEFT at the next junction'})
                 self.pub.publish({'value': ''})
                 break

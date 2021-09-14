@@ -40,6 +40,19 @@ class Behavior(object):
         self.experiment        = experiment
         self.experiment_object = exp
 
+        '''
+        self._dt = 1.0 / 20.0
+        args_lateral_dict = {
+            'K_P': 1.95,
+            'K_D': 0.2,
+            'K_I': 0.07,
+            'dt': self._dt}
+        args_longitudinal_dict = {
+            'K_P': 1.0,
+            'K_D': 0,
+            'K_I': 0.05,
+            'dt': self._dt}
+        '''
         # controller initialization
         self.custom_controller = VehiclePIDController(vehicle_actor, 
                                                       args_lateral      = {'K_P': 1, 'K_D': 0, 'K_I': 0},
@@ -1498,7 +1511,6 @@ class Behavior(object):
 
     def evaluate_node(self):
         
-
         self.route_completion = 0 
         self.off_road_event_time = 0 
         self.pedestrian_collision = 0

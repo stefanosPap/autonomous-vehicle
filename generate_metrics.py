@@ -1,6 +1,7 @@
 #!/usr/bin/python3 
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 def metrics(data_file, obs):
     
@@ -19,17 +20,18 @@ def metrics(data_file, obs):
     LT = []
     SP = []
     
-    PEDESTRIANS = []
-    VEHICLES = []
-    STATIC = []
-    LIGHTS = []
-    STOPS = []
+    PEDESTRIANS  = []
+    VEHICLES     = []
+    STATIC       = []
+    LIGHTS       = []
+    STOPS        = []
     SPEED_LIMITS = []
-    IN_ROAD = []
+    IN_ROAD      = []
     
     N  = 2
     k = 1
     index = 0
+
     results = [ [0,0,0],\
                 [0,0,0],\
                 [0,0,0],\
@@ -200,10 +202,101 @@ def metrics(data_file, obs):
     data_file_3.write('\n')
     print("\n")
 
-def generate_diagramms(data_file):
-    pass
-    data_file = open(data_file, 'r')
+def generate_diagramms():
+    data_file1 = open('data1.txt', 'r')
+    data_file2 = open('data2.txt', 'r')
     
+    labels = [0, 10, 30, 60, 90]
+    lines1 = data_file1.readlines()
+    lines2 = data_file2.readlines()
+
+    array_driving_score = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
+    array_route_completion = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
+    array_violations = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
+
+    array_right_turns = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
+    array_left_turns = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
+    array_average_speed = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
+    
+    for i in range(10):
+        for j in range(5):
+            line = lines1[i + j * 11]
+            line = line.replace(",", " ").split()
+            line = list(map(float , line))          # convert to list with floats 
+            array_driving_score[i][j] = line[0]
+            array_route_completion[i][j] = line[1]
+            array_violations[i][j] = line[2]
+
+        
+            line = lines2[i + j * 11]
+            line = line.replace(",", " ").split()
+            line = list(map(float , line))          # convert to list with floats 
+            array_right_turns[i][j] = line[0]
+            array_left_turns[i][j] = line[1]
+            array_average_speed[i][j] = line[2]
+
+
+    arrays = [array_driving_score, array_route_completion, array_violations, array_right_turns, array_left_turns, array_average_speed]
+             
+    x = np.arange(len(labels)) 
+    width = 0.08
+    plot = 1
+
+    r1  = np.arange(len(labels))
+    r2  = [x + width for x in r1]
+    r3  = [x + width for x in r2]
+    r4  = [x + width for x in r3]
+    r5  = [x + width for x in r4]
+    r6  = [x + width for x in r5]
+    r7  = [x + width for x in r6]
+    r8  = [x + width for x in r7]
+    r9  = [x + width for x in r8]
+    r10 = [x + width for x in r9]
+    plt.style.use('bmh')
+
+    for array in arrays:
+        _, ax = plt.subplots(figsize =(16, 8))
+        
+        ax.bar(r1, array[0], width=width, edgecolor='white')
+        ax.bar(r2, array[1], width=width, edgecolor='white')
+        ax.bar(r3, array[2], width=width, edgecolor='white')
+        ax.bar(r4, array[3], width=width, edgecolor='white')
+        ax.bar(r5, array[4], width=width, edgecolor='white')
+        ax.bar(r6, array[5], width=width, edgecolor='white')
+        ax.bar(r7, array[6], width=width, edgecolor='white')
+        ax.bar(r8, array[7], width=width, edgecolor='white')
+        ax.bar(r9, array[8], width=width, edgecolor='white')
+        ax.bar(r10, array[9], width=width, edgecolor='white')
+        
+        ax.set_ylabel('Scores')
+        ax.set_xlabel('Number of dynamic obstacles')
+        ax.set_xticks([r + 4 * width for r in range(len(labels))])
+        ax.set_xticklabels(labels)
+        bars = ['(0,0)', '(0,5)', '(0,10)', '(5,0)', '(5,5)', '(5,10)', '(10,0)', '(10,5)', '(10,10)', 'Total']
+        ax.legend(bars, title="(agg, law)", fancybox=True, bbox_to_anchor=(1.1, 1.05))
+    
+        if plot == 1:
+            ax.set_title('Driving Score Metric')
+            plt.savefig("driving_score.png") 
+        elif plot == 2:
+            ax.set_title('Infraction Penalty Metric')
+            plt.savefig("infraction_penalty.png") 
+        elif plot == 3:    
+            ax.set_title('Route Completion Metric')
+            plt.savefig("route_completion.png")
+        elif plot == 4:
+            ax.set_title('Right Turns Metric')
+            plt.savefig("right_turns.png")
+        elif plot == 5:
+            ax.set_title('Left Turns Metric')
+            plt.savefig("left_turns.png")
+        elif plot == 6:
+            ax.set_title('Average Speed Metric')
+            plt.savefig("average_speed.png")
+
+        plot += 1
+
 if __name__ == '__main__':
-    obs = str(10)
-    metrics('data_' + obs + '.txt', obs)
+    #obs = str(10)
+    #metrics('data_' + obs + '.txt', obs)
+    generate_diagramms()

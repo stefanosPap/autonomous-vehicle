@@ -64,8 +64,9 @@ def main():
     start_point = carla.Transform(carla.Location(x=40.551256, y=-197.809540, z=1),
                                   carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
     # start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
-    start_point = carla.Transform(carla.Location(x=-74, y=99, z=1), carla.Rotation(pitch=0.0, yaw=-90.0, roll=0.0))
-    
+    #start_point = carla.Transform(carla.Location(x=-74, y=99, z=1), carla.Rotation(pitch=0.0, yaw=-90.0, roll=0.0))
+    start_point = carla.Transform(carla.Location(x=12, y=-197, z=1), carla.Rotation(pitch=0.0, yaw=360.0, roll=0.0))
+
     start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
     
     # create new ego vehicle #
@@ -184,8 +185,8 @@ def main():
 
                     try:
                         custom_waypoints = trajectory.trace_route(end_waypoints)
-                        for j in range(len(custom_waypoints) - 2):
-                            world.debug.draw_line(custom_waypoints[j].transform.location, custom_waypoints[j + 1].transform.location, thickness=1, color=carla.Color(r=200, g=0, b=0), life_time=1000, persistent_lines=True)        
+                        #for j in range(len(custom_waypoints) - 2):
+                        #    world.debug.draw_line(custom_waypoints[j].transform.location, custom_waypoints[j + 1].transform.location, thickness=1, color=carla.Color(r=200, g=0, b=0), life_time=1000, persistent_lines=True)        
          
                         current_waypoint = custom_waypoints[len(custom_waypoints) - 1]
                         waypoints = waypoints + custom_waypoints
