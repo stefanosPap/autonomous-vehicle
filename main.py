@@ -65,7 +65,7 @@ def main():
                                   carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
     # start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
     #start_point = carla.Transform(carla.Location(x=-74, y=99, z=1), carla.Rotation(pitch=0.0, yaw=-90.0, roll=0.0))
-    start_point = carla.Transform(carla.Location(x=12, y=-197, z=1), carla.Rotation(pitch=0.0, yaw=360.0, roll=0.0))
+    start_point = carla.Transform(carla.Location(0, 20,  1), carla.Rotation(pitch=0.0, yaw=0.0, roll=0.0))
 
     start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
     

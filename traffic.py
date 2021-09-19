@@ -15,7 +15,7 @@ class Traffic(object):
     # Method for checking traffic lights #
     ######################################
     def check_traffic_lights(self, vehicle_actor, waypoint):
-        
+        self.traffic_state = "GREEN"
         if vehicle_actor.is_at_traffic_light():
         
             traffic_light = vehicle_actor.get_traffic_light()

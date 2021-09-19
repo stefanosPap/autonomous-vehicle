@@ -351,7 +351,7 @@ def pruning(map, waypoints):
 ##################################
 def draw_waypoints(world, waypoints, col):
     m = 0
-    color = carla.Color(r=0, g=0, b=col)
+    color = carla.Color(r=col, g=col, b=col)
     for waypoint in waypoints:
 
         if isinstance(waypoint, carla.libcarla.Waypoint):

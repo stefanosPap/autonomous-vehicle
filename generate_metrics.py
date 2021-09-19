@@ -2,6 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 def metrics(data_file, obs):
     
@@ -296,7 +297,45 @@ def generate_diagramms():
 
         plot += 1
 
+def generate_trajectory_diagramm():
+
+    data_file = open('data_coordinates.txt', 'r')
+    lines = data_file.readlines()
+    
+    x_w = lines[0]
+    y_w = lines[1]
+    x_l = lines[2]
+    y_l = lines[3]
+
+    x_w = x_w.replace(",", " ").replace("]", " ").replace("[", " ").split()
+    x_w = list(map(float , x_w))
+
+    y_w = y_w.replace(",", " ").replace("]", " ").replace("[", " ").split()
+    y_w = list(map(float , y_w))
+
+    x_l = x_l.replace(",", " ").replace("]", " ").replace("[", " ").split()
+    x_l = list(map(float , x_l))
+
+    y_l = y_l.replace(",", " ").replace("]", " ").replace("[", " ").split()
+    y_l = list(map(float , y_l))
+
+    plt.plot(x_w, y_w, color="red", linewidth=4)
+    plt.plot(x_l, y_l, color="blue", linewidth=2)
+    
+    plt.xlabel("$x$", fontsize=16)
+    plt.ylabel("$y$", fontsize=16)
+
+    line1 = Line2D([0], [0], label='Specified Trajectory', color='red')
+    line2 = Line2D([0], [0], label='Vehicle\'s Trajectory', color='blue')
+    
+    handles = [line1, line2]
+    plt.legend(handles=handles)
+    
+    resolution_value = 1500
+    plt.savefig("plot.png", dpi=resolution_value)
+
 if __name__ == '__main__':
     #obs = str(10)
     #metrics('data_' + obs + '.txt', obs)
-    generate_diagramms()
+    #generate_diagramms()
+    generate_trajectory_diagramm()

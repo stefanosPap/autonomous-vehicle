@@ -55,8 +55,8 @@ class Behavior(object):
         '''
         # controller initialization
         self.custom_controller = VehiclePIDController(vehicle_actor, 
-                                                      args_lateral      = {'K_P': 1, 'K_D': 0, 'K_I': 0},
-                                                      args_longitudinal = {'K_P': 1, 'K_D': 0, 'K_I': 0},
+                                                      args_lateral      = {'K_P': 1, 'K_D': 0, 'K_I': 0.07},
+                                                      args_longitudinal = {'K_P': 1, 'K_D': 0, 'K_I': 0.05},
                                                       max_throttle=0.75, 
                                                       max_brake=0.4,
                                                       max_steering=0.8)
@@ -116,30 +116,30 @@ class Behavior(object):
         self.lawful_parameter     =  0 
         
 
-        self.convert_aggressive_value                         = interp1d([0, 10 ], [20 ,  10])
-        self.convert_lawful_value                             = interp1d([0, 10 ], [-1 ,   2 ])
+        self.convert_aggressive_value                         = interp1d([0, 10 ], [ 20,  10])
+        self.convert_lawful_value                             = interp1d([0, 10 ], [-1 ,   1])
 
         self.convert_offset_value                             = interp1d([0, 100], [1  ,  20])
-        self.convert_aggressive_value_for_behaviors_1         = interp1d([0, 10 ], [1  ,   2])
-        self.convert_aggressive_value_for_behaviors_slow_down = interp1d([0, 10 ], [0.2, 0.8])
-        self.convert_aggressive_value_for_behaviors_speed_up  = interp1d([0, 10 ], [1.1,   2])
+        self.convert_aggressive_value_for_behaviors           = interp1d([0, 10 ], [1  ,   2])
+        self.convert_aggressive_value_for_behaviors_slow_down = interp1d([0, 10 ], [0.2, 0.6])
+        self.convert_aggressive_value_for_behaviors_speed_up  = interp1d([0, 10 ], [1.2, 1.6])
 
     def slow_down(self, desired_velocity):
         
         if self.current_velocity > desired_velocity:
             self.velocity = desired_velocity
-            self.publish_velocity()
+            #self.publish_velocity()
 
     def speed_up(self, desired_velocity):
         
         if self.current_velocity < desired_velocity:
             self.velocity = desired_velocity
-            self.publish_velocity()
+            #self.publish_velocity()
 
     def emergency_stop(self):
         
         self.velocity = 0
-        self.publish_velocity()
+        #self.publish_velocity()
 
     def publish_velocity(self):
         self.wait(5)
@@ -327,7 +327,7 @@ class Behavior(object):
 
         if target_speed != self.current_velocity:
             self.velocity = target_speed / 3.6 
-            self.publish_velocity()
+            #self.publish_velocity()
 
     def get_front_obstacle_velocity(self):
 
@@ -409,7 +409,7 @@ class Behavior(object):
     
     
     # 4th rule
-    def exists_stop(self):
+    def exists_stop(self, meters):
 
         self.stop_sign = False
         distance = float("inf")
@@ -430,7 +430,7 @@ class Behavior(object):
                         self.stop_sign = True
                 
         # check for stop sign closely 
-        if self.stop_sign and distance < 5:    
+        if self.stop_sign and distance < meters:    
             if self.previous_stop_detected != self.stop_detected:
                 self.stop_time = time.time()
                 self.previous_stop_detected = self.stop_detected
@@ -451,7 +451,7 @@ class Behavior(object):
     # 6th rule
     def is_front_free_for_a_while(self):
         
-        if self.end_trigger_waypoint_number - self.start_trigger_waypoint_number > 25 and not self.vehicle_in_front(): 
+        if self.end_trigger_waypoint_number - self.start_trigger_waypoint_number > (25 / self.convert_aggressive_value_for_behaviors(self.aggressive_score)) and not self.vehicle_in_front(): 
             self.start_trigger_waypoint_number = self.index
             return True
         return False
@@ -492,7 +492,7 @@ class Behavior(object):
     def check_zero_velocity(self):
         self.get_current_velocity()
         
-        if self.current_velocity < 0.001 and self.index > 2:
+        if self.current_velocity < 0.001 and self.index > 3:
             self.start_trigger_waypoint_number = self.index
             return True
         return False
@@ -532,14 +532,14 @@ class Behavior(object):
         return True
         
     # 11th rule
-    def has_left_lane_same_direction(self):
+    def has_left_lane_different_direction(self):
         if self.current_state == "LEFT":
             return False
 
         if self.waypoints[self.index].get_left_lane() != None:
             if self.waypoints[self.index].get_left_lane().lane_type != carla.LaneType.Bidirectional:
                 sign = self.waypoints[self.index].get_left_lane().lane_id * self.waypoints[self.index].lane_id
-                if sign >= 0:
+                if sign < 0:
                     return True
         return False
     
@@ -574,22 +574,22 @@ class Behavior(object):
         return False
     
     # 17th rule    
-    def is_right_lane_marking_legal(self):
+    def is_right_lane_marking_not_legal(self):
         if self.current_state == "RIGHT":
             return False
         
-        self.legal_right_lane_marking = ("Solid" not in str(self.waypoints[self.index].right_lane_marking.type) and  ("Right" in str(self.waypoints[self.index].lane_change) or "Both" in str(self.waypoints[self.index].lane_change)))
-        if self.legal_right_lane_marking:
+        self.illegal_right_lane_marking = ("Solid" in str(self.waypoints[self.index].right_lane_marking.type) and ("Right" not in str(self.waypoints[self.index].lane_change) or "Both" not in str(self.waypoints[self.index].lane_change)))
+        if self.illegal_right_lane_marking:
             return True
         return False
 
     # 18th rule    
-    def is_left_lane_marking_legal(self):
+    def is_left_lane_marking_not_legal(self):
         if self.current_state == "LEFT":
             return False
         
-        self.legal_left_lane_marking = ("Solid" not in str(self.waypoints[self.index].left_lane_marking.type) and  ("Left" in str(self.waypoints[self.index].lane_change) or "Both" in str(self.waypoints[self.index].lane_change)))
-        if self.legal_left_lane_marking:
+        self.illegal_left_lane_marking = ("Solid" in str(self.waypoints[self.index].left_lane_marking.type) and ("Left" not in str(self.waypoints[self.index].lane_change) or "Both" not in str(self.waypoints[self.index].lane_change)))
+        if self.illegal_left_lane_marking:
             return True
         return False
 
@@ -629,14 +629,16 @@ class Behavior(object):
                 if self.traffic_signs[i].type == "274":
                     self.speed_limit_sign = True
                     orientation = str(self.traffic_signs[i].orientation)
-                    value = self.traffic_signs[i].value 
+                    value = 14 # value is set to 14 for better results, real values are really high 
+                    #value = self.traffic_signs[i].value 
                     self.lane_limit[self.waypoints[self.index].lane_id] = value
                     self.lane_orientation[self.waypoints[self.index].lane_id] = orientation
 
 
         elif self.lane_limit[self.waypoints[self.index].lane_id] != float("inf"):
             self.speed_limit_sign = True
-            value = self.lane_limit[self.waypoints[self.index].lane_id]
+            value = 14 # value is set to 14 for better results, real values are really high 
+            #value = self.lane_limit[self.waypoints[self.index].lane_id]
             orientation = self.lane_orientation[self.waypoints[self.index].lane_id]
 
         velocity_vector = self.vehicle_actor.get_velocity()
@@ -657,9 +659,10 @@ class Behavior(object):
     def automatic_right_lane_change(self):
         if self.current_state == "RIGHT":
             return False
-        
-        final_point = change_coordinate_system(self.waypoints[self.index].transform, self.waypoints[self.index + self.lane_change_offset].transform.location)
-        
+        if self.index + self.lane_change_offset < len(self.waypoints):
+            final_point = change_coordinate_system(self.waypoints[self.index].transform, self.waypoints[self.index + self.lane_change_offset].transform.location)
+        else:
+            return False
         loc1 = self.waypoints[self.index].transform.location
         loc2 = self.waypoints[self.index + 1].transform.location
 
@@ -672,9 +675,11 @@ class Behavior(object):
     def automatic_left_lane_change(self):
         if self.current_state == "LEFT":
             return False
-        
-        final_point = change_coordinate_system(self.waypoints[self.index].transform, self.waypoints[self.index + self.lane_change_offset].transform.location)
-        
+        if self.index + self.lane_change_offset < len(self.waypoints):
+            final_point = change_coordinate_system(self.waypoints[self.index].transform, self.waypoints[self.index + self.lane_change_offset].transform.location)
+        else:
+            return False
+
         loc1 = self.waypoints[self.index].transform.location
         loc2 = self.waypoints[self.index + 1].transform.location
 
@@ -692,7 +697,7 @@ class Behavior(object):
     # 25th rule
     def is_junction_in_front_of_stop_free(self):
         self.free_junction = True
-        if self.exists_stop():
+        if self.exists_stop(self.lawful_score + 3 * int(self.convert_offset_value(self.current_velocity))):
 
             junction = None
             for waypoint in self.waypoints[self.index:]:
@@ -709,7 +714,7 @@ class Behavior(object):
                         if junction.id == junction2.id:
                             self.free_junction = False
 
-        if self.exists_stop() and time.time() - self.stop_time > 10 and self.free_junction:
+        if self.exists_stop(self.lawful_score + 3 * int(self.convert_offset_value(self.current_velocity))) and time.time() - self.stop_time > 10 and self.free_junction:
             return True 
         return False
 
@@ -740,23 +745,10 @@ class Behavior(object):
 
         self.lawful_score = self.sub_law.get_lawful()
 
-        self.calculate_overall_score()
-
     def aggressive(self):
         
         self.aggressive_score = self.sub_agg.get_aggressive()
-        
-        self.calculate_overall_score()
-    
-    def define_behavior_parameters(self, aggressive_parameter, lawful_parameter):
-        
-        self.aggressive_parameter = aggressive_parameter
-        self.lawful_parameter     = lawful_parameter
-
-    def calculate_overall_score(self):
-        self.behavior_score = self.aggressive_parameter * self.aggressive_score + self.lawful_parameter * self.lawful_score
-    
-    
+                
     def calculate_safe_distance(self):
         
         self.safe_distance = -float("inf")
@@ -802,22 +794,22 @@ class Behavior(object):
     def evaluate(self):
 
         if self.new_trigger:
-            aggressive_param = self.convert_aggressive_value_for_behaviors_1(self.aggressive_score)
+            #aggressive_param = self.convert_aggressive_value_for_behaviors(self.aggressive_score)
             
-            self.updated_behaviors["OVERTAKE"         ][:] = self.updated_behaviors["OVERTAKE"         ][:] * aggressive_param
-            self.updated_behaviors["LEFT_LANE_CHANGE" ][:] = self.updated_behaviors["LEFT_LANE_CHANGE" ][:] * aggressive_param
-            self.updated_behaviors["RIGHT_LANE_CHANGE"][:] = self.updated_behaviors["RIGHT_LANE_CHANGE"][:] * aggressive_param
-            self.updated_behaviors["SPEED_UP"         ][:] = self.updated_behaviors["SPEED_UP"         ][:] * aggressive_param
+            #self.updated_behaviors["OVERTAKE"         ][:] = self.updated_behaviors["OVERTAKE"         ][:] * aggressive_param
+            #self.updated_behaviors["LEFT_LANE_CHANGE" ][:] = self.updated_behaviors["LEFT_LANE_CHANGE" ][:] * aggressive_param
+            #self.updated_behaviors["RIGHT_LANE_CHANGE"][:] = self.updated_behaviors["RIGHT_LANE_CHANGE"][:] * aggressive_param
+            #self.updated_behaviors["SPEED_UP"         ][:] = self.updated_behaviors["SPEED_UP"         ][:] * aggressive_param
             
             values = self.updated_behaviors.loc[:].values
             sum_values = values.sum(0)
             
-            max_complete_behaviors_value = max(sum_values[0:2])
+            #max_complete_behaviors_value = max(sum_values[0:2])
             max_direction_behavior_value = max(sum_values[2:5])
             max_speed_behavior_value     = max(sum_values[5: ])
             
-            max_complete_behaviors_key = np.argmax(sum_values[0:2], 0)
-            self.max_complete_behavior = self.updated_behaviors.columns[0:2][max_complete_behaviors_key]
+            #max_complete_behaviors_key = np.argmax(sum_values[0:2], 0)
+            #self.max_complete_behavior = self.updated_behaviors.columns[0:2][max_complete_behaviors_key]
             
             max_direction_behavior_key = np.argmax(sum_values[2:5], 0)
             self.max_direction_behavior = self.updated_behaviors.columns[2:5][max_direction_behavior_key]
@@ -825,23 +817,26 @@ class Behavior(object):
             max_speed_behavior_key = np.argmax(sum_values[5:], 0)
             self.max_speed_behavior = self.updated_behaviors.columns[5:][max_speed_behavior_key]
 
-            if max_complete_behaviors_value > max_direction_behavior_value:
-                self.max_behavior = self.max_complete_behavior 
-                self.max_speed_behavior = None
-                if max_complete_behaviors_value == 0.0:
-                    self.max_behavior = "KEEP_STRAIGHT"
+            #if max_complete_behaviors_value > max_direction_behavior_value:
+            #    self.max_behavior = self.max_complete_behavior 
+            #    self.max_speed_behavior = None
+            #    if max_complete_behaviors_value == 0.0:
+            #        self.max_behavior = "KEEP_STRAIGHT"
 
-            else:
-                self.max_behavior = self.max_direction_behavior
-                if max_direction_behavior_value == 0.0:
-                    self.max_behavior = "KEEP_STRAIGHT"
-                if max_speed_behavior_value == 0.0:
-                    self.max_speed_behavior = "KEEP_VELOCITY"
+            #else:
+            self.max_behavior = self.max_direction_behavior
+            if max_direction_behavior_value == 0.0:
+                self.max_behavior = "KEEP_STRAIGHT"
+            if max_speed_behavior_value == 0.0:
+                self.max_speed_behavior = "KEEP_VELOCITY"
             print("----------------------------")
             print(sum_values)
-            print(self.row_filter)
+            print(self.row_activation_filter)
             print(self.max_behavior, self.max_speed_behavior)
-            print(set([a*b for a,b in zip(list(self.row_filter[0]),self.indexes)]))
+            print(set([a*b for a,b in zip(list(self.row_activation_filter[0]),self.indexes)]))
+            print("converted_lawful_score:", self.convert_lawful_value(self.lawful_score), "lawful_score:", self.lawful_score)
+            print("converted_aggressive_score:", self.convert_aggressive_value_for_behaviors_speed_up(self.aggressive_score), "aggressive_score:", self.aggressive_score)
+
             print("----------------------------")
 
     def regulate_speed(self):
@@ -866,7 +861,7 @@ class Behavior(object):
             if not self.action_performed:
                 if self.current_velocity > 1:
                     speed = self.convert_aggressive_value_for_behaviors_speed_up(self.aggressive_score) * self.current_velocity
-                    speed = min(speed, 70)
+                    speed = min(speed, 35)
                     
                 else:
                     speed = 12
@@ -878,8 +873,11 @@ class Behavior(object):
             if not self.action_performed:    
                 
                 # if RED light has activated when the vehicle was inside the junction then it is better to get out of the junction
-                if not self.waypoints[self.index].is_junction:
+                loc = self.vehicle_actor.get_location()
+                wp = self.map.get_waypoint(loc, project_to_road=False, lane_type=carla.LaneType.Any)
+                if not wp.is_junction:
                     self.emergency_stop()
+                    self.world.debug.draw_string(wp.transform.location, "H", draw_shadow=False, color=carla.Color(r=200, g=0, b=0), life_time=1000, persistent_lines=True)
                 else:
                     self.control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
                 self.wait(10)
@@ -888,7 +886,7 @@ class Behavior(object):
         if self.max_speed_behavior == "KEEP_VELOCITY":
             self.get_current_velocity() 
             if self.current_velocity < 0.5:
-                self.speed_up(10)
+                self.speed_up(12)
 
     def wait(self, reps):
         for _ in range(reps):
@@ -974,15 +972,7 @@ class Behavior(object):
         vehicle_actor1.set_autopilot(True)
         self.wait(10)
         '''
-        velocity = 12
-        aggressive  = self.experiment['aggresssive']
-        lawful      = self.experiment['lawful']
 
-            
-        self.pub_vel. publish ({'velocity'  : velocity    })
-        self.pub_agg. publish ({'aggressive': aggressive  })
-        self.pub_law. publish ({'lawful'    : lawful      })
-        self.wait(10)
         
         self.action = False
         
@@ -991,9 +981,9 @@ class Behavior(object):
                     "OVERTAKE"          : [ 0.4,  0.7, -0.3, -0.4, -0.9,  0.0,  0.0,  0.0,  0.0,  0.6,  0.3,  0.0, -0.5,  0.0, -0.5,  0.0,  0.0,  0.4,  0.0, -0.1,  0.0,  0.0,  0.0,  0.0,   0.0,  0.0,  0.0],
                     "CAR_FOLLOW"        : [-0.3, -0.3,  0.9,  0.1,  0.2,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.4,  0.0,  0.0,  0.0,  0.0,   0.0,  0.0,  0.0], 
 
-                    "LEFT_LANE_CHANGE"  : [ 0.2,  0.4, -0.2, -0.3, -0.2,  0.0,  0.0,  0.0,  0.0,  0.7,  0.5,  0.5, -0.2,  0.4, -0.5,  0.1,  0.0,  0.4,  0.0, -0.3,  0.0,  0.0, -0.3,  0.1,   0.2, -0.5,  0.0],
-                    "RIGHT_LANE_CHANGE" : [ 0.2,  0.4, -0.2, -0.3, -0.2,  0.0,  0.0,  0.0,  0.7,  0.0,  0.0, -0.2,  0.5, -0.5,  0.4,  0.1,  0.4,  0.0,  0.7,  0.4,  0.0, -0.3,  0.0,  0.1,  -0.5,  0.2,  0.0], 
-                    "KEEP_STRAIGHT"     : [-0.1, -0.1,  0.8,  0.7,  0.5,  0.5,  0.5,  0.0,  0.0,  0.0,  0.0,  0.4,  0.4,  0.2,  0.2,  0.2,  0.0,  0.0,  0.5,  0.4,  0.0,  0.5,  0.5,  0.2,   0.4,  0.4,  0.3],
+                    "LEFT_LANE_CHANGE"  : [ 0.2,  0.4, -0.2, -0.3, -0.2,  0.0,  0.0,  0.0,  0.0,  0.7, -0.5,  0.5, -0.2,  0.4, -0.5,  0.1,  0.4, -0.4,  0.0, -0.3,  0.0,  0.0, -0.3,  0.1,   0.2, -0.5,  0.0],
+                    "RIGHT_LANE_CHANGE" : [ 0.2,  0.4, -0.2, -0.3, -0.2,  0.0,  0.0,  0.0,  0.7,  0.0,  0.5, -0.2,  0.5, -0.5,  0.4,  0.1, -0.4,  0.4,  0.7,  0.4,  0.0, -0.3,  0.0,  0.1,  -0.5,  0.2,  0.0], 
+                    "KEEP_STRAIGHT"     : [-0.1, -0.1,  0.8,  0.7,  0.5,  0.5,  0.5,  0.0,  0.0,  0.0,  0.5,  0.4,  0.4,  0.2,  0.2,  0.2,  0.4,  0.4,  0.5,  0.4,  0.0,  0.5,  0.5,  0.2,   0.4,  0.4,  0.3],
                         
                     "SPEED_UP"          : [-0.5, -0.1, -0.2, -0.3, -0.2,  0.8, -0.7,  0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.1,  0.1, -0.5,  0.0,  0.0,  0.2,  0.0, -0.3, -0.1, -0.1, -0.1,  -0.2, -0.2,  0.4], 
                     "SLOW_DOWN"         : [ 0.8,  0.8,  0.7,  0.4,  0.9, -0.5,  0.2, -0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.2,  0.2,  0.5,  0.0,  0.0,  0.1,  0.0,  0.4,  0.3,  0.3,  0.3,   0.2,  0.2, -0.1],
@@ -1022,14 +1012,14 @@ class Behavior(object):
                         "zero velocity",
                         "right lane safe",
                         "left lane safe",
-                        "left lane same direction",
+                        "left lane not same direction",
                         "right lane denser than left",
                         "left lane denser than right",
                         "right pedestrian closely",
                         "left pedestrian closely",
                         "front pedestrian closely",
-                        "right lane marking legal",
-                        "left lane marking legal",
+                        "right lane marking not legal",
+                        "left lane marking not legal",
                         "in bidirectional for long time",
                         "is left lane bidirectional",
                         "speed above the limit",
@@ -1060,13 +1050,29 @@ class Behavior(object):
         self.still_front = False
         self.previous_stop_detected = None 
 
-        self.right_turns    = 0
-        self.left_turns     = 0 
-        self.average_speed  = 0 
+        self.right_turns        = 0
+        self.left_turns         = 0 
+        self.average_speed      = 0 
+        self.overall_speed      = 0
+        self.route_completion   = 0
+
+        loc = self.vehicle_actor.get_location()
+        vec = [loc.x, loc.y]
+        self.locations = [vec]
         
+        self.velocity = 12
+        aggressive  = self.experiment['aggresssive']
+        lawful      = self.experiment['lawful']
+        self.wait(15)
+
+        #self.publish_velocity()
+        self.pub_agg. publish ({'aggressive': aggressive  })
+        self.pub_law. publish ({'lawful'    : lawful      })
+        self.wait(15)
+
         while True:
             
-            if True:
+            try:
                
                 #alive_actors = [i for i in self.world.get_actors() if i.is_alive]
                 #self.vehicle_list = [i for i in self.vehicle_list if i.is_alive]
@@ -1078,8 +1084,42 @@ class Behavior(object):
 
                 # corner case that is being executed, when the vehicle reaches its destination
                 if self.index == len(self.waypoints) - 1:
-                    self.control_signal = self.custom_controller.run_step(0, self.waypoints[self.index])
+                    self.overall_speed += self.current_velocity
+                    self.world.debug.draw_string(self.waypoints[self.index].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
+                    
+                    self.control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
                     vehicle_actor.apply_control(self.control_signal)
+                    self.wait(5)
+                    self.velocity = 0
+                    self.control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
+                    vehicle_actor.apply_control(self.control_signal)
+                    #self.publish_velocity()
+
+                    # calculate average speed
+                    self.average_speed = self.overall_speed / self.index 
+                    print("Avg:", self.average_speed)
+                    print("Route:", self.route_completion)
+                    x_l = [cor[0] for cor in self.locations]
+                    y_l = [cor[1] for cor in self.locations]
+                    
+                    self.waypoints = [way.transform.location for way in self.waypoints]
+                    self.waypoints = [[way.x, way.y] for way in self.waypoints]
+                    
+                    x_w = [cor[0] for cor in self.waypoints]
+                    y_w = [cor[1] for cor in self.waypoints]
+
+                    open('data_coordinates.txt', 'w').close()
+                    data_file = open('data_coordinates.txt', 'a')
+                    data_file.write(str(x_w))
+                    data_file.write('\n')
+                    data_file.write(str(y_w))
+                    data_file.write('\n')
+                    data_file.write(str(x_l))
+                    data_file.write('\n')
+                    data_file.write(str(y_l))
+                    data_file.write('\n')
+                    data_file.close()
+
                     break               
                 
                 # velocity's norm in km/h - publish the current velocity in the speedometer
@@ -1206,7 +1246,7 @@ class Behavior(object):
                     break
 
                 # read velocity from the slider 
-                self.velocity = self.speed_sub.get_velocity()
+                #self.velocity = self.speed_sub.get_velocity()
 
                 #-----------------------------------#
                 #|                                 |#
@@ -1221,10 +1261,10 @@ class Behavior(object):
                 vehicle_in_front_closely = self.vehicle_in_front()
                 
                 # check if intersection exists - 3rd criterion 
-                intersection_closely = self.exists_intersection(15)
+                intersection_closely = self.exists_intersection(1.5 * self.lawful_score + 3 * int(self.convert_offset_value(self.current_velocity)))
 
                 # check if stop sign exists closely - 4th criterion
-                stop_closely = self.exists_stop()
+                stop_closely = self.exists_stop(self.lawful_score + 3 * int(self.convert_offset_value(self.current_velocity)))
 
                 # check if destination is close - 5th criterion 
                 destination_close = self.is_end_location_closely()
@@ -1245,7 +1285,7 @@ class Behavior(object):
                 safe_left_lane = self.is_left_lane_safe()  
                 
                 # check if left lane has the same direction - 11th criterion 
-                left_lane_same_direction = self.has_left_lane_same_direction()
+                left_lane_different_direction = self.has_left_lane_different_direction()
                 
                 # check if right lane is denser than the left - 12th criterion
                 right_lane_denser_than_left = self.is_right_lane_denser_than_left()
@@ -1263,10 +1303,10 @@ class Behavior(object):
                 front_pedestrian_closely = self.is_front_pedestrian_closely()
                 
                 # check if right lane marking is legal - 17th criterion
-                right_lane_marking_legal = self.is_right_lane_marking_legal()
+                right_lane_marking_not_legal = self.is_right_lane_marking_not_legal()
          
                 # check if left lane marking is legal - 18th criterion
-                left_lane_marking_legal = self.is_left_lane_marking_legal()
+                left_lane_marking_not_legal = self.is_left_lane_marking_not_legal()
                 
                 # check if vehicle is in bidirectional for long time - 19th criterion
                 in_bidirectional_lane_for_long_time = self.is_in_bidirectional_lane_for_long_time()
@@ -1289,53 +1329,43 @@ class Behavior(object):
                 # check if junction in front of stop sign is free - 25th criterion 
                 junction_free = self.is_junction_in_front_of_stop_free()
                                
-
-                self.row_filter    = np.array([[1 * higher_velocity_than_front_obstacle and 1 * vehicle_in_front_closely, 
-                                                1 * vehicle_in_front_closely, 
-                                                1 * intersection_closely, 
-                                                1 * stop_closely,
-                                                1 * destination_close,
-                                                1 * is_front_free,
-                                                1 * red_light,
-                                                1 * zero_velocity,
-                                                1 * safe_right_lane and (1 * vehicle_in_front_closely or 1 * make_automatic_right_lane_change),
-                                                1 * safe_left_lane and (1 * vehicle_in_front_closely or make_automatic_left_lane_change),
-                                                1 * left_lane_same_direction and 1 * vehicle_in_front_closely and 1 * safe_left_lane,
-                                                1 * right_lane_denser_than_left and 1 * vehicle_in_front_closely,
-                                                1 * left_lane_denser_than_right and 1 * vehicle_in_front_closely,
-                                                1 * right_pedestrian_closely,
-                                                1 * left_pedestrian_closely,
-                                                1 * front_pedestrian_closely,
-                                                1 * right_lane_marking_legal and 1 * vehicle_in_front_closely,
-                                                1 * left_lane_marking_legal and 1 * vehicle_in_front_closely,
-                                                1 * in_bidirectional_lane_for_long_time and 1 * safe_right_lane,
-                                                1 * left_lane_bidirectional and 1 * vehicle_in_front_closely,
-                                                1 * speed_above_the_limit,
-                                                1 * make_automatic_right_lane_change,
-                                                1 * make_automatic_left_lane_change,
-                                                1 * vehicle_still_front,
-                                                1 * (not safe_right_lane) and (1 * vehicle_in_front_closely or 1 * make_automatic_right_lane_change),
-                                                1 * (not safe_left_lane) and (1 * vehicle_in_front_closely or make_automatic_left_lane_change),
-                                                1 * junction_free]])
                 
+                self.row_activation_filter    = np.array([[ 1 * higher_velocity_than_front_obstacle and 1 * vehicle_in_front_closely, 
+                                                            1 * vehicle_in_front_closely, 
+                                                            1 * intersection_closely, 
+                                                            1 * stop_closely,
+                                                            1 * destination_close,
+                                                            1 * is_front_free,
+                                                            1 * red_light,
+                                                            1 * zero_velocity,
+                                                            1 * safe_right_lane and (1 * vehicle_in_front_closely or 1 * make_automatic_right_lane_change),
+                                                            1 * safe_left_lane and (1 * vehicle_in_front_closely or make_automatic_left_lane_change),
+                                                            1 * left_lane_different_direction and 1 * vehicle_in_front_closely,
+                                                            1 * right_lane_denser_than_left and 1 * vehicle_in_front_closely,
+                                                            1 * left_lane_denser_than_right and 1 * vehicle_in_front_closely,
+                                                            1 * right_pedestrian_closely,
+                                                            1 * left_pedestrian_closely,
+                                                            1 * front_pedestrian_closely,
+                                                            1 * right_lane_marking_not_legal and 1 * vehicle_in_front_closely,
+                                                            1 * left_lane_marking_not_legal and 1 * vehicle_in_front_closely,
+                                                            1 * in_bidirectional_lane_for_long_time and 1 * safe_right_lane,
+                                                            1 * left_lane_bidirectional and 1 * vehicle_in_front_closely,
+                                                            1 * speed_above_the_limit,
+                                                            1 * make_automatic_right_lane_change,
+                                                            1 * make_automatic_left_lane_change,
+                                                            1 * vehicle_still_front,
+                                                            1 * (not safe_right_lane) and (1 * vehicle_in_front_closely or 1 * make_automatic_right_lane_change),
+                                                            1 * (not safe_left_lane) and (1 * vehicle_in_front_closely or make_automatic_left_lane_change),
+                                                            1 * junction_free]])
+
                 self.row_filter_for_lawful_values = np.array([[     1 ,
                                                                     1 , 
                                                                     1 , 
-                                                                    1 ,
+                                                                    1 * self.convert_lawful_value(self.lawful_score),
                                                                     1 ,
                                                                     1 ,
                                                                     1 * self.convert_lawful_value(self.lawful_score),
                                                                     1 ,
-                                                                    1 ,
-                                                                    1 ,
-                                                                    1 * self.convert_lawful_value(self.lawful_score),
-                                                                    1 ,
-                                                                    1 ,
-                                                                    1 ,
-                                                                    1 ,
-                                                                    1 ,
-                                                                    1 * self.convert_lawful_value(self.lawful_score),
-                                                                    1 * self.convert_lawful_value(self.lawful_score),
                                                                     1 ,
                                                                     1 ,
                                                                     1 * self.convert_lawful_value(self.lawful_score),
@@ -1344,15 +1374,25 @@ class Behavior(object):
                                                                     1 ,
                                                                     1 ,
                                                                     1 ,
-                                                                    1 * self.convert_lawful_value(self.lawful_score)]])
+                                                                    1 * self.convert_lawful_value(self.lawful_score),
+                                                                    1 * self.convert_lawful_value(self.lawful_score),
+                                                                    1 ,
+                                                                    1 ,
+                                                                    1 * self.convert_lawful_value(self.lawful_score),
+                                                                    1 ,
+                                                                    1 ,
+                                                                    1 ,
+                                                                    1 ,
+                                                                    1 ,
+                                                                    1 ]])
                 
                 
                 self.column_filter_for_aggressive_values = np.array([[1,
-                                                                      self.convert_aggressive_value_for_behaviors_1(self.aggressive_score), 
-                                                                      self.convert_aggressive_value_for_behaviors_1(self.aggressive_score), 
-                                                                      self.convert_aggressive_value_for_behaviors_1(self.aggressive_score), 
+                                                                      self.convert_aggressive_value_for_behaviors(self.aggressive_score), 
+                                                                      self.convert_aggressive_value_for_behaviors(self.aggressive_score), 
+                                                                      self.convert_aggressive_value_for_behaviors(self.aggressive_score), 
                                                                       1, 
-                                                                      self.convert_aggressive_value_for_behaviors_1(self.aggressive_score), 
+                                                                      self.convert_aggressive_value_for_behaviors(self.aggressive_score), 
                                                                       1, 
                                                                       1, 
                                                                       1]])
@@ -1368,7 +1408,7 @@ class Behavior(object):
                                                 1]])
 
                 self.column_filter = self.column_filter_for_aggressive_values * self.column_filter
-                self.row_filter    = self.row_filter_for_lawful_values        * self.row_filter
+                self.row_filter    = self.row_filter_for_lawful_values        * self.row_activation_filter
 
                 # --------------------------------------------------------------------------- #
                 # |                                                                         | #
@@ -1499,15 +1539,43 @@ class Behavior(object):
                 #print('Distance from waypoint {}'.format(i), dist) 
 
                 if dist < 2:
-                    #print(len(self.vehicle_list))
                     self.index += 1
                     self.trajectory.change = False
                     self.get_current_velocity()
-                    self.average_speed += self.current_velocity
-                    if self.index == len(self.waypoints) - 1:
-                        self.average_speed = self.average_speed / (len(self.waypoints) - 1)
+                    print(self.current_velocity,\
+                                    self.lawful_score + 3 * int(self.convert_offset_value(self.current_velocity)),\
+                                    self.lawful_score,\
+                                    3 * int(self.convert_offset_value(self.current_velocity)))
+
+                    self.route_completion = self.index / (len(self.waypoints) - 1)
+                    #print(self.route_completion)
+
+                    self.overall_speed += self.current_velocity
+                    loc = self.vehicle_actor.get_location()
+                    vec = [loc.x, loc.y]
+                    self.locations.append(vec)
+
                 vehicle_actor.apply_control(self.control_signal)
                 world.tick()
+            except:
+
+                x_l = [cor[0] for cor in self.locations]
+                y_l = [cor[1] for cor in self.locations]
+                    
+                self.waypoints_traj = [way.transform.location for way in self.waypoints]
+                self.waypoints_traj = [[way.x, way.y] for way in self.waypoints_traj]
+                    
+                x_w = [cor[0] for cor in self.waypoints_traj]
+                y_w = [cor[1] for cor in self.waypoints_traj]
+
+                open('data_coordinates.txt', 'w').close()
+                data_file = open('data_coordinates.txt', 'a')
+                data_file.write(str(x_w))
+                data_file.write(str(y_w))
+                data_file.write(str(x_l))
+                data_file.write(str(y_l))
+                data_file.close()
+                print(111111)
 
     def evaluate_node(self):
         
