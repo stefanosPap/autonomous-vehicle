@@ -21,7 +21,7 @@ execution_path = os.getcwd()
 
 class Sensor(object):               # general sensor class 
 
-    def __init__(self,name):
+    def __init__(self, name):
         self.name = name
         self.locationX = 0
         self.locationY = 0
@@ -45,7 +45,8 @@ class Sensor(object):               # general sensor class
         self.rotation = carla.Rotation(pitch, yaw, roll) 
 
     def get_transform(self):
-        self.transform = carla.Transform(self.location, self.rotation)
+        #self.transform = carla.Transform(self.location, self.rotation)
+        self.transform = carla.Transform()
         return self.transform
 
     def get_vehicle(self):
@@ -255,10 +256,10 @@ class CollisionDetector(Sensor):
     def __init__(self):
         super().__init__('sensor.other.collision')
 
-    def collision_callback(self, lane):
-        print("Collision Detector measure:\n"+str(lane)+'\n')
-        pass 
+    def collision_callback(self, collision):
+        print("Collision Detector measure:\n"+str(collision.other_actor)+'\n')
+        return True 
+
     def read(self):
         self.collision_detector = super().get_sensor()
         self.collision_detector.listen(lambda collision: self.collision_callback(collision))
-

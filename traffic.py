@@ -14,12 +14,13 @@ class Traffic(object):
     ######################################
     # Method for checking traffic lights #
     ######################################
-    def check_traffic_lights(self, vehicle_actor, waypoint):
+    def check_traffic_lights(self, vehicle_actor):
         self.traffic_state = "GREEN"
         if vehicle_actor.is_at_traffic_light():
-        
+                
             traffic_light = vehicle_actor.get_traffic_light()
-        
+            #self.world.debug.draw_box(traffic_light.trigger_volume, traffic_light.get_transform().rotation, 0.05, carla.Color(255,0,0,0),100)
+            #print(1)
             if traffic_light != None:
                 if traffic_light.get_state() == carla.TrafficLightState.Red:
                     self.traffic_state = "RED"
@@ -29,7 +30,6 @@ class Traffic(object):
 
                 elif traffic_light.get_state() == carla.TrafficLightState.Green:
                     self.traffic_state = "GREEN"
-
         return self.traffic_state
 
     ######################################
@@ -42,12 +42,12 @@ class Traffic(object):
             del waypoint
             waypoint = self.map.get_waypoint(loc)
 
-        landmarks = waypoint.get_landmarks(distance=5)
+        landmarks = waypoint.get_landmarks(distance=8)
         if len(landmarks) != 0:
             for j in range(len(landmarks)):
                 self.world.debug.draw_box(carla.BoundingBox(landmarks[j].transform.location, carla.Vector3D(0.5,0.5,2)), landmarks[j].transform.rotation, 0.05, carla.Color(255,0,0,0),100)
                 #print(landmarks[j].name, landmarks[j].type, landmarks[j].value, landmarks[j].orientation)
-
+                pass
         return landmarks
     
     ###############################

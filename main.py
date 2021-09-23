@@ -66,6 +66,7 @@ def main():
     # start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
     #start_point = carla.Transform(carla.Location(x=-74, y=99, z=1), carla.Rotation(pitch=0.0, yaw=-90.0, roll=0.0))
     start_point = carla.Transform(carla.Location(0, 20,  1), carla.Rotation(pitch=0.0, yaw=0.0, roll=0.0))
+    start_point = carla.Transform(carla.Location(-74, -20,  1), carla.Rotation(pitch=0.0, yaw=-90.0, roll=0.0))
 
     start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
     
@@ -103,7 +104,15 @@ def main():
 
         print("-------- Running on normal mode with zero initial values for the siders --------\n")
 
-
+    '''
+    start_point = carla.Transform(carla.Location(-74, -60,  1), carla.Rotation(pitch=0.0, yaw=-90.0, roll=0.0))
+    vehicle = Vehicle()                                  
+    vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
+    vehicle.choose_model('model3', blueprint, world)
+    vehicle_actor1 = vehicle.get_vehicle_actor()
+    #vehicle_actor1.apply_control(control_signal1)
+    vehicle_list.append(vehicle_actor1)
+    '''
     spawn(vehicle_list, walker_list, vehicles, pedestrians)
 
     trajectory = Trajectory(world, map, vehicle_actor)
