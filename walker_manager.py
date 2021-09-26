@@ -94,7 +94,10 @@ class WalkerManager(object):
                     self.walkers_in_same_lane.append(walker)
 
             for walker in self.walkers_in_right_lane:
-                
+                if not walker.is_alive:
+                    self.front_right_walkers = []
+                    self.front_right_distances = []
+                    continue
                 walker_location = walker.get_location()
 
                 ego_distance_front_right = walker_location.distance(self.front_location)
@@ -112,6 +115,10 @@ class WalkerManager(object):
             
 
             for walker in self.walkers_in_left_lane:
+                if not walker.is_alive:
+                    self.front_left_walkers = []
+                    self.front_left_distances = []
+                    continue
                 walker_location = walker.get_location()
 
                 ego_distance_front_left = walker_location.distance(self.front_location)
@@ -129,6 +136,11 @@ class WalkerManager(object):
 
 
             for walker in self.walkers_in_same_lane:
+                if not walker.is_alive:
+                    self.front_walkers = []
+                    self.front_distances = []
+                    continue
+
                 walker_location = walker.get_location()
 
                 ego_distance_front_left = walker_location.distance(self.front_location)

@@ -199,13 +199,22 @@ class Behavior(object):
                         if w == prev or w.lane_type == carla.LaneType.Shoulder:
                             self.waypoints[self.index] = self.waypoints[self.index + self.lane_change_offset]
                             self.index += self.lane_change_offset
+                            if self.current_state == "LEFT":
+                                self.right_turns += 1
+                            elif self.current_state == "RIGHT":
+                                self.left_turns += 1
                             self.current_state = "INIT"
                             self.pub_notify.publish({'value': self.current_state})
                             self.slow_down(desired_velocity=desired_vel)
                     else:
+                        if self.current_state == "LEFT":
+                            self.right_turns += 1
+                        elif self.current_state == "RIGHT":
+                            self.left_turns += 1
                         self.current_state = "INIT"
                         self.pub_notify.publish({'value': self.current_state})
                         self.slow_down(desired_velocity=desired_vel)
+
                     self.turn_sub.set_turn(None)
 
                 elif turn != self.current_state:
@@ -643,28 +652,29 @@ class Behavior(object):
         self.speed_limit_sign = False
         orientation = None
         value = float("inf")
+        try:
+            if len(self.traffic_signs) is not 0:
+            
+                for i in range(len(self.traffic_signs)):
+                    
+                    #check for speed limit sign sign
+                    if self.traffic_signs[i].type == "274":
+                        self.speed_limit_sign = True
+                        self.speed_limit_id = self.traffic_signs[i].id
+                        orientation = str(self.traffic_signs[i].orientation)
+                        value = 14 # value is set to 14 for better results, real values are really high 
+                        #value = self.traffic_signs[i].value 
+                        self.lane_limit[self.waypoints[self.index].lane_id] = value
+                        self.lane_orientation[self.waypoints[self.index].lane_id] = orientation
 
-        if len(self.traffic_signs) is not 0:
-        
-            for i in range(len(self.traffic_signs)):
-                
-                #check for speed limit sign sign
-                if self.traffic_signs[i].type == "274":
-                    self.speed_limit_sign = True
-                    self.speed_limit_id = self.traffic_signs[i].id
-                    orientation = str(self.traffic_signs[i].orientation)
-                    value = 14 # value is set to 14 for better results, real values are really high 
-                    #value = self.traffic_signs[i].value 
-                    self.lane_limit[self.waypoints[self.index].lane_id] = value
-                    self.lane_orientation[self.waypoints[self.index].lane_id] = orientation
 
-
-        elif self.lane_limit[self.waypoints[self.index].lane_id] != float("inf"):
-            self.speed_limit_sign = True
-            value = 14 # value is set to 14 for better results, real values are really high 
-            #value = self.lane_limit[self.waypoints[self.index].lane_id]
-            orientation = self.lane_orientation[self.waypoints[self.index].lane_id]
-
+            elif self.lane_limit[self.waypoints[self.index].lane_id] != float("inf"):
+                self.speed_limit_sign = True
+                value = 14 # value is set to 14 for better results, real values are really high 
+                #value = self.lane_limit[self.waypoints[self.index].lane_id]
+                orientation = self.lane_orientation[self.waypoints[self.index].lane_id]
+        except:
+            pass 
         velocity_vector = self.vehicle_actor.get_velocity()
         velocity_array = [velocity_vector.x, velocity_vector.y, velocity_vector.z]
         velocity_norm = np.linalg.norm(velocity_array)
@@ -868,7 +878,7 @@ class Behavior(object):
             if not self.action_performed:
 
                 speed = self.convert_aggressive_value_for_behaviors_slow_down(self.aggressive_score) * self.current_velocity
-                print(speed)
+                print(self.current_velocity)
                 speed = max(12, speed)    
                 
                 if (self.vehicle_in_front() or self.still_front) and self.max_behavior == "KEEP_STRAIGHT":
@@ -885,9 +895,9 @@ class Behavior(object):
             if not self.action_performed:
                 
                 speed = self.convert_aggressive_value_for_behaviors_speed_up(self.aggressive_score) * self.current_velocity
-                speed = min(speed, 40)
+                speed = min(speed, 38)
                 speed = max(speed, 12)
-                print(speed)
+                print(self.current_velocity)
 
                 self.speed_up(speed)
                 self.action_performed = True
@@ -1008,10 +1018,10 @@ class Behavior(object):
                     "RIGHT_LANE_CHANGE" : [ 0.2,  0.4, -0.2, -0.3, -0.2,  0.0,  0.0,  0.0,  0.7,  0.0,  0.5, -0.2,  0.5, -0.5,  0.4,  0.1, -0.4,  0.4,  0.7,  0.4,  0.0, -0.3,  0.0,  0.1,  -0.5,  0.2,  0.0], 
                     "KEEP_STRAIGHT"     : [-0.1, -0.1,  0.8,  0.7,  0.5,  0.5,  0.5,  0.0,  0.0,  0.0,  0.5,  0.4,  0.4,  0.2,  0.2,  0.2,  0.4,  0.4,  0.5,  0.4,  0.0,  0.5,  0.5,  0.2,   0.4,  0.4,  0.3],
                         
-                    "SPEED_UP"          : [-0.5, -0.1, -0.2, -0.3, -0.2,  0.8, -0.7,  0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.1,  0.1, -0.5,  0.0,  0.0,  0.2,  0.0, -0.3, -0.1, -0.1, -0.1,  -0.2, -0.2,  0.4], 
-                    "SLOW_DOWN"         : [ 0.8,  0.8,  0.7,  0.4,  0.9, -0.5,  0.2, -0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.2,  0.2,  0.5,  0.0,  0.0,  0.1,  0.0,  0.4,  0.3,  0.3,  0.3,   0.2,  0.2, -0.1],
-                    "KEEP_VELOCITY"     : [-0.1, -0.8,  0.4,  0.3,  0.5,  0.5, -0.4, -0.3,  0.0,  0.0,  0.0,  0.0,  0.0,  0.3,  0.3,  0.4,  0.0,  0.0,  0.3,  0.0,  0.1,  0.1,  0.1,  0.2,   0.1,  0.1,  0.0],
-                    "STOP"              : [ 0.5,  0.6,  0.6,  0.6, -0.1, -0.5,  0.9, -0.6, -0.2, -0.2,  0.0,  0.0,  0.0,  0.1,  0.1,  0.6,  0.0,  0.0, -0.4,  0.0,  0.0,  0.4,  0.4,  0.1,   0.2,  0.2, -0.2]
+                    "SPEED_UP"          : [-0.5, -0.1, -0.2, -0.3, -0.2,  0.8, -0.7,  0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.1,  0.1, -0.5,  0.0,  0.0,  0.2,  0.0, -0.8, -0.1, -0.1, -0.1,  -0.2, -0.2,  0.4], 
+                    "SLOW_DOWN"         : [ 0.8,  0.8,  0.7,  0.4,  0.9, -0.5,  0.2, -0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.2,  0.2,  0.5,  0.0,  0.0,  0.1,  0.0,  0.5,  0.3,  0.3,  0.3,   0.2,  0.2, -0.1],
+                    "KEEP_VELOCITY"     : [-0.1, -0.8,  0.4,  0.3,  0.5,  0.5, -0.4, -0.3,  0.0,  0.0,  0.0,  0.0,  0.0,  0.3,  0.3,  0.4,  0.0,  0.0,  0.3,  0.0,  0.2,  0.1,  0.1,  0.2,   0.1,  0.1,  0.0],
+                    "STOP"              : [ 0.5,  0.6,  0.6,  0.6, -0.1, -0.5,  0.9, -0.6, -0.2, -0.2,  0.0,  0.0,  0.0,  0.1,  0.1,  0.6,  0.0,  0.0, -0.4,  0.0,  0.1,  0.4,  0.4,  0.1,   0.2,  0.2, -0.2]
                        
                     }
 
@@ -1119,7 +1129,6 @@ class Behavior(object):
         self.stop_sign_id     = None
 
         self.check_collissions()
-
         while True:
             
             try:
@@ -1616,7 +1625,6 @@ class Behavior(object):
                     loc = self.vehicle_actor.get_location()
                     vec = [loc.x, loc.y]
                     self.locations.append(vec)
-
                 vehicle_actor.apply_control(self.control_signal)
                 world.tick()
             except:
@@ -1702,7 +1710,7 @@ class Behavior(object):
         else:
             self.zero_vel_light = 0
         
-        if 20 < self.zero_vel_light and self.traffic_light_id != self.prev_traffic_light_id:
+        if 25 < self.zero_vel_light and self.traffic_light_id != self.prev_traffic_light_id:
             self.red_light_violations += 1
             print("REEEEEEEEEEEEEEEEEEEEE FANARRRRRRRRRRRRRRRRRRRR")
             self.zero_vel_light = 0
@@ -1715,7 +1723,7 @@ class Behavior(object):
         else:
             self.high_vel = 0
 
-        if 30 < self.high_vel and self.speed_limit_id != self.prev_speed_limit_id:
+        if 40 < self.high_vel and self.speed_limit_id != self.prev_speed_limit_id:
             self.speed_limit_violations += 1
             print("REEEEEEEEEEEEEEEEEEEEE TREXSSSSSSSSSSSSSSS")
             self.high_vel = 0

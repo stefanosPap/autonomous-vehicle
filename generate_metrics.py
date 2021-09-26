@@ -335,7 +335,7 @@ def generate_trajectory_diagramm():
     plt.savefig("plot.png", dpi=resolution_value)
 
 if __name__ == '__main__':
-    #obs = str(10)
-    #metrics('data_' + obs + '.txt', obs)
+    obs = str(0)
+    metrics('data_' + obs + '.txt', obs)
     #generate_diagramms()
-    generate_trajectory_diagramm()
+    #generate_trajectory_diagramm()

@@ -43,6 +43,11 @@ class ObstacleManager(object):
         self.front_general_distances = []
 
         for vehicle in self.vehicle_list[1:]:
+            if not vehicle.is_alive:
+                self.front_general_vehicles  = []
+                self.front_general_distances = []
+                continue
+
             vehicle_location   = vehicle.get_location()
             ego_distance_front = vehicle_location.distance(self.front_location)
             ego_distance_rear  = vehicle_location.distance(self.rear_location)
@@ -84,7 +89,10 @@ class ObstacleManager(object):
             self.closest_rear_right_vehicle  = None
 
             for vehicle in self.vehicle_list[1:]:
-
+                if not vehicle.is_alive:
+                    self.vehicles_in_left_lane  = []
+                    self.vehicles_in_right_lane = []
+                    continue 
                 ego_waypoint   = self.map.get_waypoint(self.ego_vehicle.get_location(), project_to_road=False, lane_type=carla.LaneType.Any)
                 other_waypoint = self.map.get_waypoint(vehicle.get_location(), project_to_road=False, lane_type=carla.LaneType.Any)
                 
@@ -114,6 +122,12 @@ class ObstacleManager(object):
                     self.vehicles_in_left_lane.append(vehicle)
 
             for vehicle in self.vehicles_in_right_lane:
+                if not vehicle.is_alive:
+                    self.front_right_vehicles   = []
+                    self.front_right_distances  = []
+                    self.rear_right_vehicles    = []
+                    self.rear_right_distances   = []
+                    continue    
                 vehicle_location = vehicle.get_location()
 
                 ego_distance_front_right = vehicle_location.distance(self.front_location)
@@ -146,6 +160,12 @@ class ObstacleManager(object):
                     self.closest_distance_from_rear_right_vehicle = float("inf")
 
             for vehicle in self.vehicles_in_left_lane:
+                if not vehicle.is_alive:
+                    self.front_left_vehicles    = []
+                    self.front_left_distances   = []
+                    self.rear_left_vehicles     = []
+                    self.rear_left_distances    = []
+                    continue
                 vehicle_location = vehicle.get_location()
 
                 ego_distance_front_left = vehicle_location.distance(self.front_location)
@@ -195,8 +215,12 @@ class ObstacleManager(object):
         self.closest_front_vehicle = None
         self.closest_rear_vehicle  = None
 
-
+        count = 0
         for vehicle in self.vehicle_list[1:]:
+            if not vehicle.is_alive:
+                count += 1
+                self.vehicles_in_lane = []
+                continue
 
             ego_waypoint   = self.map.get_waypoint(self.ego_vehicle.get_location(), project_to_road=False)
             other_waypoint = self.map.get_waypoint(vehicle.get_location(), project_to_road=False)
@@ -206,10 +230,19 @@ class ObstacleManager(object):
     
             diff = abs(self.vehicle_actor.get_transform().rotation.yaw - vehicle.get_transform().rotation.yaw) 
             
-            if ego_waypoint.lane_id == other_waypoint.lane_id and diff < 4:
+            if ego_waypoint.lane_id == other_waypoint.lane_id:
                 self.vehicles_in_lane.append(vehicle)
-       
+
+        count = 0
         for vehicle in self.vehicles_in_lane:
+            if not vehicle.is_alive:
+                count += 1
+                self.front_vehicles   = []
+                self.front_distances  = []
+                self.rear_vehicles    = []
+                self.rear_distances   = []
+                continue
+
             vehicle_location = vehicle.get_location()
 
             ego_distance_front = vehicle_location.distance(self.front_location)
