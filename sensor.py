@@ -75,9 +75,11 @@ class Sensor(object):               # general sensor class
     def get_sensor(self):
         return self.sensor
 
-###########################################
-#----------------Sensors----------------###
-###########################################
+# --------------------------------------- #
+# |                                     | #
+# |              Sensors                | #
+# |                                     | #
+# --------------------------------------- #
 
 class Lidar(Sensor):
     def __init__(self):
@@ -91,7 +93,6 @@ class Lidar(Sensor):
         #print("upper_fov: ", self.blueprint_sensor.get_attribute('upper_fov'))
         #print("timestamp: ", point_cloud.timestamp)
         #print("channels: ", self.blueprint_sensor.get_attribute('channels'))
-
         pass 
     
     def read(self):
@@ -109,11 +110,7 @@ class Radar(Sensor):
         for detect in radar:
             fw_vec = carla.Vector3D(x=detect.depth - 0.25)
             self.world.debug.draw_point(radar.transform.location + fw_vec, size=0.075, life_time=0.06, persistent_lines=False, color=carla.Color(10, 11, 10))
-        
-        print("Radar: ", points)
-        print("timestamp: ", radar.timestamp)
-        print("Radar measure:\n"+str(radar)+'\n')
-    
+            
     def rad_callback(self, radar_data):
         velocity_range = 7.5 # m/s
         current_rot = radar_data.transform.rotation
@@ -149,9 +146,11 @@ class Radar(Sensor):
         self.radar = super().get_sensor()
         self.radar.listen(lambda radar: self.rad_callback(radar))
 
-###########################################
-#----------------Cameras----------------###
-###########################################
+# --------------------------------------- #
+# |                                     | #
+# |              Cameras                | #
+# |                                     | #
+# --------------------------------------- #
 
 class CameraRGB(Sensor):
     def __init__(self):
@@ -176,16 +175,17 @@ class CameraSemantic(Sensor):
         super().__init__('sensor.camera.semantic_segmentation')
 
     def image_callback(self, image):
-        #image.save_to_disk('/home/stefanos/Desktop/dataCameraSemanticSegmentation/%.6d.jpg' % image.frame, carla.ColorConverter.CityScapesPalette)
         pass
         
     def read(self):
         self.camera = super().get_sensor()
         self.camera.listen(lambda image: self.image_callback(image))
 
-###########################################
-#-----------------Position--------------###
-###########################################
+# --------------------------------------- #
+# |                                     | #
+# |          Position Sensors           | #
+# |                                     | #
+# --------------------------------------- #
 
 class GNSS(Sensor):
     def __init__(self):
@@ -210,9 +210,11 @@ class IMU(Sensor):
         self.imu = super().get_sensor()
         self.imu.listen(lambda imu: self.imu_callback(imu))
 
-###########################################
-#---------------Detectors---------------###
-###########################################
+# --------------------------------------- #
+# |                                     | #
+# |              Detectors              | #
+# |                                     | #
+# --------------------------------------- #
 
 class ObstacleDetector(Sensor):
     def __init__(self):
