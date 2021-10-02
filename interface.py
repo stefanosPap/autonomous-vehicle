@@ -1,35 +1,35 @@
 import carla
 from utilities import change_coordinate_system, calculate_angle, Cancel
 from trajectory import Trajectory
-from communicationMQTT import VehicleSubscriberCoorMQTT, \
-    VehicleSubscriberEnterMQTT, \
-    VehicleSubscriberDoneMQTT, \
-    VehiclePublisherMQTT, \
-    VehicleSubscriberForwardMQTT, \
-    VehicleSubscriberCoorForwardMQTT
+from communicationMQTT import   VehicleSubscriberCoorMQTT, \
+                                VehicleSubscriberEnterMQTT, \
+                                VehicleSubscriberDoneMQTT, \
+                                VehiclePublisherMQTT, \
+                                VehicleSubscriberForwardMQTT, \
+                                VehicleSubscriberCoorForwardMQTT
 from town import Town
 
 class Interface(object):
     def __init__(self, world, map, vehicle_actor):
-        self.world = world
-        self.map = map
-        self.vehicle_actor = vehicle_actor
-        self.cancel = Cancel()
-        self.trajectory = Trajectory(world, map, vehicle_actor)
+        self.world          = world
+        self.map            = map
+        self.vehicle_actor  = vehicle_actor
+        self.cancel         = Cancel()
+        self.trajectory     = Trajectory(world, map, vehicle_actor)
 
-        self.pub_waypoint = VehiclePublisherMQTT(topic='waypoint_choose')
-        self.pub = VehiclePublisherMQTT(topic='clean')
-        self.pub_vel = VehiclePublisherMQTT(topic='speed_topic')
-        self.pub_vel_conf = VehiclePublisherMQTT(topic='speed_configure')
-        self.pub_forward = VehiclePublisherMQTT(topic='forward meters')
-        self.pub_turn = VehiclePublisherMQTT(topic='turn number')
-        self.pub_turn_clean = VehiclePublisherMQTT(topic='turn clean')
+        self.pub_waypoint       = VehiclePublisherMQTT(topic='waypoint_choose')
+        self.pub                = VehiclePublisherMQTT(topic='clean')
+        self.pub_vel            = VehiclePublisherMQTT(topic='speed_topic')
+        self.pub_vel_conf       = VehiclePublisherMQTT(topic='speed_configure')
+        self.pub_forward        = VehiclePublisherMQTT(topic='forward meters')
+        self.pub_turn           = VehiclePublisherMQTT(topic='turn number')
+        self.pub_turn_clean     = VehiclePublisherMQTT(topic='turn clean')
 
-        self.sub_enter = VehicleSubscriberEnterMQTT(topic='enter')
-        self.sub_done = VehicleSubscriberDoneMQTT(topic='done')
-        self.sub_coor = VehicleSubscriberCoorMQTT(topic='coordinates')
-        self.sub_coor_forward = VehicleSubscriberCoorForwardMQTT(topic='coordinates_forward')
-        self.sub_forward = VehicleSubscriberForwardMQTT(topic='forward')
+        self.sub_enter          = VehicleSubscriberEnterMQTT(topic='enter')
+        self.sub_done           = VehicleSubscriberDoneMQTT(topic='done')
+        self.sub_coor           = VehicleSubscriberCoorMQTT(topic='coordinates')
+        self.sub_coor_forward   = VehicleSubscriberCoorForwardMQTT(topic='coordinates_forward')
+        self.sub_forward        = VehicleSubscriberForwardMQTT(topic='forward')
 
     #############################
     # Handle location decisions #
@@ -156,35 +156,8 @@ class Interface(object):
     # Handle turn decision #
     ########################
     def handle_turn(self, start_waypoint, turn):
-        # w = start_waypoint.previous(1.0)
-        # w = w[0]
-        # self.world.debug.draw_string(w.transform.location, 'F', draw_shadow=False, color=carla.Color(r=255, g=0, b=255), life_time=1000, persistent_lines=True)
+      
         waypoints = [start_waypoint]
-        # if not start_waypoint.is_junction:
-        #try:
-        #    waypoints = start_waypoint.next_until_lane_end(1.0)
-        #except RuntimeError:
-        #    pass 
-
-        # waypoint = start_waypoint
-
-        # while True:
-        #    next = waypoint.next(1.0)
-        #    for i in range(len(next)):
-        #        if next[i].lane_id == waypoint.lane_id:
-        #            waypoints.append(next[i])
-        #            break
-        #    if next[i].is_junction:
-        #        break
-        #    waypoint = next[i]
-
-        # while True:
-        #    if waypoints[len(waypoints) - 1].next(1.0)[0].is_junction:
-        #        break
-        #    waypoints += waypoints[len(waypoints) - 1].next_until_lane_end(1.0)
-
-        # print(waypoints[len(waypoints) - 1].is_junction)
-        # print(waypoints[0].is_junction)
         paths = waypoints[len(waypoints) - 1].next(1.0)
 
         # In case of left lane exists, check if there is another turn besides the existing
@@ -324,10 +297,7 @@ class Interface(object):
                 self.pub_waypoint.publish({'value': 'Unable to go {} at the next junction'.format(turn)})
                 self.pub.publish({'value': ''})
                 return []
-        '''
-        for j in range(len(waypoints) - 2):
-            self.world.debug.draw_line(waypoints[j].transform.location, waypoints[j + 1].transform.location, thickness=1, color=carla.Color(r=0, g=0, b=200), life_time=1000, persistent_lines=True)        
-        '''
+
         return waypoints
 
     ####################################################
@@ -338,36 +308,6 @@ class Interface(object):
         # This try except block is used in case of the start waypoint is at the end of the lane and it cannot produse new waypoints. 
         # Therefore it throws a RuntimeError and we use as waypoints the starting waypoint  
         waypoints = [start_waypoint]
-        #try:
-        #    waypoints = start_waypoint.next_until_lane_end(1.0)
-        #except (RuntimeError, AttributeError) as e:
-        #    pass 
-        
-        # waypoint = start_waypoint
-
-        # while True:
-        #    next = waypoint.next(1.0)
-        #    for i in range(len(next)):
-        #        if next[i].lane_id == waypoint.lane_id:
-        #            waypoints.append(next[i])
-        #            break
-        #    if next[i].is_junction:
-        #        break
-        #    waypoint = next[i]
-
-        # while True:
-        #    if waypoints[len(waypoints) - 1].next(1.0)[0].is_junction:
-        #        break
-        #    waypoints += waypoints[len(waypoints) - 1].next_until_lane_end(1.0)
-
-        # print(waypoints[len(waypoints) - 1].is_junction)
-        # print(waypoints[0].is_junction)
-
-        #waypoint = waypoints[len(waypoints) - 1]
-        #if not waypoint.is_junction:
-        #    waypoints = waypoints + waypoints[len(waypoints) - 1].next_until_lane_end(1.0)
-        #    waypoint = waypoints[len(waypoints) - 1]
-
         paths = waypoints[len(waypoints) - 1].next(1.0)
 
         self.turn = "Possible paths:"
@@ -448,14 +388,8 @@ class Interface(object):
                 if "STRAIGHT" not in self.turn:
                     self.turn += " STRAIGHT"
                     turn_draw = "STRAIGHT"
-                    self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw, draw_shadow=False,
-                                                 color=carla.Color(r=0, g=0, b=250), life_time=1000,
-                                                 persistent_lines=True)
-                '''
-                if not check_duplicates:
-                    for j in range(len(ways) - 2):
-                        self.world.debug.draw_line(ways[j].transform.location, ways[j + 1].transform.location, thickness=0.3, color=carla.Color(r=0, g=200, b=0), life_time=1000, persistent_lines=True)        
-                '''
+                    self.world.debug.draw_string(ways[len(ways) - 1].transform.location, turn_draw, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
+        
             elif (final_point.x < 0 and final_point.y < 0) or (final_point.x > 0 and final_point.y > 0):
 
                 # check in order to avoid creating double RIGHT directions in the same road 
@@ -471,11 +405,7 @@ class Interface(object):
                 self.world.debug.draw_string(ways[len(ways) - 1].transform.location, self.turn_draw_right,
                                              draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000,
                                              persistent_lines=True)
-                '''
-                if not check_duplicates:
-                    for j in range(len(ways) - 2):
-                        self.world.debug.draw_line(ways[j].transform.location, ways[j + 1].transform.location, thickness=0.3, color=carla.Color(r=0, g=200, b=0), life_time=1000, persistent_lines=True)        
-                '''
+                
           
             elif (final_point.x > 0 and final_point.y < 0) or (final_point.x < 0 and final_point.y > 0):
 
@@ -489,11 +419,5 @@ class Interface(object):
                 self.turn_left += " LEFT {}".format(self.left_counter)
                 self.turn_draw_left = "LEFT {}".format(self.left_counter)
 
-                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, self.turn_draw_left,
-                                             draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000,
-                                             persistent_lines=True)
-                '''
-                if not check_duplicates:
-                    for j in range(len(ways) - 2):
-                        self.world.debug.draw_line(ways[j].transform.location, ways[j + 1].transform.location, thickness=0.3, color=carla.Color(r=0, g=200, b=0), life_time=1000, persistent_lines=True)        
-                '''
+                self.world.debug.draw_string(ways[len(ways) - 1].transform.location, self.turn_draw_left, draw_shadow=False, color=carla.Color(r=0, g=0, b=250), life_time=1000, persistent_lines=True)
+                

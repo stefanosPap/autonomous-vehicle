@@ -8,21 +8,21 @@ from experiments import Experiment
 import sys 
 from town import Town
 
-from utilities import plot_axis, \
-    configure_sensor, \
-    pruning, \
-    draw_waypoints, \
-    Cancel
+from utilities import   plot_axis, \
+                        configure_sensor, \
+                        pruning, \
+                        draw_waypoints, \
+                        Cancel
 
 from trajectory import Trajectory
 from behavior import Behavior
-from communicationMQTT import VehicleSubscriberStartStopMQTT, \
-    VehicleSubscriberCoorMQTT, \
-    VehicleSubscriberEnterMQTT, \
-    VehicleSubscriberDoneMQTT, \
-    VehicleSubscriberLogMQTT, \
-    VehiclePublisherMQTT, \
-    VehicleSubscriberTurnMQTT
+from communicationMQTT import   VehicleSubscriberStartStopMQTT, \
+                                VehicleSubscriberCoorMQTT, \
+                                VehicleSubscriberEnterMQTT, \
+                                VehicleSubscriberDoneMQTT, \
+                                VehicleSubscriberLogMQTT, \
+                                VehiclePublisherMQTT, \
+                                VehicleSubscriberTurnMQTT
 
 import numpy as np
 import carla
@@ -46,28 +46,22 @@ def main():
     client.connect()  # connect the client
     [blueprint, world, map] = client.get_simulation()
     
-
     vehicle_list = []
-    walker_list = []
+    walker_list  = []
+
+    # Specify Town in CARLA #
     # world = client.get_client().load_world('Town02')
     # world = client.get_client().reload_world()
     # print(client.get_client().get_available_maps())
+    
     points = map.get_spawn_points()  # returns a list of recommendations
-    # start_point = carla.Transform(carla.Location(x=-95.793716, y=-3.109917, z=0.275307), carla.Rotation(pitch=0.0, yaw=-179.705399, roll=0.0))
     while True:
         start_point = random.choice(points)  # choose first point as spawn point
-        start_waypoint = map.get_waypoint(start_point.location,
-                                          project_to_road=False)  # return the waypoint of the spawn point
+        start_waypoint = map.get_waypoint(start_point.location, project_to_road=False)  # return the waypoint of the spawn point
         if start_waypoint.get_junction() == None:  # spawn vehicles only on roads, not junctions
             break
 
-    start_point = carla.Transform(carla.Location(x=40.551256, y=-197.809540, z=1),
-                                  carla.Rotation(pitch=360.000, yaw=1.439560, roll=0.0))
-    # start_point = carla.Transform(carla.Location(x=0, y=-73, z=0.275307), carla.Rotation(pitch=0.0, yaw=90.0, roll=0.0))
-    #start_point = carla.Transform(carla.Location(x=-74, y=99, z=1), carla.Rotation(pitch=0.0, yaw=-90.0, roll=0.0))
     start_point = carla.Transform(carla.Location(0, 20,  1), carla.Rotation(pitch=0.0, yaw=0.0, roll=0.0))
-    #start_point = carla.Transform(carla.Location(-74, -20,  1), carla.Rotation(pitch=0.0, yaw=-90.0, roll=0.0))
-
     start_waypoint = map.get_waypoint(start_point.location, project_to_road=True)
     
     # create new ego vehicle #
@@ -104,21 +98,12 @@ def main():
 
         print("-------- Running on normal mode with zero initial values for the siders --------\n")
 
-    '''
-    start_point = carla.Transform(carla.Location(-74, -60,  1), carla.Rotation(pitch=0.0, yaw=-90.0, roll=0.0))
-    vehicle = Vehicle()                                  
-    vehicle.choose_spawn_point(start_point)                 # spawn the vehicle 
-    vehicle.choose_model('model3', blueprint, world)
-    vehicle_actor1 = vehicle.get_vehicle_actor()
-    #vehicle_actor1.apply_control(control_signal1)
-    vehicle_list.append(vehicle_actor1)
-    '''
     spawn(vehicle_list, walker_list, vehicles, pedestrians)
 
-    trajectory = Trajectory(world, map, vehicle_actor)
-
-    origin = start_point  # plot vehicle's starting coordinate frame
-    #plot_axis(world, origin)
+    # plot vehicle's starting coordinate frame #
+    origin = start_point 
+    plot_axis(world, origin)
+    
     town = Town(world)
 
     # configure sensors 
@@ -136,15 +121,11 @@ def main():
     #   world.debug.draw_arrow(pair_wayoints[0].transform.location, pair_wayoints[1].transform.location, thickness=0.2, arrow_size=0.1, color=carla.Color(r=0, g=250, b=0), life_time=1000)
 
     # generate random trajectory for the vehicle 
-    sub_coor     = VehicleSubscriberCoorMQTT  (topic='coordinates'       )
-    sub_enter    = VehicleSubscriberEnterMQTT (topic='enter'             )  
     sub_done     = VehicleSubscriberDoneMQTT  (topic='done'              )
     sub_log      = VehicleSubscriberLogMQTT   (topic='log'               )
     sub_turn     = VehicleSubscriberTurnMQTT  (topic='turn_junction'     )
 
     pub          = VehiclePublisherMQTT       (topic='clean'             )
-    pub_vel      = VehiclePublisherMQTT       (topic='speed_topic'       )
-    pub_vel_conf = VehiclePublisherMQTT       (topic='speed_configure'   )
     pub_waypoint = VehiclePublisherMQTT       (topic='waypoint_choose'   )
     pub_enter    = VehiclePublisherMQTT       (topic='enter_info'        )
     pub_done     = VehiclePublisherMQTT       (topic='done_info'         )
@@ -156,7 +137,8 @@ def main():
     pub_waypoint.publish({'value': ''                                           })
 
     cancel = Cancel()
-    interface = Interface(world, map, vehicle_actor)
+    trajectory = Trajectory(world, map, vehicle_actor)
+    interface  = Interface(world, map, vehicle_actor)
 
     #pub_vel_conf.publish({'velocity': 0})
     #pub_vel.publish({'velocity': 0})
@@ -248,6 +230,7 @@ def main():
                 break
 
         try:
+            # perform pruning in the waypoints array in order to throw outliers or double waypoints
             waypoints = pruning(map, waypoints)
             waypoints = trajectory.load_trajectory(waypoints)
             draw_waypoints(world, waypoints, 100)
@@ -279,20 +262,18 @@ def main():
         # follow trajectory and stop to obstacles and traffic lights
         try:
             behavior = Behavior(vehicle_actor, waypoints, trajectory, map, world, blueprint, vehicle_list, walker_list, experiment, exp)
-            
-            behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle,
-                                       sensors['obs'].set_front_obstacle, sensors['obs'].get_other_actor, 0)
+            behavior.follow_trajectory(world, vehicle_actor, vehicle.set_spectator, sensors['obs'].get_front_obstacle, sensors['obs'].set_front_obstacle, sensors['obs'].get_other_actor, 0)
             
             vel = vehicle_actor.get_velocity()
             vector = [vel.x, vel.y, vel.z]
             
+            # wait until vehicle stops 
             while np.linalg.norm(vector) > 0.0001:
                 vel = vehicle_actor.get_velocity()
                 vector = [vel.x, vel.y, vel.z]
                 world.tick()
 
-            start_waypoint = map.get_waypoint(vehicle_actor.get_location(), project_to_road=False,
-                                              lane_type=carla.LaneType.Any)
+            start_waypoint = map.get_waypoint(vehicle_actor.get_location(), project_to_road=False, lane_type=carla.LaneType.Any)
             pub_waypoint.publish({'value': 'You have reached your destination! Define a new route to continue!'})
             #pub_vel_conf.publish(msg)
             #pub_vel.publish(msg)

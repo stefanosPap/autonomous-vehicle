@@ -3,6 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+import sys 
 
 def metrics(data_file, obs):
     
@@ -87,21 +88,21 @@ def metrics(data_file, obs):
             speed_limits = sum(SPEED_LIMITS)
             in_road = sum(IN_ROAD) / N 
 
-            results[index][0] = driving_score
-            results[index][1] = route_completion
-            results[index][2] = infraction_penalty
+            results[index][0] = round(driving_score, 3)
+            results[index][1] = round(route_completion, 3)
+            results[index][2] = round(infraction_penalty, 3)
 
-            results_turns_speed[index][0] = right_turns_num
-            results_turns_speed[index][1] = left_turns_num
-            results_turns_speed[index][2] = average_speed
+            results_turns_speed[index][0] = round(right_turns_num, 3)
+            results_turns_speed[index][1] = round(left_turns_num, 3)
+            results_turns_speed[index][2] = round(average_speed, 3)
 
-            results_violations[index][0] = pedestrians
-            results_violations[index][1] = vehicles
-            results_violations[index][2] = static
-            results_violations[index][3] = lights
-            results_violations[index][4] = stops
-            results_violations[index][5] = speed_limits
-            results_violations[index][6] = in_road
+            results_violations[index][0] = round(pedestrians, 3)
+            results_violations[index][1] = round(vehicles, 3)
+            results_violations[index][2] = round(static, 3)
+            results_violations[index][3] = round(lights, 3)
+            results_violations[index][4] = round(stops, 3)
+            results_violations[index][5] = round(speed_limits, 3)
+            results_violations[index][6] = round(in_road, 3)
 
             Ri = []
             Pi = []
@@ -117,8 +118,6 @@ def metrics(data_file, obs):
             IN_ROAD = []
             N  = 2
             k  = 1
-            #print(results[index])
-            #print(results_turns_speed[index])
 
             index += 1
 
@@ -127,7 +126,7 @@ def metrics(data_file, obs):
 
         first_part = route.replace(",", " ").split()[3:5]   # The first two elements contain route_completion and off_road_event_time accordingly
         second_part = route.replace(",", " ").split()[5:11] # The second part has the elements that are the defined penalties 
-        third_part = route.replace(",", " ").split()[11:]  # The last elements are the right, left turns and the average speed 
+        third_part = route.replace(",", " ").split()[11:]   # The last elements are the right, left turns and the average speed 
 
         route_info = list(map(float , first_part))          # convert to list with floats 
         violations = list(map(float , second_part))         # convert to list with floats
@@ -160,27 +159,54 @@ def metrics(data_file, obs):
         k += 1
     
     for j in range(len(results[0])):
-        results[index][j] = sum([row[j] for row in results]) / (len(results) - 1)
+        results[index][j] = round(sum([row[j] for row in results]) / (len(results) - 1), 3)
 
     for j in range(len(results_turns_speed[0]) - 1):
-        results_turns_speed[index][j] = sum([row[j] for row in results_turns_speed]) 
-    results_turns_speed[index][2] = sum([row[2] for row in results_turns_speed]) / (len(results_turns_speed) - 1)
+        results_turns_speed[index][j] = round(sum([row[j] for row in results_turns_speed]), 3) 
+    results_turns_speed[index][2] = round(sum([row[2] for row in results_turns_speed]) / (len(results_turns_speed) - 1), 3)
 
     for j in range(len(results_violations[0]) - 1):
-        results_violations[index][j] = sum([row[j] for row in results_violations]) 
-    results_violations[index][6] = sum([row[6] for row in results_violations]) / (len(results_violations) - 1)
+        results_violations[index][j] = round(sum([row[j] for row in results_violations]) , 3)
+    results_violations[index][6] = round(sum([row[6] for row in results_violations]) / (len(results_violations) - 1), 3)
 
 
     data_file_1 = open('data1.txt', 'a')
     data_file_2 = open('data2.txt', 'a')
     data_file_3 = open('data3.txt', 'a')
-
+    
     print("\n")
     print("---------------------------------------------------------------------------")
     print("  Driving Score, Route Completion and Infraction Penalty for " + obs + " obstacles")
     print("---------------------------------------------------------------------------")
+    a = 0
+    l = 0
     for j in range(len(results)):
-        print(results[j])
+        if j == len(results) - 1:
+            print("\\multicolumn{2}{|c|}{\\textbf{Σύνολο}}",\
+            "&",\
+            results[j][0],\
+            "&",\
+            results[j][1],\
+            "&",\
+            results[j][2],\
+            "\\\\")
+
+        
+        else:
+            print("\\textbf" "{" + str(a) + "}" + " & \\textbf" "{" + str(l) + "}",\
+            "&",\
+            results[j][0],\
+            "&",\
+            results[j][1],\
+            "&",\
+            results[j][2],\
+            "\\\\"
+            )
+        print("\\hline")
+        l += 5
+        if l == 15:
+            a += 5
+            l = 0
         data_file_1.write(str(results[j]).replace("[", "").replace("]", "") + '\n')
     data_file_1.write('\n')
     print("\n")
@@ -188,17 +214,88 @@ def metrics(data_file, obs):
     print("---------------------------------------------------------------------------")
     print("     Right Turns, Left Turns and Average Speed for " + obs + " obstacles")
     print("---------------------------------------------------------------------------")
+    a = 0
+    l = 0
     for j in range(len(results_turns_speed)):
-        print(results_turns_speed[j])
+        if j == len(results_turns_speed) - 1:
+            print("\\multicolumn{2}{|c|}{\\textbf{Σύνολο}}",\
+            "&",\
+            results_turns_speed[j][0],\
+            "&",\
+            results_turns_speed[j][1],\
+            "&",\
+            results_turns_speed[j][2],\
+            "\\\\")
+
+        
+        else:
+            print("\\textbf" "{" + str(a) + "}" + " & \\textbf" "{" + str(l) + "}",\
+            "&",\
+            results_turns_speed[j][0],\
+            "&",\
+            results_turns_speed[j][1],\
+            "&",\
+            results_turns_speed[j][2],\
+            "\\\\"
+            )
+        print("\\hline")
+        l += 5
+        if l == 15:
+            a += 5
+            l = 0
         data_file_2.write(str(results_turns_speed[j]).replace("[", "").replace("]", "") + '\n')
     data_file_2.write('\n')
     print("\n")
-
+    
     print("-------------------------------------------------------------")
     print("     Violations Number for " + obs + " obstacles")
     print("-------------------------------------------------------------")
+    a = 0
+    l = 0
     for j in range(len(results_violations)):
-        print(results_violations[j])
+        if j == len(results_violations) - 1:
+            print("\\multicolumn{2}{|c|}{\\textbf{Σύνολο}}",\
+            "&",\
+            results_violations[j][0],\
+            "&",\
+            results_violations[j][1],\
+            "&",\
+            results_violations[j][2],\
+            "&",\
+            results_violations[j][3],\
+            "&",\
+            results_violations[j][4],\
+            "&",\
+            results_violations[j][5],\
+            "&",\
+            results_violations[j][6],\
+            "\\\\")
+
+        
+        else:
+            print("\\textbf" "{" + str(a) + "}" + " & \\textbf" "{" + str(l) + "}",\
+            "&",\
+            results_violations[j][0],\
+            "&",\
+            results_violations[j][1],\
+            "&",\
+            results_violations[j][2],\
+            "&",\
+            results_violations[j][3],\
+            "&",\
+            results_violations[j][4],\
+            "&",\
+            results_violations[j][5],\
+            "&",\
+            results_violations[j][6],\
+            "\\\\"
+            )
+        print("\\hline")
+        
+        l += 5
+        if l == 15:
+            a += 5
+            l = 0        
         data_file_3.write(str(results_violations[j]).replace("[", "").replace("]", "") + '\n')
     data_file_3.write('\n')
     print("\n")
@@ -239,7 +336,6 @@ def generate_diagramms():
 
     arrays = [array_driving_score, array_route_completion, array_violations, array_right_turns, array_left_turns, array_average_speed]
              
-    x = np.arange(len(labels)) 
     width = 0.08
     plot = 1
 
@@ -258,15 +354,15 @@ def generate_diagramms():
     for array in arrays:
         _, ax = plt.subplots(figsize =(16, 8))
         
-        ax.bar(r1, array[0], width=width, edgecolor='white')
-        ax.bar(r2, array[1], width=width, edgecolor='white')
-        ax.bar(r3, array[2], width=width, edgecolor='white')
-        ax.bar(r4, array[3], width=width, edgecolor='white')
-        ax.bar(r5, array[4], width=width, edgecolor='white')
-        ax.bar(r6, array[5], width=width, edgecolor='white')
-        ax.bar(r7, array[6], width=width, edgecolor='white')
-        ax.bar(r8, array[7], width=width, edgecolor='white')
-        ax.bar(r9, array[8], width=width, edgecolor='white')
+        ax.bar(r1,  array[0], width=width, edgecolor='white')
+        ax.bar(r2,  array[1], width=width, edgecolor='white')
+        ax.bar(r3,  array[2], width=width, edgecolor='white')
+        ax.bar(r4,  array[3], width=width, edgecolor='white')
+        ax.bar(r5,  array[4], width=width, edgecolor='white')
+        ax.bar(r6,  array[5], width=width, edgecolor='white')
+        ax.bar(r7,  array[6], width=width, edgecolor='white')
+        ax.bar(r8,  array[7], width=width, edgecolor='white')
+        ax.bar(r9,  array[8], width=width, edgecolor='white')
         ax.bar(r10, array[9], width=width, edgecolor='white')
         
         ax.set_ylabel('Scores')
@@ -280,11 +376,12 @@ def generate_diagramms():
             ax.set_title('Driving Score Metric')
             plt.savefig("driving_score.png") 
         elif plot == 2:
+            ax.set_title('Route Completion Metric')
+            plt.ylim([0.6, 1])
+            plt.savefig("route_completion.png")
+        elif plot == 3:    
             ax.set_title('Infraction Penalty Metric')
             plt.savefig("infraction_penalty.png") 
-        elif plot == 3:    
-            ax.set_title('Route Completion Metric')
-            plt.savefig("route_completion.png")
         elif plot == 4:
             ax.set_title('Right Turns Metric')
             plt.savefig("right_turns.png")
@@ -293,6 +390,7 @@ def generate_diagramms():
             plt.savefig("left_turns.png")
         elif plot == 6:
             ax.set_title('Average Speed Metric')
+            plt.ylim([10, 40])
             plt.savefig("average_speed.png")
 
         plot += 1
@@ -335,7 +433,43 @@ def generate_trajectory_diagramm():
     plt.savefig("plot.png", dpi=resolution_value)
 
 if __name__ == '__main__':
-    obs = str(0)
-    metrics('data_' + obs + '.txt', obs)
-    #generate_diagramms()
-    #generate_trajectory_diagramm()
+
+    open('data1.txt', 'w').close()
+    open('data2.txt', 'w').close()
+    open('data3.txt', 'w').close()
+    
+    try:
+        
+        if sys.argv[1].isdigit():
+            if int(sys.argv[1]) in [0, 10, 30, 60, 90]:
+                obs = sys.argv[1]
+                metrics('data_' + obs + '.txt', obs)
+            else:
+                print("Give me one of 0, 10, 30, 60, 90")
+
+        if sys.argv[1] == "all":
+            obs = str(0)
+            metrics('data_' + obs + '.txt', obs)
+            
+            obs = str(10)
+            metrics('data_' + obs + '.txt', obs)
+            
+            obs = str(30)
+            metrics('data_' + obs + '.txt', obs)
+            
+            obs = str(60)
+            metrics('data_' + obs + '.txt', obs)
+            
+            obs = str(90)
+            metrics('data_' + obs + '.txt', obs)
+            
+            generate_diagramms()
+
+        if sys.argv[1] == "traj":
+            generate_trajectory_diagramm()
+    
+    except (ValueError, IndexError):
+        print("Give me Integer value or 'all' or 'traj' attribute")
+    
+    
+    
