@@ -1,10 +1,31 @@
-
-
 class Experiment(object):
+    """
+    Description:
+        Class Experiment implements the speific experiments that conducted, in order to test the performance of the autonomous vehicle 
+    """    
+
     def __init__(self):
+        """
+        Description:
+            Method __init__ is the void Constructor of Class Experiment 
+        """   
+        
         pass 
 
+
     def execute_scenario(self, scenario, dynamic_obstacles): 
+        """
+        Description:
+            Method execute_scenario is used to initialize the variables of the chosen experiment scenario 
+
+        Args:
+            scenario (int): The scenario number 
+            dynamic_obstacles (int): The number of dynamic obstacles that the will be spawned in the map 
+
+        Returns:
+            tuple: A tuple with the value of aggressivene and lawful sliders and the number of vehicles and pedestrians 
+        """        
+
         vehicles    = dynamic_obstacles
         pedestrians = dynamic_obstacles
         self.dynamic_obstacles = dynamic_obstacles
@@ -46,9 +67,18 @@ class Experiment(object):
             self.lawful      = 10
         else:
             return
+
         return self.aggressive, self.lawful, vehicles, pedestrians
     
+
     def save_experiment_data(self, data):
+        """
+        Description:
+            Method save_experiment_data is used to log the values of the metrics in a text file 
+
+        Args:
+            data (dictionary): A dictionary that contains the value of each metric 
+        """            
         
         self.file = open('data_' + str(self.dynamic_obstacles) + '.txt', 'a')
         stop_sign_violations      = data['stop_sign_violations']
