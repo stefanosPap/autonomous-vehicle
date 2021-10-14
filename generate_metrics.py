@@ -6,7 +6,15 @@ from matplotlib.lines import Line2D
 import sys 
 
 def metrics(data_file, obs):
-    
+    """
+    Description:
+        Function metrics calculates the metrics in order to have a measure of the vehicle's performance 
+
+    Args:
+        data_file   (file)  :   The file that contains the data from which the metrics will be extracted 
+        obs         (int)   :   The number of dynamic obstacles that contains the map  
+    """    
+
     data_file = open(data_file, 'r')
     routes = data_file.readlines()[1:]
     penalties_dict = {  'pedestrian_collision': 0.50, \
@@ -34,17 +42,17 @@ def metrics(data_file, obs):
     k = 1
     index = 0
 
-    results = [ [0,0,0],\
-                [0,0,0],\
-                [0,0,0],\
-                [0,0,0],\
-                [0,0,0],\
-                [0,0,0],\
-                [0,0,0],\
-                [0,0,0],\
-                [0,0,0],\
-                [0,0,0]
-                ]
+    results             = [ [0,0,0],\
+                            [0,0,0],\
+                            [0,0,0],\
+                            [0,0,0],\
+                            [0,0,0],\
+                            [0,0,0],\
+                            [0,0,0],\
+                            [0,0,0],\
+                            [0,0,0],\
+                            [0,0,0]]
+
     results_turns_speed = [ [0,0,0],\
                             [0,0,0],\
                             [0,0,0],\
@@ -69,6 +77,7 @@ def metrics(data_file, obs):
 
 
     for route in routes:
+
         if k == 3:
             # calculate the metrics
             route_completion = sum(Ri) / N
@@ -148,13 +157,13 @@ def metrics(data_file, obs):
         LT.append(turns_speed[1])
         SP.append(turns_speed[2])
 
-        PEDESTRIANS.append(violations[0])
-        VEHICLES.append(violations[1])
-        STATIC.append(violations[2])
-        LIGHTS.append(violations[3])
-        STOPS.append(violations[4])
+        PEDESTRIANS .append(violations[0])
+        VEHICLES    .append(violations[1])
+        STATIC      .append(violations[2])
+        LIGHTS      .append(violations[3])
+        STOPS       .append(violations[4])
         SPEED_LIMITS.append(violations[5])
-        IN_ROAD.append(off_road_event_time)
+        IN_ROAD     .append(off_road_event_time)
 
         k += 1
     
@@ -191,7 +200,6 @@ def metrics(data_file, obs):
             results[j][2],\
             "\\\\")
 
-        
         else:
             print("\\textbf" "{" + str(a) + "}" + " & \\textbf" "{" + str(l) + "}",\
             "&",\
@@ -203,14 +211,15 @@ def metrics(data_file, obs):
             "\\\\"
             )
         print("\\hline")
+
         l += 5
         if l == 15:
             a += 5
             l = 0
         data_file_1.write(str(results[j]).replace("[", "").replace("]", "") + '\n')
     data_file_1.write('\n')
+    
     print("\n")
-
     print("---------------------------------------------------------------------------")
     print("     Right Turns, Left Turns and Average Speed for " + obs + " obstacles")
     print("---------------------------------------------------------------------------")
@@ -239,14 +248,15 @@ def metrics(data_file, obs):
             "\\\\"
             )
         print("\\hline")
+
         l += 5
         if l == 15:
             a += 5
             l = 0
         data_file_2.write(str(results_turns_speed[j]).replace("[", "").replace("]", "") + '\n')
     data_file_2.write('\n')
+   
     print("\n")
-    
     print("-------------------------------------------------------------")
     print("     Violations Number for " + obs + " obstacles")
     print("-------------------------------------------------------------")
@@ -271,7 +281,6 @@ def metrics(data_file, obs):
             results_violations[j][6],\
             "\\\\")
 
-        
         else:
             print("\\textbf" "{" + str(a) + "}" + " & \\textbf" "{" + str(l) + "}",\
             "&",\
@@ -300,7 +309,13 @@ def metrics(data_file, obs):
     data_file_3.write('\n')
     print("\n")
 
+
 def generate_diagramms():
+    """
+    Description:
+        Function generate diagramms is responsible for creating and depicting the metrics as diagramms  
+    """  
+
     data_file1 = open('data1.txt', 'r')
     data_file2 = open('data2.txt', 'r')
     
@@ -308,13 +323,13 @@ def generate_diagramms():
     lines1 = data_file1.readlines()
     lines2 = data_file2.readlines()
 
-    array_driving_score = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
-    array_route_completion = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
-    array_violations = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
+    array_driving_score     = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
+    array_route_completion  = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
+    array_violations        = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
 
-    array_right_turns = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
-    array_left_turns = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
-    array_average_speed = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
+    array_right_turns       = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
+    array_left_turns        = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
+    array_average_speed     = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]
     
     for i in range(10):
         for j in range(5):
@@ -325,14 +340,12 @@ def generate_diagramms():
             array_route_completion[i][j] = line[1]
             array_violations[i][j] = line[2]
 
-        
             line = lines2[i + j * 11]
             line = line.replace(",", " ").split()
             line = list(map(float , line))          # convert to list with floats 
             array_right_turns[i][j] = line[0]
             array_left_turns[i][j] = line[1]
             array_average_speed[i][j] = line[2]
-
 
     arrays = [array_driving_score, array_route_completion, array_violations, array_right_turns, array_left_turns, array_average_speed]
              
@@ -375,19 +388,24 @@ def generate_diagramms():
         if plot == 1:
             ax.set_title('Driving Score Metric')
             plt.savefig("driving_score.png") 
+
         elif plot == 2:
             ax.set_title('Route Completion Metric')
             plt.ylim([0.6, 1])
             plt.savefig("route_completion.png")
+        
         elif plot == 3:    
             ax.set_title('Infraction Penalty Metric')
             plt.savefig("infraction_penalty.png") 
+        
         elif plot == 4:
             ax.set_title('Right Turns Metric')
             plt.savefig("right_turns.png")
+        
         elif plot == 5:
             ax.set_title('Left Turns Metric')
             plt.savefig("left_turns.png")
+        
         elif plot == 6:
             ax.set_title('Average Speed Metric')
             plt.ylim([10, 40])
@@ -395,7 +413,12 @@ def generate_diagramms():
 
         plot += 1
 
+
 def generate_trajectory_diagramm():
+    """
+    Description:
+        Function generate_trajectory_diagramm is used for creating a diagramm with the trajectory that is covered from the vehicle and with the reference trajectory 
+    """    
 
     data_file = open('data_coordinates.txt', 'r')
     lines = data_file.readlines()
@@ -432,12 +455,47 @@ def generate_trajectory_diagramm():
     resolution_value = 1500
     plt.savefig("plot.png", dpi=resolution_value)
 
+
+def generate_velocity_diagramm():
+    """
+    Description:
+        Function generate_velocity_diagramm is used to create a velocity diagramm with the refernce velocity and the velocity that is reached from the vehicle 
+    """ 
+
+    data_file = open('data_velocities.txt', 'r')                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+    lines = data_file.readlines()
+    
+    v_c = lines[0]
+    v_r = lines[1]
+
+    v_c = v_c.replace(",", " ").replace("]", " ").replace("[", " ").split()
+    v_c = list(map(float , v_c))
+
+    v_r = v_r.replace(",", " ").replace("]", " ").replace("[", " ").split()
+    v_r = list(map(float , v_r))
+
+    plt.plot(list(range(0, len(v_c))), v_c, color="red", linewidth=0.8)
+    plt.plot(list(range(0, len(v_r))), v_r, color="blue", linewidth=0.8)
+    
+    plt.xlabel("$time$", fontsize=16)
+    plt.ylabel("$velocity$", fontsize=16)
+
+    line1 = Line2D([0], [0], label='Vehicle\'s Velocity', color='red')
+    line2 = Line2D([0], [0], label='Specified Velocity', color='blue')
+
+    handles = [line1, line2]
+    plt.legend(handles=handles)
+    
+    resolution_value = 1500
+    plt.savefig("plot_vel.png", dpi=resolution_value)
+
+
 if __name__ == '__main__':
 
     open('data1.txt', 'w').close()
     open('data2.txt', 'w').close()
     open('data3.txt', 'w').close()
-    
+
     try:
         
         if sys.argv[1].isdigit():
@@ -467,9 +525,7 @@ if __name__ == '__main__':
 
         if sys.argv[1] == "traj":
             generate_trajectory_diagramm()
-    
+            generate_velocity_diagramm()
+
     except (ValueError, IndexError):
         print("Give me Integer value or 'all' or 'traj' attribute")
-    
-    
-    
