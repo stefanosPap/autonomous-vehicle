@@ -24,8 +24,31 @@ from communicationMQTT import   VehiclePublisherMQTT, \
                                 VehicleSubscriberLawfulMQTT
 
 class Behavior(object):
-    def __init__(self, vehicle_actor, waypoints, trajectory, map, world, blueprint, vehicle_list, walker_list, experiment, exp):
+    """
+    Description:
+        Class Behavior implements the process of the vehicle's decision making. It is responsible for calculating 
+        the right decision at each step and for applying the corresponing control for moving the vehicle to each waypoint
+    """    
 
+
+    def __init__(self, vehicle_actor, waypoints, trajectory, map, world, blueprint, vehicle_list, walker_list, experiment, exp):
+        """
+        Description:
+            Method __init__ is the Constructor of Class Behavior that initializes most of the used variables 
+
+        Args:
+            vehicle_actor   (carla.Vehicle)         :    The actor object of the autonomous vehicle
+            waypoints       (list)                  :    List of the wqaypoints that will be followed by the vehicle
+            trajectory      (trajectory.Trajectory) :    Trajectory object that creates the specified trajectory in CARLA
+            map             (carla.Map)             :    Map object of CARLA API
+            world           (carla.World)           :    World object of CARLA API
+            blueprint       (carla.Blueprint)       :    Blueprint object of CARLA API
+            vehicle_list    (list)                  :    List with the overall vehicles in the map 
+            walker_list     (list)                  :    List with the overall vehicles in the map 
+            experiment      (dictionary)            :    Dictionary that contains the elements of each specific experiment
+            exp             (experiment.Experiment) :    Experiment object that initializes the parameters of each experiment 
+        """      
+                
         # basic variables initialization         
         self.vehicle_actor     = vehicle_actor
         self.waypoints         = waypoints
@@ -41,27 +64,15 @@ class Behavior(object):
         self.experiment        = experiment
         self.experiment_object = exp
 
-        '''
-        self._dt = 1.0 / 20.0
-        args_lateral_dict = {
-            'K_P': 1.95,
-            'K_D': 0.2,
-            'K_I': 0.07,
-            'dt': self._dt}
-        args_longitudinal_dict = {
-            'K_P': 1.0,
-            'K_D': 0,
-            'K_I': 0.05,
-            'dt': self._dt}
-        '''
-        # controller initialization
+        # PID controller initialization
         self.custom_controller = VehiclePIDController(vehicle_actor, 
                                                       args_lateral      = {'K_P': 1, 'K_D': 0, 'K_I': 0.0},
                                                       args_longitudinal = {'K_P': 1, 'K_D': 0, 'K_I': 0.0},
                                                       max_throttle=0.8, 
                                                       max_brake=0.4,
                                                       max_steering=0.8)
-
+        
+        # calculated safe distances according to another paper, the key is the relative velocity of two vehicles and the value is the calculated safe distance
         self.safe_distances = { 0 :  1.50, 
                                 5 :  4.22, 
                                 10:  6.72, 
@@ -112,9 +123,12 @@ class Behavior(object):
         #
         # Behavior attributes initialization
         #        
-        self.aggressive_score     =  0
-        self.lawful_score         =  0
+        self.aggressive_score =  0
+        self.lawful_score     =  0
         
+        #
+        # Converters initialization
+        #        
         self.convert_aggressive_value                         = interp1d([0, 10 ], [ 20,  10])
         self.convert_lawful_value                             = interp1d([0, 10 ], [-1 ,   1])
         self.convert_offset_value                             = interp1d([0, 100], [1  ,  20])
@@ -123,113 +137,189 @@ class Behavior(object):
         self.convert_aggressive_value_for_behaviors_speed_up  = interp1d([0, 10 ], [1.2, 1.6])
         self.convert_value_1                                  = interp1d([0, 10 ], [4  , 2.5])
 
+    # --------------------------------------------------------------------------- #
+    # |                                                                         | #
+    # |                    Methods that apply the behaviors                     | #
+    # |                                                                         | #
+    # --------------------------------------------------------------------------- #
+
     def slow_down(self, desired_velocity):
-        
+        """
+        Description:
+            Method slow_down performs the vehicle's deceleration by decreasing the vehicle's velocity if it is bigger than the desired
+
+        Args:
+            desired_velocity (float): The desired decreased velocity that should be reached by the vehicle 
+        """    
+
         if self.current_velocity > desired_velocity:
             self.velocity = desired_velocity
-            #self.publish_velocity()
+            self.publish_velocity()
+
 
     def speed_up(self, desired_velocity):
+        """
+        Description:
+            Method speed_up performs the vehicle's acceleration by increasing the vehicle's velocity if it is less than the desired
         
+        Args:
+            desired_velocity (float): The desired increased velocity that should be reached by the vehicle 
+        """        
+
         if self.current_velocity < desired_velocity:
             self.velocity = desired_velocity
-            #self.publish_velocity()
+            self.publish_velocity()
+
 
     def emergency_stop(self):
-        
+        """
+        Description:
+            Method emergency_stop performs the vehicle's stop by setting the vehicle's velocity equal to zero
+        """   
+
         self.velocity = 0
-        #self.publish_velocity()
+        self.publish_velocity()
 
-    def publish_velocity(self):
-        self.wait(5)
-        self.pub_vel.publish({'velocity': self.velocity})
-
-    def get_current_velocity(self):
-        velocity_vector = self.vehicle_actor.get_velocity()
-        velocity_array = [velocity_vector.x, velocity_vector.y, velocity_vector.z]
-        velocity_norm = np.linalg.norm(velocity_array)
-        self.current_velocity = 3.6 * velocity_norm
-
+    
     def change_lane(self, turn, i, desired_vel):
+        """
+        Description:
+            Method change_lane performs vehicle's lane changing process if it is possible
+
+        Args:
+            turn        (str)       : The variable contains the direction of the lane changing. The possible values are RIGHT, LEFT and None.  
+            i           (int)       : The waypoint's index that the vehicleis currently reaching
+            desired_vel (float)     : The velocity that should be reached to perform the lane change smoothlier
+        """
 
         if not self.trajectory.change and i != len(self.waypoints):
-        
+            
+            # case that the vehicle is in the initial lane
             if self.current_state == "INIT":
-
+                
+                # if turn command exists 
                 if turn is not None:
+
+                    # keep the previous waypoint in order to compare it and calculate the possible new one
                     prev = self.waypoints[self.index]
                     w = self.trajectory.change_waypoint(waypoint=i, direction=turn)
 
+                    # if waypoint in new lane exists 
                     if w is not None:
+
+                        # replace the new waypoint in waypoints list 
                         self.waypoints[self.index] = w
+
+                        # if it's same with the prvious then stay in the initial lane  
                         if w == prev:
                             self.current_state = "INIT"
+
+                        # if it's different from the previous one then update the values
                         else:
                             self.current_state = turn
                             self.pub_notify.publish({'value': self.current_state})
                             self.slow_down(desired_velocity=desired_vel)
+
+                            # update left or right turns for the metrics calculation 
                             if turn == "LEFT":
                                 self.left_turns += 1
                             elif turn == "RIGHT":
                                 self.right_turns += 1
+
+                    # if waypoint in new lane does not exist stay in the initial lane  
                     else:
                         self.current_state = "INIT"
                     self.turn_sub.set_turn(None)
 
+                # if turn command does not exist 
                 else:
                     self.current_state = "INIT"
                     self.turn_sub.set_turn(None)
 
+            # case that the vehicle is in the left or in the right lane
             elif self.current_state == "LEFT" or self.current_state == "RIGHT":
-
+                
+                # if turn command is in same direction as the vehicle's lane or turn command is None 
                 if turn == self.current_state or turn == None:   
                    
+                    # stay in lane and update the waypoints 
                     prev = self.waypoints[self.index]
                     if self.current_state == "LEFT":
                         w = self.trajectory.change_waypoint(waypoint=i, direction="LEFT")
                     elif self.current_state == "RIGHT":
                         w = self.trajectory.change_waypoint(waypoint=i, direction="RIGHT")
 
+                    # if waypoint in lane exists 
                     if w != None:
+
+                        # update the new waypoint in waypoints list 
                         self.waypoints[self.index] = w
 
+                        # if the vehicle cannot stay in lane then get back in the initial lane 
                         if w == prev or w.lane_type == carla.LaneType.Shoulder:
                             self.waypoints[self.index] = self.waypoints[self.index + self.lane_change_offset]
                             self.index += self.lane_change_offset
+                            
+                            # update left or right turns for the metrics calculation 
                             if self.current_state == "LEFT":
                                 self.right_turns += 1
                             elif self.current_state == "RIGHT":
                                 self.left_turns += 1
+                            
                             self.current_state = "INIT"
                             self.pub_notify.publish({'value': self.current_state})
                             self.slow_down(desired_velocity=desired_vel)
+
+                    # if waypoint in lane does not exist then get back in the initial lane  
                     else:
+
+                        # update left or right turns for the metrics calculation
                         if self.current_state == "LEFT":
                             self.right_turns += 1
                         elif self.current_state == "RIGHT":
                             self.left_turns += 1
+
                         self.current_state = "INIT"
                         self.pub_notify.publish({'value': self.current_state})
                         self.slow_down(desired_velocity=desired_vel)
 
                     self.turn_sub.set_turn(None)
 
+                 # if turn command is not in the same direction as the vehicle's lane then get back in the initial lane 
                 elif turn != self.current_state:
+
                     self.current_state = "INIT"
                     self.pub_notify.publish({'value': self.current_state})
                     self.turn_sub.set_turn(None)
                     self.slow_down(desired_velocity=desired_vel)
+                    
+                    # update left or right turns for the metrics calculation
                     if turn == "LEFT":
                         self.left_turns += 1
                     elif turn == "RIGHT":
                         self.right_turns += 1
 
+
     def overtake(self):
+        """
+        Description:
+            Method overtake perform the overtake procedure of the vehicle 
+
+        Returns:
+            boolean: A boolean value that indicates if the overtake procedure has been succesfully realized 
+        """    
 
         if self.turn_obstacle != None:     
+        
             self.trajectory.change = False
-            self.index += self.lane_change_offset
-            self.change_lane(self.turn_obstacle, self.index, self.velocity)
+
+            # update index for smoother lane change according to the velocity 
+            self.index += self.lane_change_offset                              
+            
+            # call change_lane function to perform the lane change  
+            self.change_lane(self.turn_obstacle, self.index, self.velocity)     
+
+            # update the remaing variables with correct values 
             self.overtake_direction = self.turn_obstacle
             self.overtake_completed = False
             self.turn_obstacle = None
@@ -237,7 +327,13 @@ class Behavior(object):
         
         return False
     
+
     def complete_overtake(self):
+        """
+        Description:
+            Method complete_overtake performs the completion of the overtake procedure by returning the vehicle in the initial lane when it is possible 
+        """        
+        
         if self.overtake_direction == "RIGHT":
             
             if self.obstacle_manager.closest_rear_left_vehicle != None:               
@@ -278,8 +374,13 @@ class Behavior(object):
             self.overtake_direction == None
             self.overtake_completed = True
 
+
     def manual_lane_change(self):
-        
+        """
+        Description:
+            Method manual_lane_change is for forcing lane change procedure when needed 
+        """                 
+
         # first check is for possible push button but not in the same direction as the current state is (self.turn != self.current_state),
         # second check is for possible lane change, due to the path that has been created by the A*.
         # third check is for non smooth lane change
@@ -295,24 +396,14 @@ class Behavior(object):
                 self.turn = None 
 
         self.change_lane(self.turn, self.index, self.velocity)
-    
-    def vehicle_in_back(self):
-        if self.obstacle_manager.closest_distance_from_rear_vehicle < self.rear_obstacle_distance_threshold:
-            
-            obstacle_detected = self.obstacle_manager.closest_rear_vehicle.id
 
-            if self.previous_back_obstacle_detected != obstacle_detected and "vehicle" in self.obstacle_manager.closest_rear_vehicle.type_id:
-            
-                self.previous_back_obstacle_detected = obstacle_detected
-                
-                print("New back obstacle")
-            
-                return True
-            
-
-        return False
 
     def car_follow(self):
+        """
+        Description:
+            Method car_follow implements car following behavior 
+        """        
+
         if self.obstacle_manager.closest_front_vehicle is None:
             return
         
@@ -334,22 +425,8 @@ class Behavior(object):
 
         if target_speed != self.current_velocity:
             self.velocity = target_speed / 3.6 
-            #self.publish_velocity()
+            self.publish_velocity()
 
-    def get_front_obstacle_velocity(self):
-
-        velocity_vec = self.obstacle_manager.closest_front_vehicle.get_velocity()
-        velocity_obs_array = [velocity_vec.x, velocity_vec.y, velocity_vec.z]
-        self.front_obstacle_velocity = np.linalg.norm(velocity_obs_array)
-        self.front_obstacle_velocity = round(3.6 * self.front_obstacle_velocity, 1)
-
-
-    def get_rear_obstacle_velocity(self):
-
-        velocity_vec = self.obstacle_manager.closest_rear_vehicle.get_velocity()
-        velocity_obs_array = [velocity_vec.x, velocity_vec.y, velocity_vec.z]
-        self.rear_obstacle_velocity = np.linalg.norm(velocity_obs_array)
-        self.rear_obstacle_velocity = round(3.6 * self.rear_obstacle_velocity, 1)
     
     # --------------------------------------------------------------------------- #
     # |                                                                         | #
@@ -359,6 +436,13 @@ class Behavior(object):
 
     # 1st rule
     def has_ego_higher_velocity_than_front_obstacle(self):
+        """
+        Description:
+            Method has_ego_higher_velocity_than_front_obstacle checks if ego vehicle has higher velocity than the front obstacle
+
+        Returns:
+            boolean: Returns True if ego vehicle has higher velocity than the front obstacle otherwise returns False
+        """        
 
         if self.obstacle_manager.closest_front_vehicle is None:
             return False
@@ -369,8 +453,17 @@ class Behavior(object):
         
         return False
 
+
     # 2nd rule
     def vehicle_in_front(self):
+        """
+        Description:
+            Method vehicle_in_front checks if there is a vehicle obstacle in front of ego vehicle
+
+        Returns:
+            boolean: Returns True if a vehicle obstacle exists otherwise returns False 
+        """        
+
         self.still_front = False
         if self.obstacle_manager.closest_distance_from_front_vehicle < self.front_obstacle_distance_threshold:
             if abs(self.vehicle_actor.get_transform().rotation.yaw - self.obstacle_manager.closest_front_vehicle.get_transform().rotation.yaw) > 10:
@@ -380,12 +473,11 @@ class Behavior(object):
             self.obstacle_detected = self.obstacle_manager.closest_front_vehicle.id
             
             if self.previous_front_obstacle_detected != self.obstacle_detected and "vehicle" in self.obstacle_manager.closest_front_vehicle.type_id:
-            #if not self.action_performed:
                 print("New obstacle in front")
                 self.start_time = time.time()
                 self.previous_front_obstacle_detected = self.obstacle_detected
-                
                 return True
+
             elif self.previous_front_obstacle_detected == self.obstacle_detected:
                 self.still_front = True 
 
@@ -394,8 +486,19 @@ class Behavior(object):
         
         return False
 
+
     # 3rd rule
     def exists_intersection(self, meters):
+        """
+        Description:
+            Method exists_intersection checks if there is an intersection closely 
+
+        Args:
+            meters (float): The threshold under which the intersection is detected 
+
+        Returns:
+            boolean: Returns True if an intersection exists closely otherwise returns False 
+        """ 
 
         self.intersection = False
 
@@ -417,9 +520,20 @@ class Behavior(object):
     
     # 4th rule
     def exists_stop(self, meters):
+        """
+        Description:
+            Method exists_stop checks if there is a STOP sign closely
+
+        Args:
+            meters (float): The threshold under which the STOP sign is detected 
+
+        Returns:
+            boolean: Returns True if STOP sign exists closely otherwise returns False 
+        """
 
         self.stop_sign = False
         distance = float("inf")
+
         if len(self.traffic_signs) != 0:
         
             for i in range(len(self.traffic_signs)):
@@ -450,23 +564,49 @@ class Behavior(object):
 
     # 5th rule
     def is_end_location_closely(self):
+        """
+        Description:
+            Method is_end_location_closely checks if final location is closely 
+
+        Returns:
+            boolean: Returns True if final location is closely otherwise returns False 
+        """ 
+
         current_loc = self.waypoints[self.index].transform.location
         end_location = self.waypoints[len(self.waypoints) - 1].transform.location
         end_distance = current_loc.distance(end_location)
         if end_distance < 7:
             return True 
+
         return False
+
 
     # 6th rule
     def is_front_free_for_a_while(self):
-        
+        """
+        Description:
+            Method is_front_free_for_a_while checks if the vehicle has covered a specific distance without meeting any obstacles, so the road is considered free 
+
+        Returns:
+            boolean: Returns True if the road is free otherwise returns False 
+        """ 
+
         if self.end_trigger_waypoint_number - self.start_trigger_waypoint_number > (25 / self.convert_aggressive_value_for_behaviors(self.aggressive_score)) and not self.vehicle_in_front(): 
             self.start_trigger_waypoint_number = self.index
             return True
+
         return False
+
 
     # 7th rule
     def red_traffic_light(self):
+        """
+        Description:
+            Method red_traffic_light checks if red light exists 
+
+        Returns:
+            boolean: Returns True if red light exists otherwise returns False 
+        """ 
 
         red_traffic_light = False
         self.traffic_light = False        
@@ -503,20 +643,38 @@ class Behavior(object):
         #if self.traffic_light_state == "RED" or red_traffic_light:
         if red_traffic_light:
             return True
+
         return False
+
 
     # 8th rule
     def check_zero_velocity(self):
+        """
+        Description:
+            Method check_zero_velocity checks if vehicle's velocity is zero
+
+        Returns:
+            boolean: Returns True if vehicle's velocity is zero otherwise returns False 
+        """ 
+
         self.get_current_velocity()
-        
         if self.current_velocity < 0.001 and self.index > 3:
             self.start_trigger_waypoint_number = self.index
             return True
+
         return False
+
 
     # 9th rule
     def is_right_lane_safe(self):
-        
+        """
+        Description:
+            Method is_right_lane_safe checks if the right lane is free of obstacles 
+
+        Returns:
+            boolean: Returns True if the right lane is free of obstacles otherwise returns False 
+        """ 
+
         if self.waypoints[self.index].get_right_lane() == None:
             return False
 
@@ -531,8 +689,16 @@ class Behavior(object):
 
         return True
 
+
     # 10th rule
     def is_left_lane_safe(self):
+        """
+        Description:
+            Method is_left_lane_safe checks if the left lane is free of obstacles 
+
+        Returns:
+            boolean: Returns True if the left lane is free of obstacles otherwise returns False 
+        """ 
 
         if self.current_state == "LEFT":
             return False
@@ -548,8 +714,17 @@ class Behavior(object):
         
         return True
         
+
     # 11th rule
     def has_left_lane_different_direction(self):
+        """
+        Description:
+            Method has_left_lane_different_direction checks if the left lane has different direction from the vehicle's lane 
+
+        Returns:
+            boolean: Returns True if the left lane has different direction from the vehicle's lane otherwise returns False 
+        """ 
+
         if self.current_state == "LEFT":
             return False
 
@@ -560,38 +735,92 @@ class Behavior(object):
                     return True
         return False
     
+
     # 12th rule 
     def is_right_lane_denser_than_left(self):
+        """
+        Description:
+            Method is_right_lane_denser_than_left checks if the right lane has more vehicles than the left lane 
+
+        Returns:
+            boolean: Returns True if the right lane has more vehicles than the left lane otherwise returns False 
+        """ 
+
         if len(self.obstacle_manager.vehicles_in_right_lane) > len(self.obstacle_manager.vehicles_in_left_lane) and self.current_state == "INIT":
             return True
         return False
 
+
     # 13th rule
     def is_left_lane_denser_than_right(self):
+        """
+        Description:
+            Method is_left_lane_denser_than_right checks if the left lane has more vehicles than the right lane 
+
+        Returns:
+            boolean: Returns True if the left lane has more vehicles than the right lane  otherwise returns False 
+        """ 
+
         if len(self.obstacle_manager.vehicles_in_left_lane) > len(self.obstacle_manager.vehicles_in_right_lane) and self.current_state == "INIT":
             return True
         return False
 
+
     # 14th rule 
     def is_right_pedestrian_closely(self):
+        """
+        Description:
+            Method is_right_pedestrian_closely checks if there is a pedestrian in right closely 
+
+        Returns:
+            boolean: Returns True if there is a pedestrian in right closely otherwise returns False 
+        """ 
+
         if self.walker_manager.closest_distance_from_front_right_walker < 10:
             return True
         return False
 
+
     # 15th rule
     def is_left_pedestrian_closely(self):
+        """
+        Description:
+            Method is_left_pedestrian_closely checks if there is a pedestrian in left closely 
+
+        Returns:
+            boolean: Returns True if there is a pedestrian in left closely otherwise returns False 
+        """ 
+
         if self.walker_manager.closest_distance_from_front_left_walker  < 10:
             return True
         return False
 
+
     # 16th rule
     def is_front_pedestrian_closely(self):
+        """
+        Description:
+            Method is_left_pedestrian_closely checks if there is a pedestrian in front closely 
+
+        Returns:
+            boolean: Returns True if there is a pedestrian in front closely otherwise returns False 
+        """ 
+
         if self.walker_manager.closest_distance_from_front_walker  < 10:
             return True
         return False
-    
+
+
     # 17th rule    
     def is_right_lane_marking_not_legal(self):
+        """
+        Description:
+            Method is_right_lane_marking_not_legal checks if the vehicle can cross the right lane legally which means that right lane marking is solid or yellow 
+
+        Returns:
+            boolean: Returns True if the vehicle can cross the right lane legally otherwise returns False 
+        """
+
         if self.current_state == "RIGHT":
             return False
         
@@ -600,8 +829,17 @@ class Behavior(object):
             return True
         return False
 
+
     # 18th rule    
     def is_left_lane_marking_not_legal(self):
+        """
+        Description:
+            Method is_left_lane_marking_not_legal checks if the vehicle can cross the left lane legally which means that left lane marking is solid or yellow 
+
+        Returns:
+            boolean: Returns True if the vehicle can cross the left lane legally otherwise returns False 
+        """
+
         if self.current_state == "LEFT":
             return False
         
@@ -613,14 +851,31 @@ class Behavior(object):
     
     # 19th rule
     def is_in_bidirectional_lane_for_long_time(self):
+        """
+        Description:
+            Method is_in_bidirectional_lane_for_long_time checks if the vehicle is in bidirectional lane for a long time 
+
+        Returns:
+            boolean: Returns True if the vehicle is in bidirectional lane for a long time otherwise returns False 
+        """
+
         if self.bidirectional_end_trigger_waypoint_number - self.bidirectional_start_trigger_waypoint_number > 10: 
             self.bidirectional_start_trigger_waypoint_number = self.index
             self.is_at_bidirectional = False
             return True
         return False
 
+
     # 20th rule
     def is_left_lane_bidirectional(self):
+        """
+        Description:
+            Method is_left_lane_bidirectional checks if left lane is bidirectional
+
+        Returns:
+            boolean: Returns True if left lane is bidirectional otherwise returns False 
+        """
+
         if self.current_state == "LEFT":
             return False
         
@@ -631,12 +886,21 @@ class Behavior(object):
             return True
         return False
 
+
     # 21th rule
     def speed_is_above_the_limit(self):
+        """
+        Description:
+            Method speed_is_above_the_limit checks if the vehicle's speed is above the limit 
+
+        Returns:
+            boolean: Returns True if the vehicle's speed is above the limit otherwise returns False 
+        """
 
         self.speed_limit_sign = False
         orientation = None
         value = float("inf")
+
         try:
             if len(self.traffic_signs) is not 0:
             
@@ -658,8 +922,10 @@ class Behavior(object):
                 value = 14                                                      # value is set to 14 for better results, real values are really high 
                 #value = self.lane_limit[self.waypoints[self.index].lane_id]
                 orientation = self.lane_orientation[self.waypoints[self.index].lane_id]
+
         except:
             pass 
+
         velocity_vector = self.vehicle_actor.get_velocity()
         velocity_array = [velocity_vector.x, velocity_vector.y, velocity_vector.z]
         velocity_norm = np.linalg.norm(velocity_array)
@@ -672,10 +938,20 @@ class Behavior(object):
             elif self.waypoints[self.index].lane_id < 0 and (orientation == "Negative" or orientation == "Both"):
                 if round(3.6 * velocity_norm, 1) > value:
                     return True
+
         return False
-    
+
+
     # 22th rule 
     def automatic_right_lane_change(self):
+        """
+        Description:
+            Method automatic_right_lane_change checks if the vehicle is going to make an automatic right lane change due to the location of the next waypoint 
+
+        Returns:
+            boolean: Returns True if the vehicle is going to make an automatic right lane change otherwise returns False 
+        """
+
         if self.current_state == "RIGHT":
             return False
         if self.index + self.lane_change_offset < len(self.waypoints):
@@ -689,9 +965,18 @@ class Behavior(object):
             if (final_point.x < 0 and final_point.y < 0) or (final_point.x > 0 and final_point.y > 0):
                 return True
         return False
-    
+
+
     # 23th rule 
     def automatic_left_lane_change(self):
+        """
+        Description:
+            Method automatic_left_lane_change checks if the vehicle is going to make an automatic left lane change due to the location of the next waypoint 
+
+        Returns:
+            boolean: Returns True if the vehicle is going to make an automatic left lane change otherwise returns False 
+        """
+
         if self.current_state == "LEFT":
             return False
         if self.index + self.lane_change_offset < len(self.waypoints):
@@ -706,15 +991,33 @@ class Behavior(object):
             if (final_point.x > 0 and final_point.y < 0) or (final_point.x < 0 and final_point.y > 0):
                 return True
         return False
-    
+
+
     # 24th rule 
     def is_vehicle_still_front(self):
+        """
+        Description:
+            Method is_vehicle_still_front checks if a previously detected vehicle obstacle is still in front  
+
+        Returns:
+            boolean: Returns True if a previously detected vehicle obstacle is still in front otherwise returns False 
+        """
+
         if self.still_front == True:
             return True 
         return False
 
+
     # 25th rule
     def is_junction_in_front_of_stop_free(self):
+        """
+        Description:
+            Method is_junction_in_front_of_stop_free checks if the junction where the vehicle has been stopped due to STOP sign is now free to proceed  
+
+        Returns:
+            boolean: Returns True if the junction is free otherwise returns False 
+        """
+
         self.free_junction = True
         if self.exists_stop(self.lawful_score + self.convert_value_1(self.aggressive_score) * int(self.convert_offset_value(self.current_velocity))):
 
@@ -735,15 +1038,88 @@ class Behavior(object):
 
         if self.exists_stop(self.lawful_score + self.convert_value_1(self.aggressive_score) * int(self.convert_offset_value(self.current_velocity))) and time.time() - self.stop_time > 10 and self.free_junction:
             return True 
+
         return False
+
 
     # --------------------------------------------------------------------------- #
     # |                                                                         | #
     # |              Help functions for calculating the rules                   | #
     # |                                                                         | #
     # --------------------------------------------------------------------------- #
-    def check_if_junction_exists(self):
+
+    def publish_velocity(self):
+        """
+        Description:
+            Method publish_velocity publishes the reference velocity to 'velocity' topic in order to update the velocity in the interface 
+        """        
+
+        self.wait(5)
+        self.pub_vel.publish({'velocity': self.velocity})
+
+
+    def get_current_velocity(self):
+        """
+        Description: 
+            Method get_current_velocity calculates the current velocity in km/h
+        """        
+
+        velocity_vector = self.vehicle_actor.get_velocity()
+        velocity_array = [velocity_vector.x, velocity_vector.y, velocity_vector.z]
+        velocity_norm = np.linalg.norm(velocity_array)
+        self.current_velocity = 3.6 * velocity_norm
     
+
+    def vehicle_in_back(self):
+        """
+        Description:
+            Method vehicle_in_back detects possible veicles that are in the back of ego vehicle 
+ 
+        Returns:
+            boolean: A boolean value that is True when back obstacle is in close 
+        """        
+
+        if self.obstacle_manager.closest_distance_from_rear_vehicle < self.rear_obstacle_distance_threshold:
+            obstacle_detected = self.obstacle_manager.closest_rear_vehicle.id
+
+            if self.previous_back_obstacle_detected != obstacle_detected and "vehicle" in self.obstacle_manager.closest_rear_vehicle.type_id:
+                self.previous_back_obstacle_detected = obstacle_detected
+                print("New back obstacle")
+                return True
+            
+        return False
+
+
+    def get_front_obstacle_velocity(self):
+        """
+        Description:
+            Method get_front_obstacle_velocity calculates the velocity of the front obstacle 
+        """        
+
+        velocity_vec = self.obstacle_manager.closest_front_vehicle.get_velocity()
+        velocity_obs_array = [velocity_vec.x, velocity_vec.y, velocity_vec.z]
+        self.front_obstacle_velocity = np.linalg.norm(velocity_obs_array)
+        self.front_obstacle_velocity = round(3.6 * self.front_obstacle_velocity, 1)
+
+
+    def get_rear_obstacle_velocity(self):
+        """
+        Description:
+            Method get_rear_obstacle_velocity calculates the velocity of the rear obstacle 
+        """
+
+        velocity_vec = self.obstacle_manager.closest_rear_vehicle.get_velocity()
+        velocity_obs_array = [velocity_vec.x, velocity_vec.y, velocity_vec.z]
+        self.rear_obstacle_velocity = np.linalg.norm(velocity_obs_array)
+        self.rear_obstacle_velocity = round(3.6 * self.rear_obstacle_velocity, 1)
+
+
+    def check_if_junction_exists(self):
+        """
+        Description:
+            Method check_if_junction_exists is a helper function for detecting close junctions
+        """
+
         self.junctions = []
         for i in range(1, len(self.waypoints) - 1):
             
@@ -754,19 +1130,12 @@ class Behavior(object):
             else:
                 self.junctions.append(False)
 
-    # --------------------------------------------------------------------------- #
-    # |                                                                         | #
-    # |             Functions for calculating sliders' score                    | #
-    # |                                                                         | #
-    # --------------------------------------------------------------------------- #
 
-    def lawful(self):
-        self.lawful_score = self.sub_law.get_lawful()
-
-    def aggressive(self):
-        self.aggressive_score = self.sub_agg.get_aggressive()
-                
     def calculate_safe_distance(self):
+        """
+        Description:
+            Method calculate_safe_distance is responsible for calculating the safe distances between two vehicles according to their realtive velocity 
+        """
 
         self.safe_distance = -float("inf")
         
@@ -784,7 +1153,55 @@ class Behavior(object):
                 inter_function = interp1d(keys, values)
                 self.safe_distance = max(10, float(inter_function(diff)))
     
+
+     def wait(self, reps):
+        """
+        Description:
+            Method wait is for spending some simulation cycles if needed 
+            
+        Args:
+            reps (int): Number of cycles spended 
+        """
+
+        for _ in range(reps):
+            self.world.tick() 
+
+
+    # ---------------------------------------------------------------------- #
+    # |                                                                    | #
+    # |               Methods for getting sliders' score                    | #
+    # |                                                                    | #
+    # ---------------------------------------------------------------------- #
+
+    def lawful(self):
+        """
+        Description:
+            Method lawful receives from the right topic the value of slider lawful 
+        """
+
+        self.lawful_score = self.sub_law.get_lawful()
+
+
+    def aggressive(self):
+        """
+        Description:
+            Method aggressive receives from the right topic the value of slider aggressive 
+        """
+
+        self.aggressive_score = self.sub_agg.get_aggressive()
+                    
+
+    # ---------------------------------------------------------------------- #
+    # |                                                                    | #
+    # |      Methods for calculating and applying optimal behavior         | #
+    # |                                                                    | #
+    # ---------------------------------------------------------------------- #
+
     def check_new_triggers(self):
+        """
+        Description:
+            Method check_new_triggers is responsible for checking if a new evaluation of the conditions should be made 
+        """
 
         if list(self.row_filter[0]) != list(self.previous_filter[0]) and list(self.previous_filter[0]) != []:
             self.new_trigger = True
@@ -798,7 +1215,12 @@ class Behavior(object):
 
         self.new_trigger = False
 
+
     def evaluate(self):
+        """
+        Description:
+            Method evaluate is responsible for evaluating the conditions of the environment
+        """
 
         if self.new_trigger:
             
@@ -820,6 +1242,7 @@ class Behavior(object):
                 self.max_behavior = "KEEP_STRAIGHT"
             if max_speed_behavior_value == 0.0:
                 self.max_speed_behavior = "KEEP_VELOCITY"
+
             print("----------------------------")
             print(sum_values)
             print(self.row_activation_filter)
@@ -829,8 +1252,13 @@ class Behavior(object):
             print("aggressive_score:", self.aggressive_score)
             print("----------------------------")
 
+
     def regulate_speed(self):
-      
+        """
+        Description:
+            Method regulate_speed is for regulating the speed according to the optimal value 
+        """
+
         if self.max_speed_behavior == "SLOW_DOWN":
             if not self.action_performed:
 
@@ -860,7 +1288,7 @@ class Behavior(object):
         if self.max_speed_behavior == "STOP":
             if not self.action_performed:    
                 
-                # if RED light has activated when the vehicle was inside the junction then it is better to get out of the junction
+                # if RED light has been activated when the vehicle was inside the junction then it is better to get out of the junction
                 loc = self.vehicle_actor.get_location()
                 wp = self.map.get_waypoint(loc, project_to_road=False, lane_type=carla.LaneType.Any)
                 if not wp.is_junction:
@@ -877,12 +1305,23 @@ class Behavior(object):
             if self.current_velocity < 0.5:
                 self.speed_up(12)
 
-    def wait(self, reps):
-        for _ in range(reps):
-            self.world.tick() 
+
+   
     
-    def follow_trajectory(self, world, vehicle_actor, spectator, get_front_obstacle, set_front_obstacle, get_other_actor, velocity):
+
+    def follow_trajectory(self, world, vehicle_actor, spectator, velocity):
+        """
+        Description:
+            Method follow_trajectory is used from the vehicle in order to access every waypoint of the specified trajectory. 
+            This method implements the overall process of decision making.  
         
+        Args:
+            world          (carla.World)                                  :   World object of CARLA API
+            vehicle_actor  (carla.Vehicle)                                :   The actor object of the autonomous vehicle
+            spectator      (vehicle.Vehicle.set_spectator function)       :   The function that is used for viewing the ego vehicle from its top side 
+            velocity       (float)                                        :   The initial velocity with which the vehicle will start 
+        """        
+
         self.index         = 0
         self.current_state = "INIT"
         
@@ -915,7 +1354,6 @@ class Behavior(object):
                     "SLOW_DOWN"         : [ 0.8,  0.8,  0.7,  0.4,  0.9, -0.5,  0.2, -0.6,  0.0,  0.0,  0.0,  0.0,  0.0,  0.2,  0.2,  0.5,  0.0,  0.0,  0.1,  0.0,  0.5,  0.3,  0.3,  0.3,   0.2,  0.2, -0.1],
                     "KEEP_VELOCITY"     : [-0.1, -0.8,  0.4,  0.3,  0.5,  0.5, -0.4, -0.3,  0.0,  0.0,  0.0,  0.0,  0.0,  0.3,  0.3,  0.4,  0.0,  0.0,  0.3,  0.0,  0.2,  0.1,  0.1,  0.2,   0.1,  0.1,  0.0],
                     "STOP"              : [ 0.5,  0.6,  0.6,  0.6, -0.1, -0.5,  0.9, -0.6, -0.2, -0.2,  0.0,  0.0,  0.0,  0.1,  0.1,  0.6,  0.0,  0.0, -0.4,  0.0,  0.1,  0.4,  0.4,  0.1,   0.2,  0.2, -0.2]
-                       
                     }
 
         columns = [ "OVERTAKE",
@@ -973,30 +1411,35 @@ class Behavior(object):
         self.lane_orientation = {self.waypoints[self.index].lane_id:  None        }
 
         self.check_if_junction_exists()
-        self.traffic_signs_active = dict()
-        self.still_front = False
+        
+        self.traffic_signs_active   = dict()
+        self.still_front            = False
         self.previous_stop_detected = None 
-
-        self.right_turns        = 0
-        self.left_turns         = 0 
-        self.average_speed      = 0 
-        self.overall_speed      = 0
-        self.route_completion   = 0
 
         loc = self.vehicle_actor.get_location()
         vec = [loc.x, loc.y]
         self.locations = [vec]
-        
+
+        self.get_current_velocity()
+        vel = [self.current_velocity, self.velocity]
+        self.velocities = [vel]
+
+        # get initial values for aggressive and lawful sliders 
         self.velocity = 20
         aggressive    = self.experiment['aggresssive']
         lawful        = self.experiment['lawful']
         self.wait(15)
 
-        #self.publish_velocity()
+        self.publish_velocity()
         self.pub_agg.publish ({'aggressive': aggressive  })
         self.pub_law.publish ({'lawful'    : lawful      })
         self.wait(15)
 
+        # collision sensor initialization for detecting collisions 
+        bp = self.world.get_blueprint_library().find('sensor.other.collision')
+        self.collision_detector = self.world.spawn_actor(bp, carla.Transform(), attach_to=self.vehicle_actor)
+
+        # initialization of variables that are used for calculating the metrics 
         self.previous_off_road_event_time = 0
         self.route_completion             = 0 
         self.off_road_event_time          = 0 
@@ -1008,10 +1451,7 @@ class Behavior(object):
         self.speed_limit_violations       = 0
 
         self.start_time = time.time()
-
-        bp = self.world.get_blueprint_library().find('sensor.other.collision')
-        self.collision_detector = self.world.spawn_actor(bp, carla.Transform(), attach_to=self.vehicle_actor)
-
+        
         self.prev_time             = 0
         self.zero_vel              = 0
         self.zero_vel_light        = 0
@@ -1023,8 +1463,15 @@ class Behavior(object):
         self.speed_limit_id        = None
         self.stop_sign_id          = None
 
+        self.right_turns        = 0
+        self.left_turns         = 0 
+        self.average_speed      = 0 
+        self.overall_speed      = 0
+        self.route_completion   = 0
+
         self.check_collissions()
         
+        # start the infinite loop where the vehicle crosses each waypoint
         while True:
             
             try:
@@ -1034,7 +1481,7 @@ class Behavior(object):
                 # spectator method is called in order to place the view of the simulator exactly above the vehicle 
                 # spectator()
 
-                # corner case that is being executed, when the vehicle reaches its destination
+                # corner case that is been executed, when the vehicle reaches its destination
                 if self.index == len(self.waypoints) - 1:
                     self.overall_speed += self.current_velocity
                     self.world.debug.draw_string(self.waypoints[self.index].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=1000, persistent_lines=True)
@@ -1045,7 +1492,7 @@ class Behavior(object):
                     self.velocity = 0
                     self.control_signal = self.custom_controller.run_step(self.velocity, self.waypoints[self.index])
                     vehicle_actor.apply_control(self.control_signal)
-                    #self.publish_velocity()
+                    self.publish_velocity()
 
                     # calculate average speed
                     self.average_speed = self.overall_speed / self.index 
@@ -1063,6 +1510,9 @@ class Behavior(object):
                     print("Left:"           ,   self.left_turns                 )
                     print("Avg:"            ,   self.average_speed              )
 
+                    v_c = [cor[0] for cor in self.velocities]
+                    v_r = [cor[1] for cor in self.velocities]
+
                     x_l = [cor[0] for cor in self.locations]
                     y_l = [cor[1] for cor in self.locations]
                     
@@ -1071,6 +1521,14 @@ class Behavior(object):
                     
                     x_w = [cor[0] for cor in self.waypoints]
                     y_w = [cor[1] for cor in self.waypoints]
+
+                    open('data_velocities.txt', 'w').close()
+                    data_file = open('data_velocities.txt', 'a')
+                    data_file.write(str(v_c))
+                    data_file.write('\n')
+                    data_file.write(str(v_r))
+                    data_file.write('\n')
+                    data_file.close()
 
                     open('data_coordinates.txt', 'w').close()
                     data_file = open('data_coordinates.txt', 'a')
@@ -1083,6 +1541,7 @@ class Behavior(object):
                     data_file.write(str(y_l))
                     data_file.write('\n')
                     data_file.close()
+
 
                     self.evaluate_node()
                     break               
@@ -1206,7 +1665,7 @@ class Behavior(object):
                     break
 
                 # read velocity from the slider 
-                #self.velocity = self.speed_sub.get_velocity()
+                self.velocity = self.speed_sub.get_velocity()
 
                 #-----------------------------------#
                 #|                                 |#
@@ -1395,19 +1854,22 @@ class Behavior(object):
                 # ---------------------------------------------- #
                 # ---------------------------------------------- #
                
-                
+                # check for new triggers 
                 self.check_new_triggers()
 
                 self.sub_agg.set_change_aggressive(False)
                 self.sub_law.set_change_lawful(False)
 
+                # update the weight table 
                 self.updated_behaviors = pd.DataFrame(np.multiply(behaviors.values, self.row_filter.T), columns=columns, index=self.indexes)
                 self.updated_behaviors = pd.DataFrame(np.multiply(self.updated_behaviors.values.T, self.column_filter.T).T, columns=columns, index=self.indexes)
 
                 self.previous_filter = self.row_filter
 
+                # evaluate the conditions 
                 self.evaluate()
 
+                # apply the optimal behavior 
                 if self.max_behavior == "OVERTAKE":
                     if not self.action_performed:                    
                         self.turn_obstacle = "LEFT"  
@@ -1468,6 +1930,7 @@ class Behavior(object):
                     self.regulate_speed() 
                     self.manual_lane_change()
                 
+                # call the methods that calculate the metrics 
                 self.off_road_event()
                 self.check_stops()
                 self.check_lights()
@@ -1490,6 +1953,7 @@ class Behavior(object):
                                     vehicle_actor.get_location().z)
                 dist = p1.distance(p2)
 
+                # if the waypoint has been reached, proceed to the next one 
                 if dist < 2:
                     
                     self.index += 1
@@ -1502,7 +1966,9 @@ class Behavior(object):
                     loc = self.vehicle_actor.get_location()
                     vec = [loc.x, loc.y]
                     self.locations.append(vec)
- 
+                    vel = [self.current_velocity, self.velocity]
+                    self.velocities.append(vel)
+
                 vehicle_actor.apply_control(self.control_signal)
                 world.tick()
  
@@ -1543,16 +2009,37 @@ class Behavior(object):
                 self.evaluate_node()
                 print("Exception occured!")
 
+
     def off_road_event(self):
+        """
+        Description:
+            Method off_road_event calculates the time that vehicle is off the road 
+        """        
+
         w = self.map.get_waypoint(self.vehicle_actor.get_location(), lane_type=carla.LaneType.Any)
         if not str(w.lane_type) in ["Driving", "Bidirectional", "Shoulder", "Parking"]:
             self.off_road_event_time += time.time() - self.previous_off_road_event_time
         self.previous_off_road_event_time = time.time()
         
+
     def check_collissions(self):
+        """
+        Description:
+            Method off_road_event calculates the time that vehicle is off the road 
+        """  
+
         self.collision_detector.listen(lambda collision: self.collision_callback(collision))
 
+
     def collision_callback(self, collision):
+        """
+        Description:
+            Method collision_callback logs the different collision events that happen 
+        
+        Args:
+            collision (carla.CollisionEvent): Collision object that contains the information of a collision 
+        """        
+
         time = collision.timestamp
         
         if time - self.prev_time < 3:
@@ -1567,7 +2054,13 @@ class Behavior(object):
         print("COLLISION OCCURED", collision.other_actor.type_id)
         self.prev_time = time
 
+
     def check_stops(self):
+        """
+        Description:
+            Method check_stops checks for stop violations 
+        """ 
+
         if not self.check_zero_velocity() and self.exists_stop(15):
                 self.zero_vel += 1
         else:
@@ -1579,7 +2072,13 @@ class Behavior(object):
             self.zero_vel = 0
             self.prev_stop_sign_id = self.stop_sign_id
 
+
     def check_lights(self):
+        """
+        Description:
+            Method check_lights checks for traffic lights violations 
+        """ 
+        
         if not self.check_zero_velocity() and self.red_traffic_light():
             self.zero_vel_light += 1
         else:
@@ -1591,7 +2090,13 @@ class Behavior(object):
             self.zero_vel_light = 0
             self.prev_traffic_light_id = self.traffic_light_id
     
+
     def check_speed_limit(self):
+        """
+        Description:
+            Method check_speed_limit checks for speed limits violations 
+        """ 
+
         if self.speed_is_above_the_limit() and self.current_velocity > 14:
             self.high_vel += 1
         else:
@@ -1603,8 +2108,13 @@ class Behavior(object):
             self.high_vel = 0
             self.prev_speed_limit_id = self.speed_limit_id
 
+
     def evaluate_node(self):
-        
+        """
+        Description:
+            Method evaluate_node logs the metrics and call a function to save them in text files  
+        """ 
+
         data = {    'route_completion'         : self.route_completion, \
                     'off_road_event_time'      : self.off_road_event_time, \
                     'pedestrian_collision'     : self.pedestrian_collision,\
