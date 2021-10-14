@@ -2,29 +2,76 @@ from commlib.transports.mqtt import Subscriber, ConnectionParameters, Publisher
 
 
 class VehiclePublisherMQTT:
+    """
+    Description:
+        Class VehiclePublisherMQTT implements the process of publishing messages to a specific topic 
+    """    
+
     def __init__(self, topic):
+        """
+        Description:
+            Method __init__ is the Constructor of Class VehiclePublisherMQTT that initializes most of the used variables 
+         
+        Args:
+            topic (str): The topic that the data will be published 
+        """        
+
         self.topic = topic
         #self.connection_parameters = ConnectionParameters(host='test.mosquitto.org', port=1883)
         self.connection_parameters = ConnectionParameters(host='localhost', port=1883)
         self.publisher = Publisher(topic=self.topic, conn_params=self.connection_parameters)
 
+
     def publish(self, msg):
+        """
+        Description:
+            Method publish is used to publish a message in the specified topic 
+
+        Args:
+            msg (dictionary): The message that is published 
+        """        
         self.publisher.publish(msg)
 
 
 class VehicleSubscriberMQTT:
+    """
+    Description:
+        Class VehicleSubscriberMQTT implements the process of subscribing to a specific topic and is the parent class of each other subscriber  
+    """    
+
     def __init__(self, topic):
+        """
+        Description:
+            Method __init__ is the Constructor of Class VehicleSubscriberMQTT that initializes most of the used variables 
+         
+        Args:
+            topic (str): The topic that the client will subscribe and get the data 
+        """  
+
         self.topic = topic
         self.subscribe()
 
+
     def subscribe(self):
+        """
+        Description:
+            Method subscribe is used to subscribe to the specified topic 
+        """        
+
         #connection_parameters = ConnectionParameters(host='test.mosquitto.org', port=1883)
         connection_parameters = ConnectionParameters(host='localhost', port=1883)
+        
+        # initialize Subscriber object 
         sub = Subscriber(topic=self.topic, on_message=self.data_callback, conn_params=connection_parameters)
         sub.run()
 
 
-class VehicleSubscriberAggressiveMQTT(VehicleSubscriberMQTT):
+"""
+The following classes inherit the class VehicleSubscriberMQTT and each of them implements a sinle subscriber to a specific topic. 
+The data_callback function of each class is used to manipulate the data when a new message has been arrived.        
+"""
+
+class VehicleSubscriberAggressiveMQTT(VehicleSubscriberMQTT):   
     def __init__(self, topic):
         super().__init__(topic)
         self.aggressive = 0
