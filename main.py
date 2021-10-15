@@ -138,8 +138,10 @@ def main():
     # add sensor to vehicle's configuration
     #
     vehicle.add_sensor(sensors['obs'])
-
+    
+    #
     # just wander in autopilot mode and collect data
+    #
     # vehicle.wander() 
 
     #
