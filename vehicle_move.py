@@ -13,6 +13,17 @@ from communicationMQTT import VehiclePublisherMQTT
 import random
 
 def spawn(vehicle_list, walkers_list, number_of_vehicles, number_of_walkers):
+    """
+    Description:
+        Method spawn is used to create a specific number of dynamic obstacles in the map
+
+    Args:
+        vehicle_list        (list)    :    List with the overall vehicles in the map 
+        walker_list         (list)    :    List with the overall walkers in the map 
+        number_of_vehicles  (int)     :    The number of vehicles that will be spawned 
+        number_of_walkers   (int)     :    The number of walkers that will be spawned 
+    """    
+    
     client = Client()                                       
     client.connect()                                        # connect the client 
     [blueprint, world, _]= client.get_simulation()
