@@ -9,6 +9,7 @@ class ObstacleManager(object):
 
     def __init__(self, map, vehicle_actor, vehicle_list, world):
         """
+        Description:
             Method __init__ is the Constructor of Class ObstacleManager that initializes most of the used variables 
 
         Args:
@@ -55,7 +56,7 @@ class ObstacleManager(object):
     def check_general_closest_obstacles(self): 
         """
         Description:
-            Method check_general_closest_obstacles check for possible vehicles in a distnce closer than 35 meters no matter the direction 
+            Method check_general_closest_obstacles checks for possible vehicles in a distnce closer than 35 meters no matter the direction 
         """
         
         self.front_general_vehicles  = []
@@ -224,12 +225,13 @@ class ObstacleManager(object):
                 self.closest_rear_left_vehicle = None
                 self.closest_distance_from_rear_left_vehicle = float("inf")
 
+
     def check_obstacles(self):
         """
         Description:
             Method check_obstacles checks for possible vehicles that move in the same lane with the vehicle's lane 
         """        
-        
+
         self.front_location = self.vehicle_actor.get_location() + carla.Location(self.vehicle_actor.bounding_box.extent.x, 0, 0)
         self.rear_location  = self.vehicle_actor.get_location() - carla.Location(self.vehicle_actor.bounding_box.extent.x, 0, 0)
         self.ego_vehicle    = self.vehicle_list[0]
