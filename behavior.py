@@ -1626,7 +1626,7 @@ class Behavior(object):
                 self.obstacle_manager.check_general_closest_obstacles()
 
                 # call obstacle manager for checking side front and side rear obstacles 
-                self.obstacle_manager.check_side_obstacles(self.waypoints, self.index, self.current_state)
+                self.obstacle_manager.check_side_obstacles(self.index, self.current_state)
 
                 # call walker manager for checking pedestrians' locations
                 self.walker_manager.check_pedestrians(self.waypoints, self.index)
