@@ -69,4 +69,8 @@ After installing NodeRED as mentioned in Depedencies section, you can use the cr
   <pre> node-red </pre>
 * Open a browser at the address http://127.0.0.1:1880/ 
 * Select from the up-right menu: Import -> select a file to import -> Choose from your local machine file *flows.json*
-* In order to use the interface open a new browser tab at the address http://127.0.0.1:1880/ui/ 
+* In order to use the interface open a new browser tab at the address http://127.0.0.1:1880/ui/ \
+
+<p>The graphical interface looks like the image below:</p>
+
+![alt text](https://github.com/stefanosPap/autonomous-vehicle/blob/master/images/interface.png)
