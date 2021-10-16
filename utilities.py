@@ -3,10 +3,19 @@ import numpy as np
 from sensor import Sensor, Lidar, CameraRGB, GNSS, IMU, ObstacleDetector, LaneInvasionDetector, Radar, CameraSemantic
 from communicationMQTT import VehiclePublisherMQTT, VehicleSubscriberCancelMQTT
 
-#################################################################################
-# Function for caclulating angle between the first and the last point of a path #
-#################################################################################
+
 def calculate_angle(ways):
+    """
+    Description:
+        Function calculate_angle is used for caclulating angle between the first and the last point of a path
+    
+    Args:
+        ways (list): A trajectory with the waypoints from which the first and the last element will be used for calculating the angle  
+
+    Returns:
+        float: The calculated angle 
+    """    
+    
     vec1 = ways[0].transform.get_forward_vector()
     vec1 = [vec1.x, vec1.y]
     
@@ -21,11 +30,20 @@ def calculate_angle(ways):
 
     return angle
 
-#####################################################
-# Function for changing a point's coordinate system #
-#####################################################
+
 def change_coordinate_system(start_point, point):
-    
+    """
+    Description:
+        Function change_coordinate_system is used for changing a point's coordinate system 
+
+    Args:
+        start_point (carla.Transform)   :   The point that will be the new origin 
+        point       (carla.Transform)   :   The point whose the coordinates will be changed 
+
+    Returns:
+        carla.Transform:    The calculated point in the new coordinate system  
+    """ 
+
     degrees = start_point.rotation.yaw
     theta = np.radians(degrees)
     c, s = np.cos(theta), np.sin(theta)
@@ -35,12 +53,24 @@ def change_coordinate_system(start_point, point):
     point =  np.matmul(R, np.array([point.x, point.y, point.z]))
 
     point = carla.Location(point[0], point[1], point[2])
+
     return point
     
-#######################################################
-# Function for rotating through bounding box's center #
-#######################################################
+
 def rotate(bb, degrees, location):
+    """
+    Description:
+        Function rotate is used for rotating a point through bounding box's center 
+
+    Args:
+        bb          (carla.Blueprint)      :   Blueprint object of CARLA API
+        degrees     (float)                :   The angle in degrees by which the point will be rotated 
+        location    (carla.Location)       :   The point's location that will be rotated
+
+    Returns:
+        carla.Location: The rotated point
+    """
+
     theta = np.radians(degrees)
     c, s = np.cos(theta), np.sin(theta)
     R = np.array(((c, -s , 0), (s, c, 0), (0, 0, 1)))
@@ -52,23 +82,49 @@ def rotate(bb, degrees, location):
 
     point = carla.Location(point[0], point[1], point[2])
     point = point + carla.Location(bb.location.x, bb.location.y, bb.location.z)
+
     return point 
 
-######################################################
-# Function for scaling through bounding box's center #
-######################################################
+
 def scale(bb, valueX, valueY, location):
+    """
+    Description:
+        Function scale is used for scaling a point through bounding box's center
+
+    Args:
+        bb          (carla.Blueprint)       :   Blueprint object of CARLA API
+        valueX      (float)                 :   The value of scale in X-axis
+        valueY      (float)                 :   The value of scale in Y-axis
+        location    (carla.Location)        :   The point's location that will be scaled
+
+    Returns:
+        carla.Location: The scaled point
+    """    
+
     point = location 
     point = point - carla.Location(bb.location.x, bb.location.y, bb.location.z)
 
     point = carla.Location(point.x * valueX, point.y * valueY, point.z)
     point = point + carla.Location(bb.location.x, bb.location.y, bb.location.z)
+
     return point
 
-##############################################
-# Function for finding expanded bounding box #
-##############################################
+
 def expanded_bounding(world, bb, pointA, pointB, pointC, pointD, rate=2):
+    """
+    Description:
+        Function expanded_bounding  is used for finding expanded bounding box
+
+    Args:
+        world       (carla.World)           :   World object of CARLA API
+        bb          (carla.Blueprint)       :   Blueprint object of CARLA API
+        pointA      (carla.Location)        :   The first edge's point
+        pointB      (carla.Location)        :   The second edge's point
+        pointC      (carla.Location)        :   The third edge's point
+        pointD      (carla.Location)        :   The fourth edge's point
+        rate        (int, optional)         :   The rate the box will be expanded. Defaults to 2.
+    """    
+
     a = [pointA.x, pointA.y]
     b = [pointB.x, pointB.y]
     points = np.linspace(a,b, num=10)
@@ -101,62 +157,77 @@ def expanded_bounding(world, bb, pointA, pointB, pointC, pointD, rate=2):
         point = scale(bb=bb, valueX=rate, valueY=rate, location=point)
         world.debug.draw_string(point, 'X', draw_shadow=False, color=carla.Color(r=255, g=255, b=0), life_time=100, persistent_lines=True)
 
-###############################################
-# Function for finding rectangle bounding box #
-###############################################
+
 def rectangle_bounding(world, x_values, y_values):
-        minValueX = min(x_values)
-        minIndexX = x_values.index(minValueX)
-        
-        minValueY = min(y_values)
-        minIndexY = y_values.index(minValueY)
+    """
+    Description:
+        Function rectangle_bounding is used for finding rectangle bounding box
 
-        maxValueX = max(x_values)
-        maxIndexX = x_values.index(maxValueX)
+    Args:
+        world       (carla.World)           :   World object of CARLA API
+        x_values    (list)                  :   The x-coordinates of the bounding box's  
+        y_values    (list)                  :   The y-coordinates of the bounding box's 
+    """    
 
-        maxValueY = max(y_values)
-        maxIndexY = y_values.index(maxValueY)
+    minValueX = min(x_values)
+    minIndexX = x_values.index(minValueX)
+    
+    minValueY = min(y_values)
+    minIndexY = y_values.index(minValueY)
 
-        x = minValueX
-        while x < maxValueX:
-            point = carla.Location(x,minValueY,0)
+    maxValueX = max(x_values)
+    maxIndexX = x_values.index(maxValueX)
+
+    maxValueY = max(y_values)
+    maxIndexY = y_values.index(maxValueY)
+
+    x = minValueX
+    while x < maxValueX:
+        point = carla.Location(x,minValueY,0)
+        world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=100, persistent_lines=True)
+        x = x + 0.5
+        if x > maxValueX:
+            point = carla.Location(maxValueX,minValueY,0)
             world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=100, persistent_lines=True)
-            x = x + 0.5
-            if x > maxValueX:
-                point = carla.Location(maxValueX,minValueY,0)
-                world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=100, persistent_lines=True)
 
-        x = minValueX
-        while x < maxValueX:
-            point = carla.Location(x,maxValueY,0)
+    x = minValueX
+    while x < maxValueX:
+        point = carla.Location(x,maxValueY,0)
+        world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=100, persistent_lines=True)
+        x = x + 0.5
+        if x > maxValueX:
+            point = carla.Location(maxValueX,maxValueY,0)
             world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=100, persistent_lines=True)
-            x = x + 0.5
-            if x > maxValueX:
-                point = carla.Location(maxValueX,maxValueY,0)
-                world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=100, persistent_lines=True)
 
-        y = minValueY
-        while y < maxValueY:
-            point = carla.Location(minValueX,y,0)
+    y = minValueY
+    while y < maxValueY:
+        point = carla.Location(minValueX,y,0)
+        world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=100, persistent_lines=True)
+        y = y + 0.5
+        if y > maxValueY:
+            point = carla.Location(minValueX,maxValueY,0)
             world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=100, persistent_lines=True)
-            y = y + 0.5
-            if y > maxValueY:
-                point = carla.Location(minValueX,maxValueY,0)
-                world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=100, persistent_lines=True)
 
-        y = minValueY
-        while y < maxValueY:
-            point = carla.Location(maxValueX,y,0)
+    y = minValueY
+    while y < maxValueY:
+        point = carla.Location(maxValueX,y,0)
+        world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=255, g=0, b=255), life_time=100, persistent_lines=True)
+        y = y + 0.5
+        if y > maxValueY:
+            point = carla.Location(maxValueX,maxValueY,0)
             world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=255, g=0, b=255), life_time=100, persistent_lines=True)
-            y = y + 0.5
-            if y > maxValueY:
-                point = carla.Location(maxValueX,maxValueY,0)
-                world.debug.draw_string(point, 'O', draw_shadow=False, color=carla.Color(r=255, g=0, b=255), life_time=100, persistent_lines=True)
-         
-#############################
-# Function for ploting axis #
-#############################
+        
+
 def plot_axis(world, origin):
+    """
+    Description:
+        Function plot_axis is used for ploting axis
+
+    Args:
+        world           (carla.World)           :   World object of CARLA API
+        origin          (carla.Location)        :   The origin if the axis that will be plotted 
+    """    
+
     length = 20
 
     world.debug.draw_line(origin.location,  origin.location + carla.Location(length, 0, 0), thickness=0.1, color=carla.Color(255,0,0), life_time=0)
@@ -167,20 +238,45 @@ def plot_axis(world, origin):
     world.debug.draw_string(origin.location + carla.Location(0, length + 1, 0), 'Y', draw_shadow=False, color=carla.Color(r=0, g=255, b=0), life_time=100, persistent_lines=True)
     world.debug.draw_string(origin.location + carla.Location(0, 0, length + 1), 'Z', draw_shadow=False, color=carla.Color(r=0, g=0, b=255), life_time=100, persistent_lines=True)
 
-###################################################
-# Function for drawing bounding boxes to vehicles #
-###################################################
+
 def draw_vehicle_box(world, actor, location, rotation, life_time):
+    """
+    Description:
+        Function draw_vehicle_box is used for drawing bounding boxes to vehicles
+
+    Args:
+        world           (carla.World)           :   World object of CARLA API
+        actor           (carla.Actor)           :   The actor whose bounding box will be designed  
+        location        (carla.Location)        :   The actor's center location
+        rotation        (carla.Rotation)        :   The actor's rotation
+        life_time       (float)                 :   The time that the box will remain visible  
+
+    Returns:
+        carla.BoundingBox: The designed bounding box 
+    """
 
     bb = actor.bounding_box
     bbox = carla.BoundingBox(location, bb.extent)
     world.debug.draw_box(bbox, rotation, 0.1, carla.Color(255,0,0), life_time)
+
     return bbox
 
-########################################
-# Function for configuring the sensors #
-########################################
+
 def configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, *args):
+    """
+    Description:
+        Function configure_sensor is used for configuring the vehicle's sensors 
+
+    Args:
+        vehicle_actor       (carla.Vehicle)         :    The actor object of the autonomous vehicle that the sensors are attached to 
+        vehicle_transform   (carla.Transform)       :    The vehicle's transform
+        blueprint           (carla.Blueprint)       :    Blueprint object of CARLA API
+        world               (carla.World)           :    World object of CARLA API
+        map                 (carla.Map)             :    Map object of CARLA API
+
+    Returns:
+        dictionary: A dictionary with all the sensors that were attached to the vehicle
+    """    
     sensors = {}
     for sensor in args:
         if sensor == "Lidar":
@@ -265,19 +361,35 @@ def configure_sensor(vehicle_actor, vehicle_transform, blueprint, world, map, *a
 
     return sensors
 
-###############################################
-# Function for saving the waypoints in a file #
-###############################################
+
 def save_waypoints(waypoints):
+    """
+    Description:
+        Function save_waypoints is used for saving the waypoints in a file
+
+    Args:
+        waypoints (list): The waypoints that will be saved in the file 
+    """    
+
     fileData = open("data.txt", 'w')
     for waypoint in waypoints:
         fileData.write(str(waypoint.transform.location.x) + "  " + str(waypoint.transform.location.y) + "  " + str(waypoint.transform.location.z) + "\n")    
     fileData.close() 
 
-##############################################
-# Function for loading waypoints from a file #
-##############################################
+
 def load_waypoints(world, map): 
+    """
+    Description:
+        Function load_waypoints is used for loading waypoints from a file 
+
+    Args:
+        world        (carla.World)     :    World object of CARLA API
+        map          (carla.Map)       :    Map object of CARLA API
+
+    Returns:
+        list: A list with the loaded waypoints
+    """    
+
     fileData = open("data.txt", 'r')
     Lines = fileData.readlines() 
     waypoints = []
@@ -292,11 +404,20 @@ def load_waypoints(world, map):
 
     return waypoints
 
-###########################################################################################################
-# Function for eliminating double waypoints and filling gaps between distant waypoints in waypoints' list #
-###########################################################################################################
+
 def pruning(map, waypoints):
-    
+    """[summary]
+    Description:
+        Function pruning is used for eliminating double waypoints and filling gaps between distant waypoints in waypoints' list
+
+    Args:
+        map          (carla.Map)       :    Map object of CARLA API
+        waypoints    (list)            :    A list with the waypoints that will be pruned 
+
+    Returns:
+        list: The pruned waypoints 
+    """    
+
     # throw double waypoints
     waypoints_initial = waypoints
     waypoints = []
@@ -346,10 +467,18 @@ def pruning(map, waypoints):
     
     return waypoints
 
-##################################
-# Function for drawing waypoints #
-##################################
+
 def draw_waypoints(world, waypoints, col):
+    """
+    Description:
+        Function draw_waypoints for drawing waypoints
+
+    Args:
+        world       (carla.World)     :     World object of CARLA API
+        waypoints   (list)            :     The list with the waypoints that will be drawn
+        col         (carla.Color)     :     The color of the waypoints 
+    """    
+
     m = 0
     color = carla.Color(r=col, g=col, b=col)
     for waypoint in waypoints:
@@ -364,22 +493,49 @@ def draw_waypoints(world, waypoints, col):
     
     #for j in range(len(waypoints) - 2):
     #    self.world.debug.draw_line(waypoints[j].transform.location, waypoints[j + 1].transform.location, thickness=0.3, color=carla.Color(r=0, g=200, b=0), life_time=1000, persistent_lines=True)        
-                
-#################################
-# Class for canceling a process #
-#################################
+
+
 class Cancel(object):
+    """
+    Description:
+        Class Cancel is used for cancelling a process in the interface and returning in the initial state of specifying trajectory
+    
+    """
+    
     def __init__(self):
+        """
+        Description:
+            Method __init__ is the Constructor of Class Cancel that initializes most of the used variables 
+        """        
+
         self.pub_cancel = VehiclePublisherMQTT(topic='cancel command')
         self.pub = VehiclePublisherMQTT(topic='clean')
         self.sub_cancel = VehicleSubscriberCancelMQTT(topic='cancel')
 
+
     def cancel_process(self):
+        """
+        Description:
+            Method cancel_process is used for cancelling a process in the interface 
+
+        Returns:
+            boolean: Returns a boolean value with the result of cancelation 
+        """      
+
         if self.sub_cancel.get_cancel():
             self.sub_cancel.set_cancel(False)
             self.pub.publish({'value': " "})
             return True
         return False
 
+
     def cancel_now(self, value):
-       self.pub_cancel.publish({'value': value})
+        """
+        Description:
+            Method cancel_now is used for forcing a process to cancel now 
+
+        Args:
+            value (str): The value that will be published to the right topic in order to cancle the process 
+        """        
+
+        self.pub_cancel.publish({'value': value})
