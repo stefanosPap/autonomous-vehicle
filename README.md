@@ -50,8 +50,13 @@ experiments were conducted in the environment of the CARLA simulator for differe
 values of the parameters and the effectiveness has been tested as to the road violations,
 the route completion, and the safety the vehicle had during its motion.
 
-* cd /path-to-carla/  
-In my case: cd /opt/carla-simulator/bin/
-
-* ./CarlaUE4.sh
-* python3 main.py
+# Depedencies
+The project was implemented using Ubuntu 16.04. In order to execute the programm it is needed to install the following depedencies: </br>
+* [Carla Simulator](https://carla.org/)
+* [Python 3.7.x](https://www.python.org/downloads/release/python-370/)
+* [commlib-py](https://github.com/robotics-4-all/commlib-py)
+* [NumPy](https://numpy.org/)
+* [SciPy](https://www.scipy.org/)
+* [pandas](https://pandas.pydata.org/)
+* [Mosquitto](https://mosquitto.org/download/)
+* [NodeRED](https://nodered.org/docs/getting-started/local)
