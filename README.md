@@ -61,3 +61,12 @@ The project was implemented using Ubuntu 16.04. In order to execute the programm
 * [Mosquitto](https://mosquitto.org/download/)
 * [NodeRED](https://nodered.org/docs/getting-started/local)
 <p> After installing the above depedencies, the code can be cloned to your local machine and run properly. </p>
+
+# Installing the Graphical Interface in NodeRED
+
+After installing NodeRED as mentioned in Depedencies section, you can use the created graphical interface by following the steps below:
+* Open a terminal and run the command:
+  <pre> node-red </pre>
+* Open a browser at the address http://127.0.0.1:1880/ 
+* Select from the up-right menu: Import -> select a file to import -> Choose from your local machine file *flows.json*
+* In order to use the interface open a new browser tab at the address http://127.0.0.1:1880/ui/ 
