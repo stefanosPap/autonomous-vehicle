@@ -60,3 +60,4 @@ The project was implemented using Ubuntu 16.04. In order to execute the programm
 * [pandas](https://pandas.pydata.org/)
 * [Mosquitto](https://mosquitto.org/download/)
 * [NodeRED](https://nodered.org/docs/getting-started/local)
+<p> After installing the above depedencies, the code can be cloned to your local machine and run properly. </p>
