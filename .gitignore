@@ -1,7 +1,6 @@
 proxeiro.py
 *.xodr
 converter.py
-*.png
 *.avi
 *.mp4
 *.osm

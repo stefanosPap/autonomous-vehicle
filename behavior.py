@@ -1154,7 +1154,7 @@ class Behavior(object):
                 self.safe_distance = max(10, float(inter_function(diff)))
     
 
-     def wait(self, reps):
+    def wait(self, reps):
         """
         Description:
             Method wait is for spending some simulation cycles if needed 

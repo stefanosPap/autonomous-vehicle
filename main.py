@@ -113,6 +113,7 @@ def main():
     
     # normal mode 
     else:
+        exp = Experiment()
         [aggressive, lawful, vehicles, pedestrians] = [0, 0, 0, 0]
         experiment = {'experiment': 0, 'aggresssive': aggressive, 'lawful': lawful, 'vehicles': vehicles, 'pedestrians': pedestrians}
 
