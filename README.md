@@ -99,5 +99,5 @@ $ python3.7 main.py 20
 Briefly:
 1. "Specify next destination" tab -> "Log new" dropdown box -> Select "Location"
 2. "Location" tab -> Select destination e.g "Gas Station"
-3. "Specify next destination" tab -> press "ENTER" - > press "DONE"
+3. "Specify next destination" tab -> press "ENTER" -> press "DONE"
 </pre>
