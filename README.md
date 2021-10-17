@@ -62,7 +62,7 @@ The project was implemented using Ubuntu 16.04. In order to execute the programm
 * [NodeRED](https://nodered.org/docs/getting-started/local)
 <p> After installing the above depedencies, the code can be cloned to your local machine and run properly. </p>
 
-# Installing the Graphical Interface in NodeRED
+# Installing and Running the Graphical Interface in NodeRED
 
 After installing NodeRED as mentioned in Depedencies section, you can use the created graphical interface by following the steps below:
 * Open a terminal and run the command:
