@@ -66,7 +66,7 @@ The project was implemented using Ubuntu 16.04. In order to execute the programm
 
 After installing NodeRED as mentioned in Depedencies section, you can use the created graphical interface by following the steps below:
 * Open a terminal and run the command:
-  <pre> node-red </pre>
+  <pre> $ node-red </pre>
 * Open a browser at the address http://127.0.0.1:1880/ 
 * Select from the up-right menu: Import -> select a file to import -> Choose file *flows.json* from your local machine 
 * In order to use the interface open a new browser tab at the address http://127.0.0.1:1880/ui/ 
@@ -74,3 +74,30 @@ After installing NodeRED as mentioned in Depedencies section, you can use the cr
 <p>The graphical interface looks like the image below:</p>
 
 ![alt text](https://github.com/stefanosPap/autonomous-vehicle/blob/master/images/interface.png)
+
+# Starting the autonomomous car
+* Step 1: Open the Graphical Interface as mentioned in the previous section.
+* Step 2: Open a terminal in order to run the simulator by executing the commands below:
+<pre> 
+$ cd /path-to-carla-installation/ 
+In my case: $ cd /opt/carla-simulator/bin/ 
+$ ./CarlaUE.sh
+</pre> 
+* Step 3: When the simulator is on open a new terminal in order to start the autonomous vehicle and run:
+<pre>
+$ python3.7 main.py n
+where n is the number of vehicles and pedestrians, for 20 vehicles and 20 pedestrians run:
+$ python3.7 main.py 20
+</pre>
+* Step 4: In order to choose a destination for the vehicle go to the interface and follow the steps below:
+<pre>
+1. In tab "Specify next destination" select in "Log new" dropdown box the option "Location".
+2. In tab "Location" select in dropdown box a destination. For navigating to the "Gas Station" select the option "Gas Station".
+3. In tab "Specify next destination" press the button "ENTER" to log the destination and then press the button "DONE" to complete the procedure and create the optimal path to the destination.
+</pre>
+<pre>
+Briefly:
+1. "Specify next destination" tab -> "Log new" dropdown box -> Select "Location"
+2. "Location" tab -> Select destination e.g "Gas Station"
+3. "Specify next destination" tab -> press "ENTER" - > press "DONE"
+</pre>
