@@ -2,7 +2,6 @@ proxeiro.py
 *.xodr
 converter.py
 *.avi
-*.mp4
 *.osm
 plot.py
 *.h5
