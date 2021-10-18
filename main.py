@@ -114,10 +114,17 @@ def main():
     # normal mode 
     else:
         exp = Experiment()
-        [aggressive, lawful, vehicles, pedestrians] = [0, 0, 0, 0]
+        try:
+            veh = int(sys.argv[1])
+            ped = int(sys.argv[1])
+        except:
+            veh = 0
+            ped = 0
+
+        [aggressive, lawful, vehicles, pedestrians] = [0, 0, veh, ped]
         experiment = {'experiment': 0, 'aggresssive': aggressive, 'lawful': lawful, 'vehicles': vehicles, 'pedestrians': pedestrians}
 
-        print("-------- Running on normal mode with zero initial values for the sliders --------\n")
+        print("-------- Running on normal mode with zero initial values for the sliders with {} vehicles and {} pedestrians --------\n".format(vehicles, pedestrians))
 
     #
     # spawn the specified number of dynamic obstacles 
@@ -202,8 +209,9 @@ def main():
 
                     try:
                         custom_waypoints = trajectory.trace_route(end_waypoints)
-                        #for j in range(len(custom_waypoints) - 2):
-                        #    world.debug.draw_line(custom_waypoints[j].transform.location, custom_waypoints[j + 1].transform.location, thickness=1, color=carla.Color(r=200, g=0, b=0), life_time=1000, persistent_lines=True)        
+                        for j in range(len(custom_waypoints) - 2):
+                            #world.debug.draw_line(custom_waypoints[j].transform.location, custom_waypoints[j + 1].transform.location, thickness=1, color=carla.Color(r=200, g=200, b=0), life_time=1000, persistent_lines=True)        
+                            world.debug.draw_string(custom_waypoints[j].transform.location, "X", draw_shadow=False, color=carla.Color(r=200, g=200, b=0), life_time=1000)        
          
                         current_waypoint = custom_waypoints[len(custom_waypoints) - 1]
                         waypoints = waypoints + custom_waypoints
@@ -243,7 +251,11 @@ def main():
                     elif sub_turn.get_turn() == "FORWARD":
                         custom_waypoints = interface.handle_forward(current_waypoint)
                         sub_turn.set_turn(None)
-
+         
+                    for j in range(len(custom_waypoints) - 2):
+                            #world.debug.draw_line(custom_waypoints[j].transform.location, custom_waypoints[j + 1].transform.location, thickness=1, color=carla.Color(r=200, g=200, b=0), life_time=1000, persistent_lines=True)        
+                            world.debug.draw_string(custom_waypoints[j].transform.location, "X", draw_shadow=False, color=carla.Color(r=0, g=200, b=0), life_time=1000)        
+         
                     waypoints = waypoints + custom_waypoints
                     if custom_waypoints:
                         current_waypoint = custom_waypoints[len(custom_waypoints) - 1]
