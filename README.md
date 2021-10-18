@@ -102,7 +102,7 @@ Briefly:
 3. "Specify next destination" tab -> press "ENTER" -> press "DONE"
 </pre>
 
-# Usage Examples
+# Usage
 After giving the choices below, the path that is created is the one depicted in the image below:
 1. *Direction* -> **STRAIGHT** (blue segment)
 2. *Direction* -> **RIGHT** (blue segment)
@@ -113,3 +113,5 @@ After giving the choices below, the path that is created is the one depicted in 
 \
 \
 ![alt text](https://github.com/stefanosPap/autonomous-vehicle/blob/master/images/trajectory.png)
+
+After the path has been created the vehicle is ready to start folloing the trajectory. In order to start the vehicle press the **START** button and whenever you want  to stop the vehicle press the **STOP** button. The car will navigate autonomously by taking decisions according to the values of **Aggressive** and **Lawful** that are given by the user through the two sliders in **Behavior** tab. By clicking **RIGHT LANE** or **LEFT LANE** the vehicle is changing its lane accordingly. The button **CHANGE GOAL** is used to change the destination and the overall trajectory. When clicking this button you should design your path from the beginning. The buttons that were decribed are refered at the image below: 
