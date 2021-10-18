@@ -101,3 +101,15 @@ Briefly:
 2. "Location" tab -> Select destination e.g "Gas Station"
 3. "Specify next destination" tab -> press "ENTER" -> press "DONE"
 </pre>
+
+# Usage Examples
+After giving the choices below, the path that is created is the one depicted in the image below:
+1. *Direction* -> **STRAIGHT** (blue segment)
+2. *Direction* -> **RIGHT** (blue segment)
+3. *Direction* -> **FORWARD** (green segment)
+4. *Location* -> **Highway** (orange segmemt)
+5. *Direction* -> **STRAIGHT** (blue segment)
+6. *Location* -> **Gas Station** (orange segment)
+\
+\
+![alt text](https://github.com/stefanosPap/autonomous-vehicle/blob/master/images/trajectory.png)
