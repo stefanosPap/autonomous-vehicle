@@ -120,3 +120,6 @@ After the path has been created the vehicle is ready to start folloing the traje
 <p align="center">
   <img src="https://github.com/stefanosPap/autonomous-vehicle/blob/master/images/handle_vehicle.png" />
 </p>
+<p align="center">
+  <img src="https://github.com/stefanosPap/autonomous-vehicle/blob/master/images/behaviors.png" />
+</p>
