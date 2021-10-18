@@ -1,6 +1,6 @@
 # Thesis Title
-Autonomous vehicle’s graphical interface development for driving
-behavior parameterization and remote controlling.
+*Autonomous vehicle’s graphical interface development for driving
+behavior parameterization and remote controlling.*
 
 # Abstract
 &nbsp;&nbsp;&nbsp;The transportation of people over the years was an integral part of their daily lives.
